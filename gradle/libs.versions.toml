@@ -8,6 +8,8 @@ kotlinxDatetime = "0.7.1"
 kotlinxSerializationJSON = "1.9.0"
 kotlinxCoroutines = "1.10.2"
 paperApi = "1.21.10-R0.1-SNAPSHOT"
+runPaper = "3.0.2"
+shadow = "9.2.2"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -22,3 +24,5 @@ kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutine
 
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+runPaperPlugin = { id = "xyz.jpenilla.run-paper", version.ref = "runPaper" }
+shadowPlugin = { id = "com.gradleup.shadow", version.ref = "shadow" }

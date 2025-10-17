@@ -31,6 +31,6 @@ object NexusChatRenderer {
             .hoverEvent(Component.text("Click to delete your message!", RED))
             .clickEvent(ClickEvent.callback { audience -> Bukkit.getServer().deleteMessage(signedMessage) })
 
-        return@ChatRenderer delete
+        return@ChatRenderer base.appendSpace().append(delete)
     }
 }
