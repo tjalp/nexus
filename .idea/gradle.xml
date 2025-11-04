@@ -23,6 +23,7 @@
             <option value="$PROJECT_DIR$/buildSrc" />
             <option value="$PROJECT_DIR$/chat" />
             <option value="$PROJECT_DIR$/common" />
+            <option value="$PROJECT_DIR$/plugin" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="true" />

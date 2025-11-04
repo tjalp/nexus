@@ -1,7 +1,0 @@
-name: NexusChat
-version: '1.0.0-SNAPSHOT'
-main: net.tjalp.nexus.chat.NexusChat
-api-version: '1.21'
-authors: [ tjalp ]
-description: Chat plugin for Nexus
-website: https://tjalp.net/
