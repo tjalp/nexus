@@ -8,6 +8,7 @@ kotlinxDatetime = "0.7.1"
 kotlinxSerializationJSON = "1.9.0"
 kotlinxCoroutines = "1.10.2"
 paperApi = "1.21.10-R0.1-SNAPSHOT"
+paperDevBundle = "2.0.0-beta.19"
 runPaper = "3.0.2"
 shadow = "9.2.2"
 
@@ -17,6 +18,7 @@ kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.r
 kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
 kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApi" }
+paperweightUserDev = { group = "io.papermc.paperweight.userdev", name = "io.papermc.paperweight.userdev.gradle.plugin", version.ref = "paperDevBundle" }
 
 # Libraries can be bundled together for easier import
 [bundles]
@@ -25,4 +27,5 @@ kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutine
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 runPaperPlugin = { id = "xyz.jpenilla.run-paper", version.ref = "runPaper" }
+paperDevBundlePlugin = { id = "io.papermc.paperweight.userdev", version.ref = "paperDevBundle" }
 shadowPlugin = { id = "com.gradleup.shadow", version.ref = "shadow" }

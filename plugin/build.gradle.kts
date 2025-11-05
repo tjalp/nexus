@@ -9,7 +9,8 @@ plugins {
 dependencies {
     implementation(project(":common"))
     implementation(project(":chat"))
-    compileOnly(libs.paperApi)
+
+    paperweight.paperDevBundle(libs.versions.paperApi)
 }
 
 tasks {
