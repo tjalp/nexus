@@ -4,12 +4,13 @@ plugins {
     id("buildsrc.convention.kotlin-jvm")
     // Apply Kotlin Serialization plugin from `gradle/libs.versions.toml`.
     alias(libs.plugins.kotlinPluginSerialization)
+    alias(libs.plugins.paperUserDevPlugin)
 }
 
 dependencies {
     // Apply the kotlinx bundle of dependencies from the version catalog (`gradle/libs.versions.toml`).
     implementation(libs.bundles.kotlinxEcosystem)
 
-    compileOnlyApi(libs.paperApi)
     paperweight.paperDevBundle(libs.versions.paperApi)
+    compileOnlyApi("io.papermc.paper:dev-bundle:${libs.versions.paperApi.get()}") // scuffed as hell lol
 }
