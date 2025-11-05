@@ -2,6 +2,8 @@ package net.tjalp.nexus.chat
 
 import net.tjalp.nexus.chat.listener.ChatListener
 import net.tjalp.nexus.common.Feature
+import net.tjalp.nexus.common.register
+import net.tjalp.nexus.common.unregister
 import org.bukkit.plugin.java.JavaPlugin
 
 /**
@@ -11,13 +13,16 @@ class ChatFeature : Feature {
 
     override val name: String = "chat"
 
+    private lateinit var plugin: JavaPlugin
+    private lateinit var listener: ChatListener
+
     override fun enable(plugin: JavaPlugin) {
-        ChatListener(ChatService()).also {
-            plugin.server.pluginManager.registerEvents(it, plugin)
-        }
+        this.plugin = plugin
+
+        listener = ChatListener(ChatService()).also { it.register(plugin) }
     }
 
     override fun disable() {
-
+        listener.unregister()
     }
 }

@@ -2,35 +2,40 @@ package net.tjalp.nexus.chat
 
 import io.papermc.paper.chat.ChatRenderer
 import net.kyori.adventure.chat.SignedMessage
-import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.event.ClickEvent
-import net.kyori.adventure.text.format.NamedTextColor.*
+import net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY
+import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration.BOLD
 import org.bukkit.Bukkit
+import org.bukkit.permissions.Permissible
+import org.bukkit.permissions.Permission
 
 object NexusChatRenderer {
 
     fun renderer(
         signedMessage: SignedMessage
     ): ChatRenderer = ChatRenderer { source, sourceDisplayName, message, viewer ->
-        val base = Component.textOfChildren(
+        val base = textOfChildren(
+            text("<"),
             sourceDisplayName,
-            Component.text(": "),
+            text("> "),
             message
         )
 
-        if (viewer != source) return@ChatRenderer base
+        val canDeleteAll = (viewer as? Permissible)?.hasPermission(Permission("nexus.chat.delete_all")) ?: false
 
-        val deleteBase = Component.textOfChildren(
-            Component.text("[", DARK_GRAY),
-            Component.text("X", DARK_RED, BOLD),
-            Component.text("]", DARK_GRAY)
+        if (viewer != source && !canDeleteAll) return@ChatRenderer base
+
+        val deleteBase = textOfChildren(
+            text("\u274C", TextColor.color(0xa81e1e), BOLD),
         )
 
         val delete = deleteBase
-            .hoverEvent(Component.text("Click to delete your message!", RED))
+            .hoverEvent(text("Click to delete this message!", RED))
             .clickEvent(ClickEvent.callback { audience -> Bukkit.getServer().deleteMessage(signedMessage) })
 
-        return@ChatRenderer base.appendSpace().append(delete)
+        return@ChatRenderer textOfChildren(delete, space(), base)
     }
 }
