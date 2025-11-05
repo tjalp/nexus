@@ -6,4 +6,5 @@ plugins {
 
 dependencies {
     implementation(project(":common"))
+    paperweight.paperDevBundle(libs.versions.paperApi)
 }

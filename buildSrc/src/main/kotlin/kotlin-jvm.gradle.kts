@@ -8,6 +8,7 @@ plugins {
     `java-library`
     // Apply the Kotlin JVM plugin to add support for Kotlin in JVM projects.
     kotlin("jvm")
+    id("io.papermc.paperweight.userdev")
 }
 
 kotlin {
