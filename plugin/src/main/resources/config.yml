@@ -1,3 +1,6 @@
 modules:
   chat:
     enabled: true
+  gamerules:
+    enabled: true
+    crop-trampling: true

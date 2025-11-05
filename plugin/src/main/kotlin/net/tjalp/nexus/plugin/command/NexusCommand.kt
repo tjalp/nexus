@@ -14,6 +14,13 @@ object NexusCommand {
         return Commands.literal("nexus")
             .requires(Commands.restricted { source -> source.sender.hasPermission("nexus.command.nexus") })
             .then(Commands.literal("reload")
+                .executes { context ->
+                    context.source.sender.sendMessage("Reloading config")
+
+                    plugin.reloadConfig()
+
+                    return@executes Command.SINGLE_SUCCESS
+                }
                 .then(Commands.argument("module", StringArgumentType.string())
                     .executes { context ->
                         val moduleName = context.getArgument("module", String::class.java)

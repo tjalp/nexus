@@ -11,5 +11,4 @@ dependencies {
     implementation(libs.bundles.kotlinxEcosystem)
 
     compileOnlyApi(libs.paperApi)
-    paperweight.paperDevBundle(libs.versions.paperApi)
 }
