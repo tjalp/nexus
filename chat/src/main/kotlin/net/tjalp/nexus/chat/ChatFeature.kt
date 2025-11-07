@@ -13,13 +13,16 @@ class ChatFeature : Feature {
 
     override val name: String = "chat"
 
-    private lateinit var plugin: JavaPlugin
+    lateinit var plugin: JavaPlugin; private set
+    lateinit var chatService: ChatService; private set
+
     private lateinit var listener: ChatListener
 
     override fun enable(plugin: JavaPlugin) {
         this.plugin = plugin
+        this.chatService = ChatService()
 
-        listener = ChatListener(ChatService()).also { it.register(plugin) }
+        listener = ChatListener(this).also { it.register(plugin) }
     }
 
     override fun disable() {

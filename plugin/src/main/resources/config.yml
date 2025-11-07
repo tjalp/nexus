@@ -1,6 +1,7 @@
 modules:
   chat:
     enabled: true
+    format: "<<name>> <message>"
   gamerules:
     enabled: true
     crop-trampling: true

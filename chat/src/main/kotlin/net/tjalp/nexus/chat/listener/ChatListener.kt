@@ -4,16 +4,18 @@ import io.papermc.paper.event.player.AsyncChatCommandDecorateEvent
 import io.papermc.paper.event.player.AsyncChatDecorateEvent
 import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
-import net.tjalp.nexus.chat.ChatService
+import net.tjalp.nexus.chat.ChatFeature
 import net.tjalp.nexus.chat.NexusChatRenderer
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
-class ChatListener(private val chatService: ChatService) : Listener {
+class ChatListener(private val feature: ChatFeature) : Listener {
 
     @EventHandler
     fun on(event: AsyncChatEvent) {
-        event.renderer(NexusChatRenderer.renderer(event.signedMessage()))
+        val format = feature.plugin.config.getString("modules.${feature.name}.format", "<<name>> <message>")!!
+
+        event.renderer(NexusChatRenderer.renderer(format, event.signedMessage()))
     }
 
     @Suppress("UnstableApiUsage")
@@ -40,7 +42,7 @@ class ChatListener(private val chatService: ChatService) : Listener {
         if (!canDecorate) return
 
         val plainMessage = PlainTextComponentSerializer.plainText().serialize(event.originalMessage())
-        val decorated = chatService.decorate(plainMessage)
+        val decorated = feature.chatService.decorate(plainMessage)
 
         event.result(decorated)
     }
