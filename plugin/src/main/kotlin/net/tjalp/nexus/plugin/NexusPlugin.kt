@@ -3,6 +3,7 @@ package net.tjalp.nexus.plugin
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import net.tjalp.nexus.chat.ChatFeature
 import net.tjalp.nexus.common.Feature
+import net.tjalp.nexus.common.PacketManager
 import net.tjalp.nexus.gamerules.GameRulesFeature
 import net.tjalp.nexus.plugin.command.NexusCommand
 import org.bukkit.plugin.java.JavaPlugin
@@ -17,6 +18,21 @@ class NexusPlugin : JavaPlugin() {
     override fun onEnable() {
         saveDefaultConfig()
 
+        PacketManager.init(this)
+
+        enableFeatures()
+
+        // register commands
+        this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
+            commands.registrar().register(NexusCommand.create(this), "Nexus-specific commands")
+        }
+    }
+
+    override fun onDisable() {
+        features.forEach { it.disable() }
+    }
+
+    private fun enableFeatures() {
         features.filter { config.getBoolean("modules.${it.name}.enabled", true) }
             .forEach {
                 try {
@@ -26,13 +42,5 @@ class NexusPlugin : JavaPlugin() {
                     e.printStackTrace()
                 }
             }
-
-        this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
-            commands.registrar().register(NexusCommand.create(this), "Nexus-specific commands")
-        }
-    }
-
-    override fun onDisable() {
-        features.forEach { it.disable() }
     }
 }

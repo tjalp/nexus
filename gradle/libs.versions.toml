@@ -11,6 +11,7 @@ paperApi = "1.21.10-R0.1-SNAPSHOT"
 paperweightUserDev = "2.0.0-beta.19"
 runPaper = "3.0.2"
 shadow = "9.2.2"
+commonsCollections = "4.5.0"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -19,6 +20,7 @@ kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-j
 kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApi" }
 paperweightUserDev = { group = "io.papermc.paperweight.userdev", name = "io.papermc.paperweight.userdev.gradle.plugin", version.ref = "paperweightUserDev" }
+commonsCollections = { module = "org.apache.commons:commons-collections4", version.ref = "commonsCollections" }
 
 # Libraries can be bundled together for easier import
 [bundles]
