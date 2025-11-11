@@ -4,4 +4,7 @@ modules:
     format: "<<name>> <message>"
   gamerules:
     enabled: true
+    creeper-grieving: true
     crop-trampling: true
+    enderman-grieving: true
+    ghast-grieving: true

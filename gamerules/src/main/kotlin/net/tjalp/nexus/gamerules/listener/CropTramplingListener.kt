@@ -1,5 +1,6 @@
-package net.tjalp.nexus.gamerules
+package net.tjalp.nexus.gamerules.listener
 
+import net.tjalp.nexus.gamerules.GameRulesFeature
 import org.bukkit.Material
 import org.bukkit.event.Event
 import org.bukkit.event.EventHandler
