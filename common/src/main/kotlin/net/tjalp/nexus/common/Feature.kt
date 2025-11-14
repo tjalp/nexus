@@ -1,6 +1,6 @@
 package net.tjalp.nexus.common
 
-import org.bukkit.plugin.java.JavaPlugin
+import net.tjalp.nexus.common.profile.ProfileModule
 
 /**
  * Represents a feature that can be enabled or disabled within the Nexus plugin.
@@ -13,11 +13,17 @@ interface Feature {
     val name: String
 
     /**
-     * Enables the feature within the given plugin.
+     * The [ProfileModule]s provided by this feature. Empty by default
      *
-     * @param plugin The JavaPlugin instance to enable the feature in.
+     * @return A collection of [ProfileModule]s.
      */
-    fun enable(plugin: JavaPlugin)
+    val profileModules: Collection<ProfileModule>
+        get() = emptyList()
+
+    /**
+     * Enables the feature within the given plugin.
+     */
+    fun enable()
 
     /**
      * Disables the feature within the given plugin.

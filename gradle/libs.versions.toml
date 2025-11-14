@@ -12,6 +12,8 @@ paperweightUserDev = "2.0.0-beta.19"
 runPaper = "3.0.2"
 shadow = "9.2.2"
 commonsCollections = "4.5.0"
+exposed = "1.0.0-rc-3"
+h2 = "2.4.240"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -21,10 +23,15 @@ kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", 
 paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApi" }
 paperweightUserDev = { group = "io.papermc.paperweight.userdev", name = "io.papermc.paperweight.userdev.gradle.plugin", version.ref = "paperweightUserDev" }
 commonsCollections = { module = "org.apache.commons:commons-collections4", version.ref = "commonsCollections" }
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
 
 # Libraries can be bundled together for easier import
 [bundles]
 kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines"]
+database = ["exposed-core", "exposed-jdbc", "exposed-kotlin-datetime", "h2"]
 
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

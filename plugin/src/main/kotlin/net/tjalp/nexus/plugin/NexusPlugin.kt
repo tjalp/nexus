@@ -1,42 +1,83 @@
 package net.tjalp.nexus.plugin
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import net.tjalp.nexus.chat.ChatFeature
-import net.tjalp.nexus.common.Feature
-import net.tjalp.nexus.common.PacketManager
+import net.tjalp.nexus.common.*
+import net.tjalp.nexus.common.profile.ProfileListener
+import net.tjalp.nexus.common.profile.ProfileModule
+import net.tjalp.nexus.common.profile.ProfileModuleRegistry
+import net.tjalp.nexus.common.profile.ProfilesService
+import net.tjalp.nexus.common.profile.service.ExposedProfilesService
 import net.tjalp.nexus.gamerules.GameRulesFeature
 import net.tjalp.nexus.plugin.command.NexusCommand
+import net.tjalp.nexus.plugin.command.ProfileCommand
+import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
+import org.jetbrains.exposed.v1.jdbc.Database
 
 class NexusPlugin : JavaPlugin() {
+
+    lateinit var profiles: ProfilesService; private set
+    lateinit var database: Database; private set
+
+    private val listeners = mutableListOf<Listener>()
 
     val features: List<Feature> = listOf(
         ChatFeature(),
         GameRulesFeature()
     )
 
+    val profileModules: Collection<ProfileModule>
+        get() = features.flatMap { it.profileModules }
+
     override fun onEnable() {
         saveDefaultConfig()
 
         PacketManager.init(this)
+
+        database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
+        profiles = ExposedProfilesService(
+            database,
+            ProfileModuleRegistry(profileModules)
+        )
+
+        NexusServices.apply {
+            register(JavaPlugin::class, this@NexusPlugin)
+            register(Database::class, database)
+            register(ProfilesService::class, profiles)
+        }
+
+        listeners += ProfileListener(profiles).also { it.register(this) }
+
+        CoroutineScope(Dispatchers.Default).launch {
+            profiles.updates.collect { event ->
+                logger.info("Profile update event: $event")
+            }
+        }
 
         enableFeatures()
 
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
             commands.registrar().register(NexusCommand.create(this), "Nexus-specific commands")
+            commands.registrar().register(ProfileCommand.create(this), "Profile management commands")
         }
     }
 
     override fun onDisable() {
         features.forEach { it.disable() }
+        listeners.forEach { it.unregister() }
+        NexusServices.clear()
     }
 
     private fun enableFeatures() {
         features.filter { config.getBoolean("modules.${it.name}.enabled", true) }
             .forEach {
                 try {
-                    it.enable(this)
+                    it.enable()
                 } catch (e: Throwable) {
                     logger.severe("Failed to enable feature '${it.name}': ${e.message}")
                     e.printStackTrace()
