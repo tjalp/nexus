@@ -14,6 +14,8 @@ shadow = "9.2.2"
 commonsCollections = "4.5.0"
 exposed = "1.0.0-rc-3"
 h2 = "2.4.240"
+postgres = "42.7.8"
+foojayResolverConvention = "1.0.0"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -27,14 +29,16 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
+postgres = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 
 # Libraries can be bundled together for easier import
 [bundles]
 kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines"]
-database = ["exposed-core", "exposed-jdbc", "exposed-kotlin-datetime", "h2"]
+database = ["exposed-core", "exposed-jdbc", "exposed-kotlin-datetime", "h2", "postgres"]
 
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 runPaperPlugin = { id = "xyz.jpenilla.run-paper", version.ref = "runPaper" }
 paperUserDevPlugin = { id = "io.papermc.paperweight.userdev", version.ref = "paperweightUserDev" }
 shadowPlugin = { id = "com.gradleup.shadow", version.ref = "shadow" }
+foojayResolverConventionPlugin = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojayResolverConvention" }

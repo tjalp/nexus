@@ -8,6 +8,7 @@ import net.tjalp.nexus.common.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.statements.UpsertStatement
+import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -58,6 +59,7 @@ class ExposedProfilesService(
             }
         }
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun upsert(
         profile: ProfileSnapshot,
         cache: Boolean,
@@ -71,6 +73,7 @@ class ExposedProfilesService(
             statement.invoke(ProfilesTable, it)
 
             it[id] = profile.id.value
+            it[updatedAt] = CurrentTimestamp
         }
 
         // execute any additional lambdas inside the same transaction (e.g. module upserts)
@@ -97,6 +100,7 @@ class ExposedProfilesService(
         service = this@ExposedProfilesService,
         id = ProfileId(this[ProfilesTable.id]),
         lastKnownName = this[ProfilesTable.lastKnownName],
-        createdAt = this[ProfilesTable.createdAt]
+        createdAt = this[ProfilesTable.createdAt],
+        updatedAt = this[ProfilesTable.updatedAt]
     )
 }

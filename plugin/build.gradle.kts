@@ -5,6 +5,7 @@ plugins {
     id(libs.plugins.paperUserDevPlugin.get().pluginId)
     alias(libs.plugins.shadowPlugin)
     alias(libs.plugins.runPaperPlugin)
+//    alias(libs.plugins.foojayResolverConventionPlugin)
 }
 
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
@@ -29,4 +30,12 @@ tasks {
             attributes["paperweight-mappings-namespace"] = "mojang"
         }
     }
+}
+
+tasks.withType(xyz.jpenilla.runtask.task.AbstractRun::class) {
+    javaLauncher = javaToolchains.launcherFor {
+        vendor = JvmVendorSpec.JETBRAINS
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    jvmArgs("-XX:+AllowEnhancedClassRedefinition")
 }

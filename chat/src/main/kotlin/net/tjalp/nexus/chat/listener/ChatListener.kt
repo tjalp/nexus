@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import net.tjalp.nexus.chat.ChatFeature
 import net.tjalp.nexus.chat.ChatKeys
@@ -30,7 +31,7 @@ class ChatListener(private val feature: ChatFeature) : Listener {
                 val attachment = event.new.getAttachment(ChatKeys.CHAT)
 
                 Bukkit.getPlayer(event.id.value)?.sendActionBar {
-                    text("Your chat message count is now ${attachment?.messageCount ?: 0}")
+                    text("Your chat message count is now ${attachment?.messageCount ?: 0}", GRAY)
                 }
             }
         }
@@ -42,7 +43,6 @@ class ChatListener(private val feature: ChatFeature) : Listener {
 
         CoroutineScope(Dispatchers.IO).launch {
             var profile = NexusServices.get<ProfilesService>().get(ProfileId(event.player.uniqueId)) ?: return@launch
-
             profile = profile.update(additionalStatements = arrayOf({
                 ChatTable.update({ ChatTable.profileId eq profile.id.value }) {
                     it[messageCount] = messageCount + 1

@@ -1,9 +1,6 @@
 package net.tjalp.nexus.plugin
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import net.tjalp.nexus.chat.ChatFeature
 import net.tjalp.nexus.common.*
 import net.tjalp.nexus.common.profile.ProfileListener
@@ -42,7 +39,12 @@ class NexusPlugin : JavaPlugin() {
 
         PacketManager.init(this)
 
-        database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
+        database = Database.connect(
+            "jdbc:postgresql://localhost:5432/postgres",
+            driver = "org.postgresql.Driver",
+            user = "postgres",
+            password = "postgres"
+        )
 
         NexusServices.register(Database::class, database)
 
@@ -54,12 +56,6 @@ class NexusPlugin : JavaPlugin() {
         NexusServices.register(ProfilesService::class, profiles)
 
         listeners += ProfileListener(profiles).also { it.register(this) }
-
-        CoroutineScope(Dispatchers.Default).launch {
-            profiles.updates.collect { event ->
-                logger.info("Profile update event: $event")
-            }
-        }
 
         enableFeatures()
 

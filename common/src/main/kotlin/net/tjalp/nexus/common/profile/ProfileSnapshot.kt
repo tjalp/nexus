@@ -5,24 +5,51 @@ import org.jetbrains.exposed.v1.core.statements.UpsertStatement
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
+/**
+ * A snapshot of a profile at a specific point in time.
+ *
+ * @property service The [ProfilesService] that manages this profile.
+ * @property id The unique identifier of the profile.
+ * @property lastKnownName The last known name of the profile, or null if not set.
+ * @property createdAt The timestamp when the profile was created.
+ * @property updatedAt The timestamp when the profile was last updated.
+ */
 @OptIn(ExperimentalTime::class)
 data class ProfileSnapshot(
     private val service: ProfilesService,
     val id: ProfileId,
     val lastKnownName: String?,
     val createdAt: Instant,
+    val updatedAt: Instant
 ) {
 
     private val attachments: MutableMap<AttachmentKey<*>, Any> = mutableMapOf()
 
+    /**
+     * Gets an attachment from this profile.
+     *
+     * @param key The key of the attachment to retrieve.
+     * @return The attachment associated with the given key, or null if not present.
+     */
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> getAttachment(key: AttachmentKey<T>): T? =
         attachments[key] as? T
 
+    /**
+     * Sets an attachment on this profile.
+     *
+     * @param key The key of the attachment to set.
+     * @param value The value of the attachment to set.
+     */
     fun <T : Any> setAttachment(key: AttachmentKey<T>, value: T) {
         attachments[key] = value
     }
 
+    /**
+     * Removes an attachment from this profile.
+     *
+     * @param key The key of the attachment to remove.
+     */
     fun <T : Any> removeAttachment(key: AttachmentKey<T>) {
         attachments.remove(key)
     }
@@ -40,6 +67,6 @@ data class ProfileSnapshot(
     ) = service.upsert(this, statement = statement, additionalStatements = additionalStatements)
 
     override fun toString(): String {
-        return "ProfileSnapshot(id=${id.value}, lastKnownName=$lastKnownName, createdAt=$createdAt, attachments=$attachments)"
+        return "ProfileSnapshot(id=${id.value}, lastKnownName=$lastKnownName, createdAt=$createdAt, updatedAt=$updatedAt, attachments=$attachments)"
     }
 }
