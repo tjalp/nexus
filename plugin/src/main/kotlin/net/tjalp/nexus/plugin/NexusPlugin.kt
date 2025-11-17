@@ -7,6 +7,7 @@ import net.tjalp.nexus.common.profile.ProfileListener
 import net.tjalp.nexus.common.profile.ProfileModule
 import net.tjalp.nexus.common.profile.ProfileModuleRegistry
 import net.tjalp.nexus.common.profile.ProfilesService
+import net.tjalp.nexus.common.profile.attachment.GeneralAttachmentModule
 import net.tjalp.nexus.common.profile.service.ExposedProfilesService
 import net.tjalp.nexus.gamerules.GameRulesFeature
 import net.tjalp.nexus.plugin.command.NexusCommand
@@ -30,7 +31,7 @@ class NexusPlugin : JavaPlugin() {
     }
 
     val profileModules: Collection<ProfileModule>
-        get() = features.flatMap { it.profileModules }
+        get() = features.flatMap { it.profileModules } + GeneralAttachmentModule
 
     override fun onEnable() {
         saveDefaultConfig()

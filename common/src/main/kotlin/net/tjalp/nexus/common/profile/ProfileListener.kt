@@ -5,8 +5,11 @@ import io.papermc.paper.event.connection.configuration.AsyncPlayerConnectionConf
 import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.tjalp.nexus.common.profile.attachment.GeneralTable
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.update
 import kotlin.time.ExperimentalTime
 
 class ProfileListener(private val profiles: ProfilesService) : Listener {
@@ -22,9 +25,11 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
         runBlocking {
             try {
                 val profile = profiles.get(id, cache = true, allowCreation = true) ?: error("Failed to load or create profile")
-                profile.update(statement = {
-                    it[lastKnownName] = username
-                })
+                profile.update(additionalStatements = arrayOf({
+                    GeneralTable.update({ GeneralTable.profileId eq id.value }) {
+                        it[GeneralTable.lastKnownName] = username
+                    }
+                }))
             } catch (e: Throwable) {
                 e.printStackTrace()
                 event.connection.disconnect(text("An error occurred while loading your profile. Please try again later.", RED))

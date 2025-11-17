@@ -8,7 +8,6 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalTime::class)
 object ProfilesTable : Table("profiles") {
     val id = uuid("profile_id").uniqueIndex()
-    val lastKnownName = varchar("last_known_name", 16).nullable()
     val createdAt = timestamp("created_at").defaultExpression(CurrentTimestamp)
     val updatedAt = timestamp("updated_at").defaultExpression(CurrentTimestamp)
 

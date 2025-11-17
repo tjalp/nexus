@@ -10,7 +10,6 @@ import kotlin.time.Instant
  *
  * @property service The [ProfilesService] that manages this profile.
  * @property id The unique identifier of the profile.
- * @property lastKnownName The last known name of the profile, or null if not set.
  * @property createdAt The timestamp when the profile was created.
  * @property updatedAt The timestamp when the profile was last updated.
  */
@@ -18,7 +17,6 @@ import kotlin.time.Instant
 data class ProfileSnapshot(
     private val service: ProfilesService,
     val id: ProfileId,
-    val lastKnownName: String?,
     val createdAt: Instant,
     val updatedAt: Instant
 ) {
@@ -67,6 +65,6 @@ data class ProfileSnapshot(
     ) = service.upsert(this, statement = statement, additionalStatements = additionalStatements)
 
     override fun toString(): String {
-        return "ProfileSnapshot(id=${id.value}, lastKnownName=$lastKnownName, createdAt=$createdAt, updatedAt=$updatedAt, attachments=$attachments)"
+        return "ProfileSnapshot(id=${id.value}, createdAt=$createdAt, updatedAt=$updatedAt, attachments=$attachments)"
     }
 }

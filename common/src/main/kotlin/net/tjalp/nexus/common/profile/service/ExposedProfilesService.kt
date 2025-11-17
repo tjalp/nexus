@@ -99,7 +99,6 @@ class ExposedProfilesService(
     private fun ResultRow.toProfileSnapshot() = ProfileSnapshot(
         service = this@ExposedProfilesService,
         id = ProfileId(this[ProfilesTable.id]),
-        lastKnownName = this[ProfilesTable.lastKnownName],
         createdAt = this[ProfilesTable.createdAt],
         updatedAt = this[ProfilesTable.updatedAt]
     )
