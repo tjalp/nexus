@@ -22,9 +22,9 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
         runBlocking {
             try {
                 val profile = profiles.get(id, cache = true, allowCreation = true) ?: error("Failed to load or create profile")
-                profile.update {
+                profile.update(statement = {
                     it[lastKnownName] = username
-                }
+                })
             } catch (e: Throwable) {
                 e.printStackTrace()
                 event.connection.disconnect(text("An error occurred while loading your profile. Please try again later.", RED))

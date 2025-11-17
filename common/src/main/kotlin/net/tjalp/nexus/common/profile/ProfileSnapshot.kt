@@ -27,8 +27,17 @@ data class ProfileSnapshot(
         attachments.remove(key)
     }
 
-    suspend fun update(statement: ProfilesTable.(UpsertStatement<Long>) -> Unit) =
-        service.upsert(this, statement = statement)
+    /**
+     * Updates this profile in the database.
+     *
+     * @param statement The upsert statement to apply to the profile.
+     * @param additionalStatements Additional statements to execute after the upsert to, for example, modify attachments.
+     * @return A [ProfileSnapshot] representing the updated profile.
+     */
+    suspend fun update(
+        statement: ProfilesTable.(UpsertStatement<Long>) -> Unit = {},
+        vararg additionalStatements: () -> Unit
+    ) = service.upsert(this, statement = statement, additionalStatements = additionalStatements)
 
     override fun toString(): String {
         return "ProfileSnapshot(id=${id.value}, lastKnownName=$lastKnownName, createdAt=$createdAt, attachments=$attachments)"

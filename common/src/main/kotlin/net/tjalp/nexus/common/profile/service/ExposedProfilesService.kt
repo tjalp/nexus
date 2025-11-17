@@ -61,13 +61,20 @@ class ExposedProfilesService(
     override suspend fun upsert(
         profile: ProfileSnapshot,
         cache: Boolean,
-        statement: ProfilesTable.(UpsertStatement<Long>) -> Unit
+        statement: ProfilesTable.(UpsertStatement<Long>) -> Unit,
+        vararg additionalStatements: () -> Unit
     ): ProfileSnapshot = suspendTransaction(db) {
-        moduleRegistry.saveProfileModules(profile)
+//        moduleRegistry.saveProfileModules(profile)
+
+        // apply main profiles upsert, allow caller to modify the upsert statement
         ProfilesTable.upsert {
-            it[id] = profile.id.value
             statement.invoke(ProfilesTable, it)
+
+            it[id] = profile.id.value
         }
+
+        // execute any additional lambdas inside the same transaction (e.g. module upserts)
+        additionalStatements.forEach { it() }
 
         val profile = ProfilesTable.selectAll().where { ProfilesTable.id eq profile.id.value }
             .first()

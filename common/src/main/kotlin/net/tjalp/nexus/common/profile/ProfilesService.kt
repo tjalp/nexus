@@ -18,7 +18,8 @@ interface ProfilesService {
     suspend fun upsert(
         profile: ProfileSnapshot,
         cache: Boolean = true,
-        statement: ProfilesTable.(UpsertStatement<Long>) -> Unit
+        statement: ProfilesTable.(UpsertStatement<Long>) -> Unit = {},
+        vararg additionalStatements: () -> Unit
     ): ProfileSnapshot
 
     fun uncache(id: ProfileId): ProfileSnapshot?
