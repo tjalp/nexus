@@ -28,7 +28,7 @@ object NexusCommand {
 
                         val feature = plugin.features.filter { it.name == moduleName }
 
-                        feature.forEach { it.disable(); it.enable(plugin) }
+                        feature.forEach { it.disable(); it.enable() }
 
                         return@executes Command.SINGLE_SUCCESS
                     }))

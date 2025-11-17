@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import net.tjalp.nexus.common.profile.*
 import net.tjalp.nexus.common.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.StdOutSqlLogger
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.statements.UpsertStatement
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -29,7 +28,6 @@ class ExposedProfilesService(
 
     init {
         transaction(db) {
-            addLogger(StdOutSqlLogger)
             SchemaUtils.create(ProfilesTable)
         }
     }
@@ -41,23 +39,23 @@ class ExposedProfilesService(
         allowCreation: Boolean
     ): ProfileSnapshot? =
         suspendTransaction(db) {
-            if (!bypassCache && profileCache.contains(id)) return@suspendTransaction profileCache[id]
+            if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
-            var resultRow = ProfilesTable.selectAll().where { ProfilesTable.id eq id.value }.firstOrNull()
+            var profile = ProfilesTable.selectAll().where { ProfilesTable.id eq id.value }.firstOrNull()?.toProfileSnapshot()
 
             // todo improve this code. This is abysmal
-            if (resultRow == null && allowCreation) {
+            if (profile == null && allowCreation) {
                 ProfilesTable.upsert {
                     it[ProfilesTable.id] = id.value
                 }
-                resultRow = ProfilesTable.selectAll().where { ProfilesTable.id eq id.value }.firstOrNull()
+                val resultRow = ProfilesTable.selectAll().where { ProfilesTable.id eq id.value }.firstOrNull()
+                profile = resultRow?.toProfileSnapshot()?.also { moduleRegistry.saveProfileModules(it) }
             }
 
-            val profile = resultRow?.toProfileSnapshot()?.also { moduleRegistry.initializeProfileModules(it) }
-
-            if (cache && profile != null) profileCache[id] = profile
-
-            profile
+            profile?.also {
+                moduleRegistry.initializeProfileModules(it)
+                if (cache) profileCache[id] = it
+            }
         }
 
     override suspend fun upsert(

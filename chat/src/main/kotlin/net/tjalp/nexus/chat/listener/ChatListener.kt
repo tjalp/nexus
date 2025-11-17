@@ -3,16 +3,9 @@ package net.tjalp.nexus.chat.listener
 import io.papermc.paper.event.player.AsyncChatCommandDecorateEvent
 import io.papermc.paper.event.player.AsyncChatDecorateEvent
 import io.papermc.paper.event.player.AsyncChatEvent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import net.tjalp.nexus.chat.ChatFeature
-import net.tjalp.nexus.chat.ChatKeys
 import net.tjalp.nexus.chat.NexusChatRenderer
-import net.tjalp.nexus.common.NexusServices
-import net.tjalp.nexus.common.profile.ProfileId
-import net.tjalp.nexus.common.profile.ProfilesService
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
@@ -22,14 +15,13 @@ class ChatListener(private val feature: ChatFeature) : Listener {
     fun on(event: AsyncChatEvent) {
         val format = feature.plugin.config.getString("modules.${feature.name}.format", "<<name>> <message>")!!
 
-        CoroutineScope(Dispatchers.IO).launch {
-            val profile = NexusServices.get<ProfilesService>().get(ProfileId(event.player.uniqueId))
-
-            profile?.update {
-                profile.getAttachment(ChatKeys.CHAT)?.messageCount
-            }
-
-        }
+//        CoroutineScope(Dispatchers.IO).launch {
+//            val profile = NexusServices.get<ProfilesService>().get(ProfileId(event.player.uniqueId))
+//
+//            profile?.update {
+//                profile.getAttachment(ChatKeys.CHAT)?.messageCount
+//            }
+//        }
 
         event.renderer(NexusChatRenderer.renderer(format, event.signedMessage()))
     }

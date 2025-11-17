@@ -25,10 +25,12 @@ class NexusPlugin : JavaPlugin() {
 
     private val listeners = mutableListOf<Listener>()
 
-    val features: List<Feature> = listOf(
-        ChatFeature(),
-        GameRulesFeature()
-    )
+    val features: List<Feature> by lazy {
+        listOf(
+            ChatFeature(),
+            GameRulesFeature()
+        )
+    }
 
     val profileModules: Collection<ProfileModule>
         get() = features.flatMap { it.profileModules }
@@ -36,19 +38,20 @@ class NexusPlugin : JavaPlugin() {
     override fun onEnable() {
         saveDefaultConfig()
 
+        NexusServices.register(JavaPlugin::class, this)
+
         PacketManager.init(this)
 
         database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
+
+        NexusServices.register(Database::class, database)
+
         profiles = ExposedProfilesService(
             database,
             ProfileModuleRegistry(profileModules)
         )
 
-        NexusServices.apply {
-            register(JavaPlugin::class, this@NexusPlugin)
-            register(Database::class, database)
-            register(ProfilesService::class, profiles)
-        }
+        NexusServices.register(ProfilesService::class, profiles)
 
         listeners += ProfileListener(profiles).also { it.register(this) }
 

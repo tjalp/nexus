@@ -5,7 +5,8 @@ import org.jetbrains.exposed.v1.core.statements.UpsertStatement
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-data class ProfileSnapshot @OptIn(ExperimentalTime::class) constructor(
+@OptIn(ExperimentalTime::class)
+data class ProfileSnapshot(
     private val service: ProfilesService,
     val id: ProfileId,
     val lastKnownName: String?,
@@ -28,4 +29,8 @@ data class ProfileSnapshot @OptIn(ExperimentalTime::class) constructor(
 
     suspend fun update(statement: ProfilesTable.(UpsertStatement<Long>) -> Unit) =
         service.upsert(this, statement = statement)
+
+    override fun toString(): String {
+        return "ProfileSnapshot(id=${id.value}, lastKnownName=$lastKnownName, createdAt=$createdAt, attachments=$attachments)"
+    }
 }
