@@ -11,8 +11,8 @@ import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import net.tjalp.nexus.common.profile.ProfileId
 import net.tjalp.nexus.plugin.NexusPlugin
+import net.tjalp.nexus.profile.ProfileId
 import org.bukkit.command.CommandSender
 import java.util.*
 

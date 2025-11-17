@@ -12,8 +12,6 @@ paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArt
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":chat"))
-    implementation(project(":gamerules"))
 
     paperweight.paperDevBundle(libs.versions.paperApi)
 }

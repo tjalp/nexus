@@ -1,17 +1,20 @@
 package net.tjalp.nexus.plugin
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
-import net.tjalp.nexus.chat.ChatFeature
-import net.tjalp.nexus.common.*
-import net.tjalp.nexus.common.profile.ProfileListener
-import net.tjalp.nexus.common.profile.ProfileModule
-import net.tjalp.nexus.common.profile.ProfileModuleRegistry
-import net.tjalp.nexus.common.profile.ProfilesService
-import net.tjalp.nexus.common.profile.attachment.GeneralAttachmentModule
-import net.tjalp.nexus.common.profile.service.ExposedProfilesService
-import net.tjalp.nexus.gamerules.GameRulesFeature
+import net.tjalp.nexus.Feature
+import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.feature.chat.ChatFeature
+import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.plugin.command.NexusCommand
 import net.tjalp.nexus.plugin.command.ProfileCommand
+import net.tjalp.nexus.profile.ProfileListener
+import net.tjalp.nexus.profile.ProfileModule
+import net.tjalp.nexus.profile.ProfileModuleRegistry
+import net.tjalp.nexus.profile.ProfilesService
+import net.tjalp.nexus.profile.attachment.GeneralAttachmentModule
+import net.tjalp.nexus.profile.service.ExposedProfilesService
+import net.tjalp.nexus.util.register
+import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -38,8 +41,6 @@ class NexusPlugin : JavaPlugin() {
 
         NexusServices.register(JavaPlugin::class, this)
 
-        PacketManager.init(this)
-
         database = Database.connect(
             "jdbc:postgresql://localhost:5432/postgres",
             driver = "org.postgresql.Driver",
@@ -56,7 +57,7 @@ class NexusPlugin : JavaPlugin() {
 
         NexusServices.register(ProfilesService::class, profiles)
 
-        listeners += ProfileListener(profiles).also { it.register(this) }
+        listeners += ProfileListener(profiles).also { it.register() }
 
         enableFeatures()
 
