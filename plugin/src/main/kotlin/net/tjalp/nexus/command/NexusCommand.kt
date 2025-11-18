@@ -1,4 +1,4 @@
-package net.tjalp.nexus.plugin.command
+package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.StringArgumentType
@@ -6,7 +6,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
 import net.kyori.adventure.text.Component.text
-import net.tjalp.nexus.plugin.NexusPlugin
+import net.tjalp.nexus.NexusPlugin
 
 object NexusCommand {
 

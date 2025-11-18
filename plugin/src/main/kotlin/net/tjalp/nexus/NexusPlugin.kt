@@ -1,12 +1,10 @@
-package net.tjalp.nexus.plugin
+package net.tjalp.nexus
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
-import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.command.NexusCommand
+import net.tjalp.nexus.command.ProfileCommand
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
-import net.tjalp.nexus.plugin.command.NexusCommand
-import net.tjalp.nexus.plugin.command.ProfileCommand
 import net.tjalp.nexus.profile.ProfileListener
 import net.tjalp.nexus.profile.ProfileModule
 import net.tjalp.nexus.profile.ProfileModuleRegistry
@@ -42,10 +40,10 @@ class NexusPlugin : JavaPlugin() {
         NexusServices.register(JavaPlugin::class, this)
 
         database = Database.connect(
-            "jdbc:postgresql://localhost:5432/postgres",
-            driver = "org.postgresql.Driver",
-            user = "postgres",
-            password = "postgres"
+            url = config.getString("database.url") ?: error("Database URL not specified in config"),
+            driver = config.getString("database.driver") ?: error("Database driver not specified in config"),
+            user = config.getString("database.user") ?: error("Database user not specified in config"),
+            password = config.getString("database.user") ?: error("Database password not specified in config")
         )
 
         NexusServices.register(Database::class, database)

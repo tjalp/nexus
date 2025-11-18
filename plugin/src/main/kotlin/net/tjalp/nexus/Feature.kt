@@ -1,5 +1,7 @@
 package net.tjalp.nexus
 
+import net.tjalp.nexus.profile.ProfileModule
+
 /**
  * Represents a feature that can be enabled or disabled within the Nexus plugin.
  */
@@ -15,7 +17,7 @@ interface Feature {
      *
      * @return A collection of [net.tjalp.nexus.profile.ProfileModule]s.
      */
-    val profileModules: Collection<net.tjalp.nexus.profile.ProfileModule>
+    val profileModules: Collection<ProfileModule>
         get() = emptyList()
 
     /**

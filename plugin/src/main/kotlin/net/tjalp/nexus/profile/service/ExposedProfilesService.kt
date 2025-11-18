@@ -3,7 +3,7 @@ package net.tjalp.nexus.profile.service
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import net.tjalp.nexus.common.profile.*
+import net.tjalp.nexus.profile.*
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.eq
@@ -19,13 +19,13 @@ import kotlin.time.ExperimentalTime
 
 class ExposedProfilesService(
     private val db: Database,
-    private val moduleRegistry: net.tjalp.nexus.profile.ProfileModuleRegistry
-) : net.tjalp.nexus.profile.ProfilesService {
+    private val moduleRegistry: ProfileModuleRegistry
+) : ProfilesService {
 
-    private val _updates = MutableSharedFlow<net.tjalp.nexus.profile.ProfileEvent.Updated>(replay = 0, extraBufferCapacity = 64)
-    override val updates: SharedFlow<net.tjalp.nexus.profile.ProfileEvent.Updated> = _updates.asSharedFlow()
+    private val _updates = MutableSharedFlow<ProfileEvent.Updated>(replay = 0, extraBufferCapacity = 64)
+    override val updates: SharedFlow<ProfileEvent.Updated> = _updates.asSharedFlow()
 
-    private val profileCache = hashMapOf<net.tjalp.nexus.profile.ProfileId, net.tjalp.nexus.profile.ProfileSnapshot>()
+    private val profileCache = hashMapOf<ProfileId, ProfileSnapshot>()
 
     init {
         transaction(db) {
@@ -34,11 +34,11 @@ class ExposedProfilesService(
     }
 
     override suspend fun get(
-        id: net.tjalp.nexus.profile.ProfileId,
+        id: ProfileId,
         cache: Boolean,
         bypassCache: Boolean,
         allowCreation: Boolean
-    ): net.tjalp.nexus.profile.ProfileSnapshot? =
+    ): ProfileSnapshot? =
         suspendTransaction(db) {
             if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
@@ -61,11 +61,11 @@ class ExposedProfilesService(
 
     @OptIn(ExperimentalTime::class)
     override suspend fun upsert(
-        profile: net.tjalp.nexus.profile.ProfileSnapshot,
+        profile: ProfileSnapshot,
         cache: Boolean,
         statement: ProfilesTable.(UpsertStatement<Long>) -> Unit,
         vararg additionalStatements: () -> Unit
-    ): net.tjalp.nexus.profile.ProfileSnapshot = suspendTransaction(db) {
+    ): ProfileSnapshot = suspendTransaction(db) {
 //        moduleRegistry.saveProfileModules(profile)
 
         // apply main profiles upsert, allow caller to modify the upsert statement
@@ -86,19 +86,19 @@ class ExposedProfilesService(
                 moduleRegistry.initializeProfileModules(it)
             }
 
-        _updates.tryEmit(_root_ide_package_.net.tjalp.nexus.profile.ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
+        _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
 
         if (cache) profileCache[profile.id] = profile
 
         profile
     }
 
-    override fun uncache(id: net.tjalp.nexus.profile.ProfileId): net.tjalp.nexus.profile.ProfileSnapshot? = profileCache.remove(id)
+    override fun uncache(id: ProfileId): ProfileSnapshot? = profileCache.remove(id)
 
     @OptIn(ExperimentalTime::class)
-    private fun ResultRow.toProfileSnapshot() = _root_ide_package_.net.tjalp.nexus.profile.ProfileSnapshot(
+    private fun ResultRow.toProfileSnapshot() = ProfileSnapshot(
         service = this@ExposedProfilesService,
-        id = _root_ide_package_.net.tjalp.nexus.profile.ProfileId(this[ProfilesTable.id]),
+        id = ProfileId(this[ProfilesTable.id]),
         createdAt = this[ProfilesTable.createdAt],
         updatedAt = this[ProfilesTable.updatedAt]
     )

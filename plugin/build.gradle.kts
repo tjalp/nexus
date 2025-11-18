@@ -5,13 +5,18 @@ plugins {
     id(libs.plugins.paperUserDevPlugin.get().pluginId)
     alias(libs.plugins.shadowPlugin)
     alias(libs.plugins.runPaperPlugin)
+    alias(libs.plugins.kotlinPluginSerialization)
 //    alias(libs.plugins.foojayResolverConventionPlugin)
 }
 
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 dependencies {
-    implementation(project(":common"))
+    implementation(libs.bundles.kotlinxEcosystem)
+    implementation(libs.bundles.database)
+    implementation(libs.commonsCollections)
+
+    compileOnlyApi(libs.paperApi)
 
     paperweight.paperDevBundle(libs.versions.paperApi)
 }
