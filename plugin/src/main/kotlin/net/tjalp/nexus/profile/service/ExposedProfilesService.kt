@@ -3,29 +3,28 @@ package net.tjalp.nexus.profile.service
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import net.tjalp.nexus.profile.*
+import net.tjalp.nexus.profile.ProfileEvent
+import net.tjalp.nexus.profile.ProfilesService
+import net.tjalp.nexus.profile.attachment.AttachmentRegistry
+import net.tjalp.nexus.profile.model.ProfileEntity
 import net.tjalp.nexus.profile.model.ProfilesTable
-import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.statements.UpsertStatement
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
+import java.util.*
 import kotlin.time.ExperimentalTime
 
 class ExposedProfilesService(
-    private val db: Database,
-    private val moduleRegistry: ProfileModuleRegistry
+    private val db: Database
 ) : ProfilesService {
 
     private val _updates = MutableSharedFlow<ProfileEvent.Updated>(replay = 0, extraBufferCapacity = 64)
     override val updates: SharedFlow<ProfileEvent.Updated> = _updates.asSharedFlow()
 
-    private val profileCache = hashMapOf<ProfileId, ProfileSnapshot>()
+    private val profileCache = hashMapOf<UUID, ProfileEntity>()
 
     init {
         transaction(db) {
@@ -34,72 +33,50 @@ class ExposedProfilesService(
     }
 
     override suspend fun get(
-        id: ProfileId,
+        id: UUID,
         cache: Boolean,
         bypassCache: Boolean,
         allowCreation: Boolean
-    ): ProfileSnapshot? =
-        suspendTransaction(db) {
-            if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
+    ): ProfileEntity? = suspendTransaction(db) {
+        if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
-            var profile = ProfilesTable.selectAll().where { ProfilesTable.id eq id.value }.firstOrNull()?.toProfileSnapshot()
+        var profile = ProfileEntity.findById(id)
 
-            // todo improve this code. This is abysmal
-            if (profile == null && allowCreation) {
-                ProfilesTable.upsert {
-                    it[ProfilesTable.id] = id.value
-                }
-                val resultRow = ProfilesTable.selectAll().where { ProfilesTable.id eq id.value }.firstOrNull()
-                profile = resultRow?.toProfileSnapshot()?.also { moduleRegistry.saveProfileModules(it) }
+        // todo improve this code. This is abysmal
+        if (profile == null && allowCreation) {
+            ProfilesTable.upsert {
+                it[ProfilesTable.id] = id
             }
-
-            profile?.also {
-                moduleRegistry.initializeProfileModules(it)
-                if (cache) profileCache[id] = it
-            }
+            profile = ProfileEntity.findById(id)
         }
+
+        profile?.also {
+            AttachmentRegistry.load(it)
+            if (cache) profileCache[id] = it
+        }
+    }
 
     @OptIn(ExperimentalTime::class)
     override suspend fun upsert(
-        profile: ProfileSnapshot,
+        profile: ProfileEntity,
         cache: Boolean,
-        statement: ProfilesTable.(UpsertStatement<Long>) -> Unit,
-        vararg additionalStatements: () -> Unit
-    ): ProfileSnapshot = suspendTransaction(db) {
-//        moduleRegistry.saveProfileModules(profile)
-
-        // apply main profiles upsert, allow caller to modify the upsert statement
+        vararg statements: () -> Unit
+    ): ProfileEntity = suspendTransaction(db) {
         ProfilesTable.upsert {
-            statement.invoke(ProfilesTable, it)
-
             it[id] = profile.id.value
-            it[updatedAt] = CurrentTimestamp
+            it[modifiedAt] = CurrentTimestamp
         }
 
-        // execute any additional lambdas inside the same transaction (e.g. module upserts)
-        additionalStatements.forEach { it() }
+        statements.forEach { it() }
 
-        val profile = ProfilesTable.selectAll().where { ProfilesTable.id eq profile.id.value }
-            .first()
-            .toProfileSnapshot()
-            .also {
-                moduleRegistry.initializeProfileModules(it)
-            }
+        val profile = ProfileEntity[profile.id].also { AttachmentRegistry.load(it) }
 
-        _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
+        _updates.tryEmit(ProfileEvent.Updated(profile.id.value, profileCache[profile.id.value], profile))
 
-        if (cache) profileCache[profile.id] = profile
+        if (cache) profileCache[profile.id.value] = profile
 
         profile
     }
 
-    override fun uncache(id: ProfileId): ProfileSnapshot? = profileCache.remove(id)
-
-    @OptIn(ExperimentalTime::class)
-    private fun ResultRow.toProfileSnapshot() = ProfileSnapshot(
-        service = this@ExposedProfilesService,
-        id = ProfileId(this[ProfilesTable.id]),
-        createdAt = this[ProfilesTable.createdAt],
-        updatedAt = this[ProfilesTable.updatedAt]
-    )
+    override fun uncache(id: UUID): ProfileEntity? = profileCache.remove(id)
 }

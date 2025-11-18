@@ -1,11 +1,11 @@
 package net.tjalp.nexus.feature.chat
 
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.feature.chat.listener.ChatListener
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
-import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.exposed.v1.jdbc.Database
 
 /**
@@ -15,7 +15,7 @@ class ChatFeature : Feature {
 
     override val name: String = "chat"
 
-    val plugin: JavaPlugin = NexusServices.get<JavaPlugin>()
+    val plugin: NexusPlugin = NexusServices.get<NexusPlugin>()
     val database: Database = NexusServices.get<Database>()
 
     lateinit var chatService: ChatService; private set

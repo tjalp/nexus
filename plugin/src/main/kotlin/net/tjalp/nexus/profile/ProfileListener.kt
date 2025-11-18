@@ -19,14 +19,13 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
     @EventHandler
     fun on(event: AsyncPlayerConnectionConfigureEvent) {
         val uniqueId = event.connection.profile.id ?: error("No profile ID in connection")
-        val username = event.connection.profile.name ?: ""
-        val id = ProfileId(uniqueId)
+        val username = event.connection.profile.name
 
         runBlocking {
             try {
-                val profile = profiles.get(id, cache = true, allowCreation = true) ?: error("Failed to load or create profile")
-                profile.update(additionalStatements = arrayOf({
-                    GeneralTable.update({ GeneralTable.profileId eq id.value }) {
+                val profile = profiles.get(uniqueId, cache = true, allowCreation = true) ?: error("Failed to load or create profile")
+                profile.update(statements = arrayOf({
+                    GeneralTable.update({ GeneralTable.profileId eq uniqueId }) {
                         it[GeneralTable.lastKnownName] = username
                     }
                 }))
@@ -39,8 +38,6 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
 
     @EventHandler
     fun on(event: PlayerConnectionCloseEvent) {
-        val id = ProfileId(event.playerUniqueId)
-
-        profiles.uncache(id)
+        profiles.uncache(event.playerUniqueId)
     }
 }

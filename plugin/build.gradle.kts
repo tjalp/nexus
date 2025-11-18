@@ -16,8 +16,6 @@ dependencies {
     implementation(libs.bundles.database)
     implementation(libs.commonsCollections)
 
-    compileOnlyApi(libs.paperApi)
-
     paperweight.paperDevBundle(libs.versions.paperApi)
 }
 

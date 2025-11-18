@@ -12,7 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.profile.ProfileId
 import org.bukkit.command.CommandSender
 import java.util.*
 
@@ -62,7 +61,7 @@ object ProfileCommand {
 
     private fun fetchProfile(nexus: NexusPlugin, uniqueId: UUID, sender: CommandSender, useCache: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
-            val profile = nexus.profiles.get(ProfileId(uniqueId), bypassCache = !useCache)
+            val profile = nexus.profiles.get(uniqueId, bypassCache = !useCache)
 
             if (profile == null) {
                 sender.sendRichMessage("<red>No profile found for ID $uniqueId</red>")

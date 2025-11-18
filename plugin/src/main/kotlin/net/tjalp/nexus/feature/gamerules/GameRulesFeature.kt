@@ -1,6 +1,7 @@
 package net.tjalp.nexus.feature.gamerules
 
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.feature.gamerules.listener.CreeperGriefListener
 import net.tjalp.nexus.feature.gamerules.listener.CropTramplingListener
@@ -9,13 +10,12 @@ import net.tjalp.nexus.feature.gamerules.listener.GhastGriefListener
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
-import org.bukkit.plugin.java.JavaPlugin
 
 class GameRulesFeature : Feature {
 
     override val name: String = "gamerules"
 
-    val plugin: JavaPlugin = NexusServices.get<JavaPlugin>()
+    val plugin: NexusPlugin = NexusServices.get<NexusPlugin>()
 
     private val listeners = mutableListOf<Listener>()
 

@@ -26,6 +26,7 @@ paperApi = { module = "io.papermc.paper:paper-api", version.ref = "paperApi" }
 paperweightUserDev = { group = "io.papermc.paperweight.userdev", name = "io.papermc.paperweight.userdev.gradle.plugin", version.ref = "paperweightUserDev" }
 commonsCollections = { module = "org.apache.commons:commons-collections4", version.ref = "commonsCollections" }
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
@@ -34,7 +35,7 @@ postgres = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 # Libraries can be bundled together for easier import
 [bundles]
 kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines"]
-database = ["exposed-core", "exposed-jdbc", "exposed-kotlin-datetime", "h2", "postgres"]
+database = ["exposed-core", "exposed-dao", "exposed-jdbc", "exposed-kotlin-datetime", "h2", "postgres"]
 
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

@@ -1,60 +1,59 @@
 package net.tjalp.nexus.profile.attachment
 
 import net.tjalp.nexus.NexusServices
-import net.tjalp.nexus.profile.ProfileModule
-import net.tjalp.nexus.profile.ProfileSnapshot
+import net.tjalp.nexus.profile.AttachmentKey
+import net.tjalp.nexus.profile.model.ProfileEntity
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ReferenceOption
-import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.dao.CompositeEntity
+import org.jetbrains.exposed.v1.dao.ImmutableEntityClass
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 
-object GeneralTable : Table("general_attachment") {
-    val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE).uniqueIndex()
+object GeneralTable : CompositeIdTable("general_attachment") {
+    val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
     val lastKnownName = varchar("last_known_name", 16).nullable()
+
+    init {
+        addIdColumn(profileId)
+    }
 
     override val primaryKey = PrimaryKey(profileId)
 }
 
-data class GeneralAttachment(val lastKnownName: String?)
+class GeneralAttachment(id: EntityID<CompositeID>) : CompositeEntity(id) {
+    companion object : ImmutableEntityClass<CompositeID, GeneralAttachment>(GeneralTable)
 
-object GeneralAttachmentModule : ProfileModule {
+    val lastKnownName by GeneralTable.lastKnownName
+}
 
-    private val database = NexusServices.get<Database>()
+object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
+    override val key: AttachmentKey<GeneralAttachment> = AttachmentKeys.GENERAL
 
-    init {
-        transaction(database) {
-            SchemaUtils.create(GeneralTable)
-        }
+    private val db; get() = NexusServices.get<Database>()
+
+    override suspend fun init() = suspendTransaction {
+        SchemaUtils.create(GeneralTable)
     }
 
-    override suspend fun onProfileLoad(profile: ProfileSnapshot) {
-        val row = suspendTransaction(database) {
-            GeneralTable.selectAll().where { GeneralTable.profileId eq profile.id.value }
-                .single()
-        }
+    override suspend fun load(profile: ProfileEntity): GeneralAttachment? = suspendTransaction(db) {
+        val attachment = GeneralAttachment.find { GeneralTable.profileId eq profile.id.value }
+            .singleOrNull()
 
-        profile.setAttachment(AttachmentKeys.GENERAL, GeneralAttachment(
-            lastKnownName = row[GeneralTable.lastKnownName]
-        ))
-    }
-
-    override suspend fun onProfileSave(profile: ProfileSnapshot) {
-        val attachment = profile.getAttachment(AttachmentKeys.GENERAL)
-            ?: return suspendTransaction(database) {
-                GeneralTable.upsert { it[profileId] = profile.id.value }
-            }
-
-        suspendTransaction(database) {
-            GeneralTable.upsert {
+        if (attachment == null) {
+            val newAttachmentId = GeneralTable.upsert {
                 it[profileId] = profile.id.value
-                it[lastKnownName] = attachment.lastKnownName
-            }
+            } get GeneralTable.id
+
+            return@suspendTransaction GeneralAttachment.findById(newAttachmentId)
         }
+
+        attachment
     }
 }

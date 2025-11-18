@@ -1,15 +1,15 @@
 package net.tjalp.nexus
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
+import kotlinx.coroutines.runBlocking
 import net.tjalp.nexus.command.NexusCommand
 import net.tjalp.nexus.command.ProfileCommand
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.profile.ProfileListener
-import net.tjalp.nexus.profile.ProfileModule
-import net.tjalp.nexus.profile.ProfileModuleRegistry
 import net.tjalp.nexus.profile.ProfilesService
-import net.tjalp.nexus.profile.attachment.GeneralAttachmentModule
+import net.tjalp.nexus.profile.attachment.AttachmentRegistry
+import net.tjalp.nexus.profile.attachment.GeneralAttachmentProvider
 import net.tjalp.nexus.profile.service.ExposedProfilesService
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
@@ -31,31 +31,23 @@ class NexusPlugin : JavaPlugin() {
         )
     }
 
-    val profileModules: Collection<ProfileModule>
-        get() = features.flatMap { it.profileModules } + GeneralAttachmentModule
-
     override fun onEnable() {
         saveDefaultConfig()
 
-        NexusServices.register(JavaPlugin::class, this)
+        NexusServices.register(NexusPlugin::class, this)
 
         database = Database.connect(
             url = config.getString("database.url") ?: error("Database URL not specified in config"),
             driver = config.getString("database.driver") ?: error("Database driver not specified in config"),
             user = config.getString("database.user") ?: error("Database user not specified in config"),
             password = config.getString("database.user") ?: error("Database password not specified in config")
-        )
+        ).also { NexusServices.register(Database::class, it) }
 
-        NexusServices.register(Database::class, database)
-
-        profiles = ExposedProfilesService(
-            database,
-            ProfileModuleRegistry(profileModules)
-        )
-
-        NexusServices.register(ProfilesService::class, profiles)
-
+        profiles = ExposedProfilesService(database).also { NexusServices.register(ProfilesService::class, it) }
         listeners += ProfileListener(profiles).also { it.register() }
+
+        // Register global attachment providers
+        AttachmentRegistry.register(GeneralAttachmentProvider.also { runBlocking { it.init() } })
 
         enableFeatures()
 
