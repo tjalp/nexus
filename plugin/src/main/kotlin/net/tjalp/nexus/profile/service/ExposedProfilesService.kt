@@ -42,7 +42,6 @@ class ExposedProfilesService(
 
         var profile = ProfileEntity.findById(id)
 
-        // todo improve this code. This is abysmal
         if (profile == null && allowCreation) {
             ProfilesTable.upsert {
                 it[ProfilesTable.id] = id
