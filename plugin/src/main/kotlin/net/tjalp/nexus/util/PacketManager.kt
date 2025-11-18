@@ -94,27 +94,19 @@ object PacketManager {
         }
 
         override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
-            if (msg !is Packet<*>) {
-                return super.channelRead(ctx, msg)
-            }
+            if (msg !is Packet<*>) return super.channelRead(ctx, msg)
 
             val (cancel, packet) = intercept(msg)
 
-            if (!cancel) {
-                super.channelRead(ctx, packet)
-            }
+            if (!cancel) super.channelRead(ctx, packet)
         }
 
         override fun write(ctx: ChannelHandlerContext?, msg: Any?, promise: ChannelPromise?) {
-            if (msg !is Packet<*>) {
-                return super.write(ctx, msg, promise)
-            }
+            if (msg !is Packet<*>) return super.write(ctx, msg, promise)
 
             val (cancel, packet) = intercept(msg)
 
-            if (!cancel) {
-                super.write(ctx, packet, promise)
-            }
+            if (!cancel) super.write(ctx, packet, promise)
         }
     }
 
