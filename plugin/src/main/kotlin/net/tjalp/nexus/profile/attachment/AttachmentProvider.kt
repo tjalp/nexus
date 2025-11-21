@@ -1,7 +1,7 @@
 package net.tjalp.nexus.profile.attachment
 
 import net.tjalp.nexus.profile.AttachmentKey
-import net.tjalp.nexus.profile.model.ProfileEntity
+import net.tjalp.nexus.profile.model.ProfileSnapshot
 
 /**
  * Provider interface for managing attachments associated with profiles.
@@ -23,18 +23,18 @@ interface AttachmentProvider<T : Any> {
     /**
      * Loads the attachment for the given profile.
      *
-     * @param profile The [ProfileEntity] to load the attachment for.
+     * @param profile The [ProfileSnapshot] to load the attachment for.
      * @return The loaded attachment, or null if not found.
      */
-    suspend fun load(profile: ProfileEntity): T?
+    suspend fun load(profile: ProfileSnapshot): T?
 
     /**
      * Saves the attachment for the given profile.
      *
-     * @param profile The [ProfileEntity] to save the attachment for.
+     * @param profile The [ProfileSnapshot] to save the attachment for.
      * @param value The attachment value to be saved.
      */
-    suspend fun save(profile: ProfileEntity, value: T) {
+    suspend fun save(profile: ProfileSnapshot, value: T) {
         // optional
     }
 }

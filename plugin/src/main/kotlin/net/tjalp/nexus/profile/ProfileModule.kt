@@ -1,6 +1,6 @@
 package net.tjalp.nexus.profile
 
-import net.tjalp.nexus.profile.model.ProfileEntity
+import net.tjalp.nexus.profile.model.ProfileSnapshot
 
 /**
  * Interface for modules that handle profile load and save events.
@@ -10,14 +10,14 @@ interface ProfileModule {
     /**
      * Called when a profile is loaded.
      *
-     * @param profile The loaded [ProfileEntity].
+     * @param profile The loaded [ProfileSnapshot].
      */
-    suspend fun onProfileLoad(profile: ProfileEntity)
+    suspend fun onProfileLoad(profile: ProfileSnapshot)
 
     /**
      * Called when a profile is saved.
      *
-     * @param profile The saved [ProfileEntity].
+     * @param profile The saved [ProfileSnapshot].
      */
-    suspend fun onProfileSave(profile: ProfileEntity)
+    suspend fun onProfileSave(profile: ProfileSnapshot)
 }

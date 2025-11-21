@@ -11,12 +11,12 @@ import org.jetbrains.exposed.v1.jdbc.Database
 /**
  * The Chat feature, responsible for handling chat-related functionality.
  */
-class ChatFeature : Feature {
+object ChatFeature : Feature {
 
     override val name: String = "chat"
 
-    val plugin: NexusPlugin = NexusServices.get<NexusPlugin>()
-    val database: Database = NexusServices.get<Database>()
+    val plugin: NexusPlugin; get() = NexusServices.get<NexusPlugin>()
+    val database: Database; get() = NexusServices.get<Database>()
 
     lateinit var chatService: ChatService; private set
 

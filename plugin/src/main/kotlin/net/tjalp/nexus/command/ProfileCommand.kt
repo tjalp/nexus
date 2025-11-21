@@ -8,9 +8,9 @@ import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.tjalp.nexus.NexusPlugin
 import org.bukkit.command.CommandSender
 import java.util.*
@@ -45,8 +45,8 @@ object ProfileCommand {
     private fun executeWithName(nexus: NexusPlugin, context: CommandContext<CommandSourceStack>, useCache: Boolean = true): Int {
         val argument = context.getArgument( "name", String::class.java)
 
-        CoroutineScope(Dispatchers.Default).launch {
-            val uniqueId = nexus.server.getPlayerUniqueId(argument)
+        nexus.scheduler.launch {
+            val uniqueId = withContext(Dispatchers.IO) { nexus.server.getPlayerUniqueId(argument) }
 
             if (uniqueId == null) {
                 context.source.sender.sendRichMessage("<red>No player found with name '$argument'</red>")
@@ -60,7 +60,7 @@ object ProfileCommand {
     }
 
     private fun fetchProfile(nexus: NexusPlugin, uniqueId: UUID, sender: CommandSender, useCache: Boolean) {
-        CoroutineScope(Dispatchers.IO).launch {
+        nexus.scheduler.launch {
             val profile = nexus.profiles.get(uniqueId, bypassCache = !useCache)
 
             if (profile == null) {

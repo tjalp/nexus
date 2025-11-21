@@ -11,11 +11,11 @@ import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
 
-class GameRulesFeature : Feature {
+object GameRulesFeature : Feature {
 
     override val name: String = "gamerules"
 
-    val plugin: NexusPlugin = NexusServices.get<NexusPlugin>()
+    val plugin: NexusPlugin; get() = NexusServices.get<NexusPlugin>()
 
     private val listeners = mutableListOf<Listener>()
 
@@ -26,8 +26,6 @@ class GameRulesFeature : Feature {
         listeners += GhastGriefListener(this)
 
         listeners.forEach { it.register() }
-
-//        NexusGameRules.init()
     }
 
     override fun disable() {

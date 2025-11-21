@@ -21,13 +21,18 @@ object ProfilesTable : UUIDTable("profiles") {
 }
 
 @OptIn(ExperimentalTime::class)
-class ProfileEntity(id: EntityID<UUID>) : UUIDEntity(id) {
-    companion object : ImmutableEntityClass<UUID, ProfileEntity>(ProfilesTable)
+class ProfileSnapshot(id: EntityID<UUID>) : UUIDEntity(id) {
+    companion object : ImmutableEntityClass<UUID, ProfileSnapshot>(ProfilesTable)
 
     val createdAt by ProfilesTable.createdAt
     val modifiedAt by ProfilesTable.modifiedAt
 
     private val attachments = ConcurrentHashMap<AttachmentKey<*>, Any>()
+
+    fun <T : Any> getAttachment(key: AttachmentKey<T>): T? {
+        @Suppress("UNCHECKED_CAST")
+        return attachments[key] as? T
+    }
 
     fun <T : Any> setAttachment(key: AttachmentKey<T>, value: T) {
         attachments[key] = value
@@ -36,6 +41,8 @@ class ProfileEntity(id: EntityID<UUID>) : UUIDEntity(id) {
     fun <T : Any> removeAttachment(key: AttachmentKey<T>) {
         attachments.remove(key)
     }
+
+    suspend fun update(statement: () -> Unit) = update(*arrayOf(statement))
 
     suspend fun update(vararg statements: () -> Unit) = NexusServices.get<ProfilesService>()
         .upsert(this, cache = Bukkit.getPlayer(this.id.value) != null, statements = statements)

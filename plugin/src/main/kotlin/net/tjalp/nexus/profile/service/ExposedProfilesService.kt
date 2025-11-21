@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import net.tjalp.nexus.profile.ProfileEvent
 import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
-import net.tjalp.nexus.profile.model.ProfileEntity
+import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -24,7 +24,7 @@ class ExposedProfilesService(
     private val _updates = MutableSharedFlow<ProfileEvent.Updated>(replay = 0, extraBufferCapacity = 64)
     override val updates: SharedFlow<ProfileEvent.Updated> = _updates.asSharedFlow()
 
-    private val profileCache = hashMapOf<UUID, ProfileEntity>()
+    private val profileCache = hashMapOf<UUID, ProfileSnapshot>()
 
     init {
         transaction(db) {
@@ -37,16 +37,16 @@ class ExposedProfilesService(
         cache: Boolean,
         bypassCache: Boolean,
         allowCreation: Boolean
-    ): ProfileEntity? = suspendTransaction(db) {
+    ): ProfileSnapshot? = suspendTransaction(db) {
         if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
-        var profile = ProfileEntity.findById(id)
+        var profile = ProfileSnapshot.findById(id)
 
         if (profile == null && allowCreation) {
             ProfilesTable.upsert {
                 it[ProfilesTable.id] = id
             }
-            profile = ProfileEntity.findById(id)
+            profile = ProfileSnapshot.findById(id)
         }
 
         profile?.also {
@@ -55,12 +55,14 @@ class ExposedProfilesService(
         }
     }
 
+    override fun getCached(id: UUID): ProfileSnapshot? = profileCache[id]
+
     @OptIn(ExperimentalTime::class)
     override suspend fun upsert(
-        profile: ProfileEntity,
+        profile: ProfileSnapshot,
         cache: Boolean,
         vararg statements: () -> Unit
-    ): ProfileEntity = suspendTransaction(db) {
+    ): ProfileSnapshot = suspendTransaction(db) {
         ProfilesTable.upsert {
             it[id] = profile.id.value
             it[modifiedAt] = CurrentTimestamp
@@ -68,7 +70,7 @@ class ExposedProfilesService(
 
         statements.forEach { it() }
 
-        val profile = ProfileEntity[profile.id].also { AttachmentRegistry.load(it) }
+        val profile = ProfileSnapshot[profile.id].also { AttachmentRegistry.load(it) }
 
         _updates.tryEmit(ProfileEvent.Updated(profile.id.value, profileCache[profile.id.value], profile))
 
@@ -77,5 +79,5 @@ class ExposedProfilesService(
         profile
     }
 
-    override fun uncache(id: UUID): ProfileEntity? = profileCache.remove(id)
+    override fun uncache(id: UUID): ProfileSnapshot? = profileCache.remove(id)
 }

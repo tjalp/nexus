@@ -1,7 +1,7 @@
 package net.tjalp.nexus.profile
 
 import kotlinx.coroutines.flow.SharedFlow
-import net.tjalp.nexus.profile.model.ProfileEntity
+import net.tjalp.nexus.profile.model.ProfileSnapshot
 import java.util.*
 
 /**
@@ -21,14 +21,22 @@ interface ProfilesService {
      * @param cache Whether to cache the profile after retrieval.
      * @param bypassCache Whether to bypass the cache when retrieving the profile.
      * @param allowCreation Whether to create the profile if it does not exist.
-     * @return The [ProfileEntity] if found or created, otherwise null.
+     * @return The [ProfileSnapshot] if found or created, otherwise null.
      */
     suspend fun get(
         id: UUID,
         cache: Boolean = false,
         bypassCache: Boolean = false,
         allowCreation: Boolean = false
-    ): ProfileEntity?
+    ): ProfileSnapshot?
+
+    /**
+     * Retrieves a profile from the cache by its ID.
+     *
+     * @param id The unique identifier of the profile.
+     * @return The cached [ProfileSnapshot] if present, otherwise null.
+     */
+    fun getCached(id: UUID): ProfileSnapshot?
 
     /**
      * Inserts or updates a profile in the database.
@@ -36,19 +44,19 @@ interface ProfilesService {
      * @param profile The profile snapshot to upsert.
      * @param cache Whether to cache the profile after upserting.
      * @param statements Additional custom statements to execute after the upsert.
-     * @return The upserted [ProfileEntity].
+     * @return The upserted [ProfileSnapshot].
      */
     suspend fun upsert(
-        profile: ProfileEntity,
+        profile: ProfileSnapshot,
         cache: Boolean = true,
         vararg statements: () -> Unit
-    ): ProfileEntity
+    ): ProfileSnapshot
 
     /**
      * Removes a profile from the cache.
      *
      * @param id The unique identifier of the profile to uncache.
-     * @return The uncached [ProfileEntity] if it was present in the cache, otherwise null
+     * @return The uncached [ProfileSnapshot] if it was present in the cache, otherwise null
      */
-    fun uncache(id: UUID): ProfileEntity?
+    fun uncache(id: UUID): ProfileSnapshot?
 }

@@ -3,7 +3,7 @@ package net.tjalp.nexus.profile.attachment
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import net.tjalp.nexus.profile.AttachmentKey
-import net.tjalp.nexus.profile.model.ProfileEntity
+import net.tjalp.nexus.profile.model.ProfileSnapshot
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -15,6 +15,10 @@ object AttachmentRegistry {
 
     fun <T : Any> register(provider: AttachmentProvider<T>) {
         providers[provider.key] = provider
+    }
+
+    fun <T : Any> unregister(provider: AttachmentProvider<T>) {
+        providers.remove(provider.key)
     }
 
     /**
@@ -33,7 +37,7 @@ object AttachmentRegistry {
      * @param profile The profile to load attachments for.
      */
     @Suppress("UNCHECKED_CAST")
-    suspend fun load(profile: ProfileEntity) = coroutineScope {
+    suspend fun load(profile: ProfileSnapshot) = coroutineScope {
         providers.forEach { (key, value) ->
             async {
                 val provider = value as AttachmentProvider<Any>

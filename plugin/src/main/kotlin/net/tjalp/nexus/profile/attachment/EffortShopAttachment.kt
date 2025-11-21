@@ -16,9 +16,9 @@ import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 
-object GeneralTable : CompositeIdTable("general_attachment") {
+object EffortShopTable : CompositeIdTable("effort_shop_attachment") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
-    val lastKnownName = varchar("last_known_name", 16).nullable()
+    val effortPoints = integer("effort_points").default(0)
 
     init {
         addIdColumn(profileId)
@@ -27,31 +27,31 @@ object GeneralTable : CompositeIdTable("general_attachment") {
     override val primaryKey = PrimaryKey(profileId)
 }
 
-class GeneralAttachment(id: EntityID<CompositeID>) : CompositeEntity(id) {
-    companion object : ImmutableEntityClass<CompositeID, GeneralAttachment>(GeneralTable)
+class EffortShopAttachment(id: EntityID<CompositeID>) : CompositeEntity(id) {
+    companion object : ImmutableEntityClass<CompositeID, EffortShopAttachment>(EffortShopTable)
 
-    val lastKnownName by GeneralTable.lastKnownName
+    val effortPoints by EffortShopTable.effortPoints
 }
 
-object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
-    override val key: AttachmentKey<GeneralAttachment> = AttachmentKeys.GENERAL
+object EffortShopAttachmentProvider : AttachmentProvider<EffortShopAttachment> {
+    override val key: AttachmentKey<EffortShopAttachment> = AttachmentKeys.EFFORT_SHOP
 
     private val db; get() = NexusServices.get<Database>()
 
     override suspend fun init() = suspendTransaction {
-        SchemaUtils.create(GeneralTable)
+        SchemaUtils.create(EffortShopTable)
     }
 
-    override suspend fun load(profile: ProfileSnapshot): GeneralAttachment? = suspendTransaction(db) {
-        val attachment = GeneralAttachment.find { GeneralTable.profileId eq profile.id.value }
+    override suspend fun load(profile: ProfileSnapshot): EffortShopAttachment? = suspendTransaction(db) {
+        val attachment = EffortShopAttachment.find { EffortShopTable.profileId eq profile.id.value }
             .singleOrNull()
 
         if (attachment == null) {
-            val newAttachmentId = GeneralTable.upsert {
+            val newAttachmentId = EffortShopTable.upsert {
                 it[profileId] = profile.id.value
-            } get GeneralTable.id
+            } get EffortShopTable.id
 
-            return@suspendTransaction GeneralAttachment.findById(newAttachmentId)
+            return@suspendTransaction EffortShopAttachment.findById(newAttachmentId)
         }
 
         attachment
