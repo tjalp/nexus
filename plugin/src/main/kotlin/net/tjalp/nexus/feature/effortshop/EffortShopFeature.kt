@@ -4,6 +4,8 @@ import kotlinx.coroutines.*
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.newline
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor.GOLD
+import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.profile.ProfilesService
@@ -13,7 +15,6 @@ import net.tjalp.nexus.profile.attachment.EffortShopAttachmentProvider
 import net.tjalp.nexus.util.profile
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
-import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 
 object EffortShopFeature : Feature {
@@ -47,11 +48,19 @@ object EffortShopFeature : Feature {
         val profile = player.profile()
         val att = profile.getAttachment(EFFORT_SHOP)
 
-        Bukkit.broadcastMessage("Sending footer")
+        player.sendActionBar(
+            text("Updated effort shop balance to ", GRAY).append(
+                text(
+                    att?.effortPoints?.toString() ?: "n/a", GOLD
+                )
+            )
+        )
 
-        player.sendPlayerListFooter(Component.textOfChildren(
-            newline(),
-            text("Effort Shop Balance: ${att?.effortPoints ?: "n/a"}")
-        ))
+        player.sendPlayerListFooter(
+            Component.textOfChildren(
+                newline(),
+                text("Effort Shop Balance: ${att?.effortPoints ?: "n/a"}")
+            )
+        )
     }
 }

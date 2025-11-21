@@ -4,15 +4,14 @@ import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.profile.AttachmentKey
 import net.tjalp.nexus.profile.ProfilesService
 import org.bukkit.Bukkit
-import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
-import org.jetbrains.exposed.v1.dao.ImmutableEntityClass
-import org.jetbrains.exposed.v1.dao.UUIDEntity
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.datetime.timestamp
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @OptIn(ExperimentalTime::class)
 object ProfilesTable : UUIDTable("profiles") {
@@ -21,11 +20,11 @@ object ProfilesTable : UUIDTable("profiles") {
 }
 
 @OptIn(ExperimentalTime::class)
-class ProfileSnapshot(id: EntityID<UUID>) : UUIDEntity(id) {
-    companion object : ImmutableEntityClass<UUID, ProfileSnapshot>(ProfilesTable)
-
-    val createdAt by ProfilesTable.createdAt
-    val modifiedAt by ProfilesTable.modifiedAt
+data class ProfileSnapshot(
+    val id: UUID,
+    val createdAt: Instant,
+    val modifiedAt: Instant
+) {
 
     private val attachments = ConcurrentHashMap<AttachmentKey<*>, Any>()
 
@@ -45,9 +44,16 @@ class ProfileSnapshot(id: EntityID<UUID>) : UUIDEntity(id) {
     suspend fun update(statement: () -> Unit) = update(*arrayOf(statement))
 
     suspend fun update(vararg statements: () -> Unit) = NexusServices.get<ProfilesService>()
-        .upsert(this, cache = Bukkit.getPlayer(this.id.value) != null, statements = statements)
+        .upsert(this, cache = Bukkit.getPlayer(this.id) != null, statements = statements)
 
     override fun toString(): String {
-        return "ProfileEntity(id=${id.value}, createdAt=$createdAt, modifiedAt=$modifiedAt, attachments=$attachments)"
+        return "ProfileEntity(id=${id}, createdAt=$createdAt, modifiedAt=$modifiedAt, attachments=$attachments)"
     }
 }
+
+@OptIn(ExperimentalTime::class)
+fun ResultRow.toProfileSnapshot(): ProfileSnapshot = ProfileSnapshot(
+    id = this[ProfilesTable.id].value,
+    createdAt = this[ProfilesTable.createdAt],
+    modifiedAt = this[ProfilesTable.modifiedAt]
+)

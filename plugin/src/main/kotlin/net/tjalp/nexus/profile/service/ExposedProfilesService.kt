@@ -8,9 +8,12 @@ import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
+import net.tjalp.nexus.profile.model.toProfileSnapshot
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -40,13 +43,13 @@ class ExposedProfilesService(
     ): ProfileSnapshot? = suspendTransaction(db) {
         if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
-        var profile = ProfileSnapshot.findById(id)
+        var profile = ProfilesTable.selectAll().where(ProfilesTable.id eq id).firstOrNull()?.toProfileSnapshot()
 
         if (profile == null && allowCreation) {
             ProfilesTable.upsert {
                 it[ProfilesTable.id] = id
             }
-            profile = ProfileSnapshot.findById(id)
+            profile = ProfilesTable.selectAll().where(ProfilesTable.id eq id).firstOrNull()?.toProfileSnapshot()
         }
 
         profile?.also {
@@ -64,17 +67,19 @@ class ExposedProfilesService(
         vararg statements: () -> Unit
     ): ProfileSnapshot = suspendTransaction(db) {
         ProfilesTable.upsert {
-            it[id] = profile.id.value
+            it[id] = profile.id
             it[modifiedAt] = CurrentTimestamp
         }
 
         statements.forEach { it() }
 
-        val profile = ProfileSnapshot[profile.id].also { AttachmentRegistry.load(it) }
+        val profile = ProfilesTable.selectAll().where(ProfilesTable.id eq profile.id)
+            .first().toProfileSnapshot()
+            .also { AttachmentRegistry.load(it) }
 
-        _updates.tryEmit(ProfileEvent.Updated(profile.id.value, profileCache[profile.id.value], profile))
+        _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
 
-        if (cache) profileCache[profile.id.value] = profile
+        if (cache) profileCache[profile.id] = profile
 
         profile
     }
