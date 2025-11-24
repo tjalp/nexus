@@ -17,7 +17,7 @@ import java.util.*
 
 object EffortShopTable : CompositeIdTable("effort_shop_attachment") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
-    val effortPoints = integer("effort_points").default(0)
+    val effortBalance = integer("effort_balance").default(0)
 
     init {
         addIdColumn(profileId)
@@ -28,7 +28,7 @@ object EffortShopTable : CompositeIdTable("effort_shop_attachment") {
 
 data class EffortShopAttachment(
     val id: UUID,
-    val effortPoints: Int
+    val effortBalance: Int
 )
 
 object EffortShopAttachmentProvider : AttachmentProvider<EffortShopAttachment> {
@@ -59,5 +59,5 @@ object EffortShopAttachmentProvider : AttachmentProvider<EffortShopAttachment> {
 
 fun ResultRow.toEffortShopAttachment(): EffortShopAttachment = EffortShopAttachment(
     id = this[EffortShopTable.profileId].value,
-    effortPoints = this[EffortShopTable.effortPoints],
+    effortBalance = this[EffortShopTable.effortBalance],
 )

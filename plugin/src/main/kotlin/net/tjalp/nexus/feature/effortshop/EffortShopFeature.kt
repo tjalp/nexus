@@ -1,11 +1,9 @@
 package net.tjalp.nexus.feature.effortshop
 
 import kotlinx.coroutines.*
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.newline
-import net.kyori.adventure.text.Component.text
-import net.kyori.adventure.text.format.NamedTextColor.GOLD
-import net.kyori.adventure.text.format.NamedTextColor.GRAY
+import net.kyori.adventure.text.Component.*
+import net.kyori.adventure.text.format.NamedTextColor.WHITE
+import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.profile.ProfilesService
@@ -31,9 +29,30 @@ object EffortShopFeature : Feature {
         scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
         listener = EffortShopListener(this).also { it.register() }
 
+//        val uncraftableBlocks = Registry.ITEM.filter {
+//            val item = it.createItemStack()
+//            it.hasBlockType()
+//                    && it.blockType.isSolid
+//                    && !Tag.LOGS.isTagged(item.type)
+//                    && !Tag.LEAVES.isTagged(item.type)
+//                    && !Tag.SAPLINGS.isTagged(item.type)
+//                    && !Tag.WOOL.isTagged(item.type)
+//                    && !Tag.CROPS.isTagged(item.type)
+//                    && !Tag.COPPER.isTagged(item.type)
+//                    && Bukkit.getRecipesFor(item).isEmpty()
+//        }
+//        Bukkit.getOnlinePlayers().forEach { player ->
+//            uncraftableBlocks.forEach { item ->
+//                // drop the items where they're standing
+//                player.world.dropItemNaturally(player.location, item.createItemStack())
+//            }
+//        }
+
         scheduler.launch {
             profiles.updates.collect { event ->
-                event.player?.let { player -> sendFooter(player) }
+                val oldBalance = event.old?.getAttachment(EFFORT_SHOP)?.effortBalance
+                val newBalance = event.new.getAttachment(EFFORT_SHOP)?.effortBalance
+                if (newBalance != oldBalance) event.player?.let { player -> sendFooter(player) }
             }
         }
     }
@@ -48,18 +67,24 @@ object EffortShopFeature : Feature {
         val profile = player.profile()
         val att = profile.getAttachment(EFFORT_SHOP)
 
-        player.sendActionBar(
-            text("Updated effort shop balance to ", GRAY).append(
-                text(
-                    att?.effortPoints?.toString() ?: "n/a", GOLD
-                )
-            )
-        )
+//        player.sendActionBar(
+//            text("Updated effort shop balance to ", PRIMARY_COLOR).append(
+//                text(
+//                    att?.effortBalance?.toString() ?: "n/a", WHITE
+//                )
+//            )
+//        )
 
-        player.sendPlayerListFooter(
-            Component.textOfChildren(
+        player.sendPlayerListHeaderAndFooter(
+            textOfChildren(
                 newline(),
-                text("Effort Shop Balance: ${att?.effortPoints ?: "n/a"}")
+                text("Welcome to Nexus", PRIMARY_COLOR),
+                newline()
+            ),
+            textOfChildren(
+                newline(),
+                text("Effort shop balance: ", PRIMARY_COLOR).append(text(att?.effortBalance?.toString() ?: "n/a", WHITE)),
+                newline()
             )
         )
     }

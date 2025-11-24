@@ -23,7 +23,7 @@ class EffortShopListener(private val feature: EffortShopFeature) : Listener {
         feature.scheduler.launch {
             event.player.profile().update {
                 EffortShopTable.update({ EffortShopTable.profileId eq event.player.uniqueId }) {
-                    it[EffortShopTable.effortPoints] = EffortShopTable.effortPoints + 1
+                    it[EffortShopTable.effortBalance] = EffortShopTable.effortBalance + 1
                 }
             }
         }
