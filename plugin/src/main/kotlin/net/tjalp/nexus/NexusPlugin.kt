@@ -4,9 +4,11 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
+import net.tjalp.nexus.command.DisguiseCommand
 import net.tjalp.nexus.command.NexusCommand
 import net.tjalp.nexus.command.ProfileCommand
 import net.tjalp.nexus.feature.chat.ChatFeature
+import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.effortshop.EffortShopFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.profile.ProfileListener
@@ -32,6 +34,7 @@ class NexusPlugin : JavaPlugin() {
     val features: List<Feature>
         get() = listOf(
             ChatFeature,
+            DisguiseFeature,
             EffortShopFeature,
             GameRulesFeature
         )
@@ -63,6 +66,7 @@ class NexusPlugin : JavaPlugin() {
 
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
+            commands.registrar().register(DisguiseCommand.create(this), "Disguise management commands")
             commands.registrar().register(NexusCommand.create(this), "Nexus-specific commands")
             commands.registrar().register(ProfileCommand.create(this), "Profile management commands")
         }

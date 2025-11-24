@@ -5,3 +5,5 @@ api-version: '1.21'
 authors: [ tjalp ]
 description: A Minecraft server plugin providing various utilities and features.
 website: https://tjalp.net/
+softdepend:
+  - LibsDisguises

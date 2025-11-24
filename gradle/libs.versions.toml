@@ -16,6 +16,7 @@ exposed = "1.0.0-rc-3"
 h2 = "2.4.240"
 postgres = "42.7.8"
 foojayResolverConvention = "1.0.0"
+libsDisguises = "11.0.9"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -31,6 +32,7 @@ exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "e
 exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
 postgres = { module = "org.postgresql:postgresql", version.ref = "postgres" }
+libsDisguises = { module = "me.libraryaddict.disguises:libsdisguises", version.ref = "libsDisguises" }
 
 # Libraries can be bundled together for easier import
 [bundles]

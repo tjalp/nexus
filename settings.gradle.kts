@@ -9,6 +9,10 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         maven {
+            name = "md-5"
+            url = uri("https://repo.md-5.net/content/groups/public/")
+        }
+        maven {
             name = "papermc"
             url = uri("https://repo.papermc.io/repository/maven-public/")
         }
