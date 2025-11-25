@@ -1,14 +1,11 @@
 package net.tjalp.nexus.feature.disguises.provider
 
-import net.kyori.adventure.text.Component.text
-import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.util.TriState
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.feature.disguises.DisguiseProvider
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
-import org.bukkit.Bukkit
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -32,25 +29,23 @@ class NexusDisguiseProvider : DisguiseProvider {
         val disguiseEntity = entity.world.spawnEntity(entity.location, entityType, CreatureSpawnEvent.SpawnReason.CUSTOM) {
             disguises[entity] = it
             it.isPersistent = false
+            it.setGravity(false)
 
             if (entity is Player) entity.hideEntity(nexus, it)
-            if (it is LivingEntity) it.setAI(false)
             if (it is Mob) it.server.mobGoals.removeAllGoals(it)
         }
 
-        entity.scheduler.runAtFixedRate(nexus, {
-            disguiseEntity.isSneaking = entity.isSneaking
+        disguiseEntity.scheduler.runAtFixedRate(nexus, {
             disguiseEntity.apply {
                 isSneaking = entity.isSneaking
                 visualFire = TriState.byBoolean(entity.fireTicks > 0)
                 isGlowing = entity.isGlowing
                 isSilent = entity.isSilent
                 isInvulnerable = entity.isInvulnerable
-                if (entity is LivingEntity && it is LivingEntity) {
-                    Bukkit.broadcastMessage("is living")
-                    it.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
-                    it.equipment?.setItemInMainHand(entity.equipment?.itemInMainHand)
-                    it.equipment?.setItemInOffHand(entity.equipment?.itemInOffHand)
+                if (entity is LivingEntity && this is LivingEntity) {
+                    this.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
+                    this.equipment?.setItemInMainHand(entity.equipment?.itemInMainHand)
+                    this.equipment?.setItemInOffHand(entity.equipment?.itemInOffHand)
                 }
             }
             disguiseEntity.teleport(entity)
@@ -123,19 +118,19 @@ class NexusDisguiseProvider : DisguiseProvider {
             val mob = entity as? Mob
             val previousTarget = mob?.target
             val disguisedEntity = disguises.entries.firstOrNull { it.value == previousTarget }?.key
-//            val previousTargetDisguise = if (previousTarget != null) getDisguise(previousTarget) else null
+            val disguiseEntity = disguises[entity]
 
-//            Bukkit.broadcast(text("target event fired, entity = ${entity.type}, target = ${target?.type}, mob = ${mob?.type}, previousTarget = ${previousTarget?.type}, disguise = ${disguisedEntity?.type}"))
+            if (target == disguiseEntity) {
+                event.isCancelled = true
+                return
+            }
 
             if (previousTarget != null && target == null && disguisedEntity != null) {
-                Bukkit.broadcast(text("cancelling target event to avoid targeting disguised entity", RED))
                 event.isCancelled = true
                 return
             }
 
             if (target == null || getDisguise(target) == null) return
-
-            Bukkit.broadcast(text("cancelling target event, target = ${target.type}"))
 
             event.isCancelled = true
         }
