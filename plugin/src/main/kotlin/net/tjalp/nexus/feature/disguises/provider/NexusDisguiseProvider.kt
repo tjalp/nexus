@@ -1,5 +1,7 @@
 package net.tjalp.nexus.feature.disguises.provider
 
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.util.TriState
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.NexusServices
@@ -70,19 +72,32 @@ class NexusDisguiseProvider : DisguiseProvider {
 
     inner class NexusDisguiseListener : Listener {
 
+        private var damageMethodWasCalled = false
+
         @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
         fun on(event: EntityDamageEvent) {
             val entity = event.entity
 
+            if (damageMethodWasCalled) {
+                damageMethodWasCalled = false
+                return
+            }
+
             if (entity.isInvulnerable) return
+
+            if (getDisguise(entity) != null && event.finalDamage > 0) {
+                (disguises[entity] as? LivingEntity)?.let {
+                    it.playHurtAnimation(0f)
+                    it.hurtSound?.let { sound -> it.world.playSound(it, sound, 1f, 1f) }
+                }
+            }
 
             val disguisedEntity = disguises.entries.firstOrNull { it.value == event.entity }?.key ?: return
 
             if (disguisedEntity is Damageable) {
+                damageMethodWasCalled = true
                 disguisedEntity.damage(event.finalDamage, event.damageSource)
             }
-
-            if (entity is LivingEntity) entity.playHurtAnimation(0f)
 
             event.damage = 0.0
         }
@@ -103,13 +118,24 @@ class NexusDisguiseProvider : DisguiseProvider {
 
         @EventHandler
         fun on(event: EntityTargetEvent) {
-//            Bukkit.broadcast(text("received target event, target = ${event.target?.type}, entity = ${event.entity.type}"))
-            val target = event.target ?: return
+            val entity = event.entity
+            val target = event.target
+            val mob = entity as? Mob
+            val previousTarget = mob?.target
+            val disguisedEntity = disguises.entries.firstOrNull { it.value == previousTarget }?.key
+//            val previousTargetDisguise = if (previousTarget != null) getDisguise(previousTarget) else null
 
-            if (getDisguise(target) == null) return
-//            if (target !is Player) return
+//            Bukkit.broadcast(text("target event fired, entity = ${entity.type}, target = ${target?.type}, mob = ${mob?.type}, previousTarget = ${previousTarget?.type}, disguise = ${disguisedEntity?.type}"))
 
-//            Bukkit.broadcast(text("cancelling target event, target = ${target.type}"))
+            if (previousTarget != null && target == null && disguisedEntity != null) {
+                Bukkit.broadcast(text("cancelling target event to avoid targeting disguised entity", RED))
+                event.isCancelled = true
+                return
+            }
+
+            if (target == null || getDisguise(target) == null) return
+
+            Bukkit.broadcast(text("cancelling target event, target = ${target.type}"))
 
             event.isCancelled = true
         }
