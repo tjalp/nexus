@@ -6,12 +6,14 @@ import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.feature.disguises.DisguiseProvider
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
+import org.bukkit.attribute.Attribute
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.CreatureSpawnEvent
 import org.bukkit.event.entity.EntityDamageEvent
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause.*
 import org.bukkit.event.entity.EntityDeathEvent
 import org.bukkit.event.entity.EntityTargetEvent
 
@@ -20,7 +22,6 @@ class NexusDisguiseProvider : DisguiseProvider {
     private val disguises = HashMap<Entity, Entity>()
     private val nexus; get() = NexusServices.get<NexusPlugin>()
     private val listener = NexusDisguiseListener().also { it.register() }
-//    private val packetListener = PacketManager.addPacketListener(ClientboundSoundPacket::class, ::onSoundPacket)
 
     override fun disguise(entity: Entity, entityType: EntityType) {
         undisguise(entity)
@@ -35,17 +36,25 @@ class NexusDisguiseProvider : DisguiseProvider {
                 it.setGravity(false)
 
                 if (entity is Player) entity.hideEntity(nexus, it)
-                if (it is LivingEntity) it.setAI(false)
+                if (it is LivingEntity) {
+                    it.setAI(false)
+                    it.isCollidable = false
+                }
                 if (it is Mob) it.server.mobGoals.removeAllGoals(it)
             }
 
         disguiseEntity.scheduler.runAtFixedRate(nexus, {
+            if (!entity.isValid) {
+                undisguise(entity)
+                return@runAtFixedRate
+            }
             disguiseEntity.apply {
                 isSneaking = entity.isSneaking
                 visualFire = TriState.byBoolean(entity.fireTicks > 0)
                 isGlowing = entity.isGlowing
                 isInvulnerable = entity.isInvulnerable
                 if (entity is LivingEntity && this is LivingEntity) {
+                    health = entity.health.coerceAtMost(getAttribute(Attribute.MAX_HEALTH)!!.value)
                     this.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
                     this.equipment?.setItemInMainHand(entity.equipment?.itemInMainHand)
                     this.equipment?.setItemInOffHand(entity.equipment?.itemInOffHand)
@@ -67,7 +76,6 @@ class NexusDisguiseProvider : DisguiseProvider {
     override fun dispose() {
         disguises.iterator().forEach { undisguise(it.key) }
         listener.unregister()
-//        packetListener.dispose()
     }
 
     inner class NexusDisguiseListener : Listener {
@@ -93,6 +101,12 @@ class NexusDisguiseProvider : DisguiseProvider {
             }
 
             val disguisedEntity = disguises.entries.firstOrNull { it.value == event.entity }?.key ?: return
+            val disallowedDamageCauses = listOf(FALL, SUFFOCATION, DROWNING, DRYOUT, STARVATION)
+
+            if (event.cause in disallowedDamageCauses) {
+                event.isCancelled = true
+                return
+            }
 
             if (disguisedEntity is Damageable) {
                 damageMethodWasCalled = true
