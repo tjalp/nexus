@@ -17,6 +17,7 @@ import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.GeneralAttachmentProvider
 import net.tjalp.nexus.profile.service.ExposedProfilesService
 import net.tjalp.nexus.scheduler.BukkitDispatcher
+import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
@@ -57,6 +58,7 @@ class NexusPlugin : JavaPlugin() {
             password = config.getString("database.user") ?: error("Database password not specified in config")
         ).also { NexusServices.register(Database::class, it) }
         profiles = ExposedProfilesService(database).also { NexusServices.register(ProfilesService::class, it) }
+        PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }
 
         // Register global attachment providers

@@ -35,7 +35,10 @@ object PacketManager {
 
     private val listeners: MultiValuedMap<Any, Any> = ArrayListValuedHashMap()
 
-    init {
+    /**
+     * Initialize the packet manager. Should be called once on plugin startup.
+     */
+    fun init() {
         // Add before Minecraft's packet handler
         ChannelInitializeListenerHolder.addListener(Key.key("nexus")) { channel ->
             channel.pipeline().addBefore("packet_handler", "nexus_packet_interceptor", PacketInterceptor())

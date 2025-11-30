@@ -20,27 +20,30 @@ class NexusDisguiseProvider : DisguiseProvider {
     private val disguises = HashMap<Entity, Entity>()
     private val nexus; get() = NexusServices.get<NexusPlugin>()
     private val listener = NexusDisguiseListener().also { it.register() }
+//    private val packetListener = PacketManager.addPacketListener(ClientboundSoundPacket::class, ::onSoundPacket)
 
     override fun disguise(entity: Entity, entityType: EntityType) {
         undisguise(entity)
 
         entity.isVisibleByDefault = false
+        entity.isSilent = true
 
-        val disguiseEntity = entity.world.spawnEntity(entity.location, entityType, CreatureSpawnEvent.SpawnReason.CUSTOM) {
-            disguises[entity] = it
-            it.isPersistent = false
-            it.setGravity(false)
+        val disguiseEntity =
+            entity.world.spawnEntity(entity.location, entityType, CreatureSpawnEvent.SpawnReason.CUSTOM) {
+                disguises[entity] = it
+                it.isPersistent = false
+                it.setGravity(false)
 
-            if (entity is Player) entity.hideEntity(nexus, it)
-            if (it is Mob) it.server.mobGoals.removeAllGoals(it)
-        }
+                if (entity is Player) entity.hideEntity(nexus, it)
+                if (it is LivingEntity) it.setAI(false)
+                if (it is Mob) it.server.mobGoals.removeAllGoals(it)
+            }
 
         disguiseEntity.scheduler.runAtFixedRate(nexus, {
             disguiseEntity.apply {
                 isSneaking = entity.isSneaking
                 visualFire = TriState.byBoolean(entity.fireTicks > 0)
                 isGlowing = entity.isGlowing
-                isSilent = entity.isSilent
                 isInvulnerable = entity.isInvulnerable
                 if (entity is LivingEntity && this is LivingEntity) {
                     this.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
@@ -53,8 +56,9 @@ class NexusDisguiseProvider : DisguiseProvider {
     }
 
     override fun undisguise(entity: Entity) {
-        val disguisedEntity = disguises.remove(entity)
-        disguisedEntity?.remove()
+        val disguiseEntity = disguises.remove(entity)
+        disguiseEntity?.remove()
+        entity.isSilent = false
         entity.isVisibleByDefault = true
     }
 
@@ -63,6 +67,7 @@ class NexusDisguiseProvider : DisguiseProvider {
     override fun dispose() {
         disguises.iterator().forEach { undisguise(it.key) }
         listener.unregister()
+//        packetListener.dispose()
     }
 
     inner class NexusDisguiseListener : Listener {
