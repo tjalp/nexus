@@ -1,21 +1,35 @@
 package net.tjalp.nexus.feature.disguises.provider
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import net.kyori.adventure.audience.Audience
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.util.TriState
+import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
+import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.disguises.DisguiseProvider
+import net.tjalp.nexus.scheduler.ticks
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.attribute.Attribute
+import org.bukkit.damage.DamageSource
+import org.bukkit.damage.DamageType
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
-import org.bukkit.event.entity.CreatureSpawnEvent
-import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.event.entity.EntityDamageEvent.DamageCause.*
-import org.bukkit.event.entity.EntityDeathEvent
-import org.bukkit.event.entity.EntityTargetEvent
+import org.bukkit.event.entity.*
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK
+import org.bukkit.event.player.PlayerInteractAtEntityEvent
+import org.bukkit.event.player.PlayerInteractEntityEvent
+import org.bukkit.event.vehicle.VehicleDamageEvent
+import org.bukkit.event.vehicle.VehicleDestroyEvent
 
 class NexusDisguiseProvider : DisguiseProvider {
 
@@ -23,8 +37,17 @@ class NexusDisguiseProvider : DisguiseProvider {
     private val nexus; get() = NexusServices.get<NexusPlugin>()
     private val listener = NexusDisguiseListener().also { it.register() }
 
+    init {
+        DisguiseFeature.scheduler.launch {
+            while (isActive) {
+                disguises.forEach { (entity, disguise) -> sendStatus(entity, disguise.type) }
+                delay(15.ticks)
+            }
+        }
+    }
+
     override fun disguise(entity: Entity, entityType: EntityType) {
-        undisguise(entity)
+        undisguise(entity, sendMessage = false)
 
         entity.isVisibleByDefault = false
         entity.isSilent = true
@@ -61,14 +84,27 @@ class NexusDisguiseProvider : DisguiseProvider {
                 }
             }
             disguiseEntity.teleport(entity)
-        }, null, 1, 1)
+        }, { undisguise(entity, false) }, 1, 1)
+
+        sendStatus(entity, entityType)
     }
 
-    override fun undisguise(entity: Entity) {
+    override fun undisguise(entity: Entity) = this.undisguise(entity, removeEntity = true)
+
+    /**
+     * Undisguises an entity.
+     *
+     * @param entity The entity to undisguise.
+     * @param removeEntity Whether to remove the disguise entity from the world.
+     * @param sendMessage Whether to send an action bar message to the entity.
+     */
+    private fun undisguise(entity: Entity, removeEntity: Boolean = true, sendMessage: Boolean = true) {
         val disguiseEntity = disguises.remove(entity)
-        disguiseEntity?.remove()
+        if (removeEntity) disguiseEntity?.remove()
         entity.isSilent = false
         entity.isVisibleByDefault = true
+
+        if (sendMessage && disguiseEntity != null) entity.sendActionBar(text("You've been undisguised", PRIMARY_COLOR))
     }
 
     override fun getDisguise(entity: Entity): EntityType? = disguises[entity]?.type
@@ -76,6 +112,19 @@ class NexusDisguiseProvider : DisguiseProvider {
     override fun dispose() {
         disguises.iterator().forEach { undisguise(it.key) }
         listener.unregister()
+    }
+
+    /**
+     * Sends an action bar message to the audience indicating their current disguise.
+     *
+     * @param audience The audience to send the message to.
+     * @param disguiseType The type of entity the audience is disguised as.
+     */
+    private fun sendStatus(audience: Audience, disguiseType: EntityType) {
+        audience.sendActionBar(
+            text("You are currently disguised as ", PRIMARY_COLOR)
+                .append(translatable(disguiseType.translationKey(), COMPLEMENTARY_COLOR))
+        )
     }
 
     inner class NexusDisguiseListener : Listener {
@@ -91,9 +140,7 @@ class NexusDisguiseProvider : DisguiseProvider {
                 return
             }
 
-            if (entity.isInvulnerable) return
-
-            if (getDisguise(entity) != null && event.finalDamage > 0) {
+            if (getDisguise(entity) != null) {
                 (disguises[entity] as? LivingEntity)?.let {
                     it.playHurtAnimation(0f)
                     it.hurtSound?.let { sound -> it.world.playSound(it, sound, 1f, 1f) }
@@ -101,9 +148,9 @@ class NexusDisguiseProvider : DisguiseProvider {
             }
 
             val disguisedEntity = disguises.entries.firstOrNull { it.value == event.entity }?.key ?: return
-            val disallowedDamageCauses = listOf(FALL, SUFFOCATION, DROWNING, DRYOUT, STARVATION)
+            val allowedDamageCauses = listOf(ENTITY_ATTACK, ENTITY_SWEEP_ATTACK)
 
-            if (event.cause in disallowedDamageCauses) {
+            if (event.cause !in allowedDamageCauses) {
                 event.isCancelled = true
                 return
             }
@@ -131,6 +178,43 @@ class NexusDisguiseProvider : DisguiseProvider {
         }
 
         @EventHandler
+        fun on(event: VehicleDestroyEvent) {
+            val isDisguise = disguises.values.contains(event.vehicle)
+
+            if (isDisguise) event.isCancelled = true
+        }
+
+        @EventHandler
+        fun on(event: VehicleDamageEvent) {
+            val disguisedEntity = disguises.entries.firstOrNull { it.value == event.vehicle }?.key ?: return
+            val attacker = event.attacker
+
+            if (attacker == null) {
+                event.isCancelled = true
+                return
+            }
+
+            if (disguisedEntity is Damageable) {
+                val source = DamageSource.builder(DamageType.MOB_ATTACK)
+                    .withCausingEntity(attacker)
+                    .withDirectEntity(attacker)
+                    .build()
+
+                damageMethodWasCalled = true
+                disguisedEntity.damage(event.damage, source)
+            }
+
+//            event.damage = 0.0
+        }
+
+        @EventHandler
+        fun on(event: EntityMountEvent) {
+            val isDisguise = disguises.values.contains(event.entity) || disguises.values.contains(event.mount)
+
+            if (isDisguise) event.isCancelled = true
+        }
+
+        @EventHandler
         fun on(event: EntityTargetEvent) {
             val entity = event.entity
             val target = event.target
@@ -152,6 +236,23 @@ class NexusDisguiseProvider : DisguiseProvider {
             if (target == null || getDisguise(target) == null) return
 
             event.isCancelled = true
+        }
+
+        @EventHandler
+        fun on(event: PlayerInteractEntityEvent) {
+            processInteraction(event)
+        }
+
+        // because armor stands are special
+        @EventHandler
+        fun on(event: PlayerInteractAtEntityEvent) {
+            processInteraction(event)
+        }
+
+        private fun processInteraction(event: PlayerInteractEntityEvent) {
+            val clickedEntity = event.rightClicked
+
+            if (disguises.values.contains(clickedEntity)) event.isCancelled =  true
         }
     }
 }
