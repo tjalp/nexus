@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.disguises.provider
 
+import io.papermc.paper.event.player.PlayerArmSwingEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -16,6 +17,9 @@ import net.tjalp.nexus.feature.disguises.DisguiseProvider
 import net.tjalp.nexus.scheduler.ticks
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
+import org.bukkit.EntityEffect
+import org.bukkit.Particle
+import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
 import org.bukkit.damage.DamageSource
 import org.bukkit.damage.DamageType
@@ -73,19 +77,29 @@ class NexusDisguiseProvider : DisguiseProvider {
             }
             disguiseEntity.apply {
                 isSneaking = entity.isSneaking
+                pose = entity.pose
                 visualFire = TriState.byBoolean(entity.fireTicks > 0)
                 isGlowing = entity.isGlowing
                 isInvulnerable = entity.isInvulnerable
                 if (entity is LivingEntity && this is LivingEntity) {
-                    health = entity.health.coerceAtMost(getAttribute(Attribute.MAX_HEALTH)!!.value)
+                    val relativeHealth = entity.health / entity.getAttribute(Attribute.MAX_HEALTH)!!.value
+                    health = (relativeHealth * this.getAttribute(Attribute.MAX_HEALTH)!!.value)
+                    val entityEquipment = entity.equipment ?: return@apply
                     this.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
-                    this.equipment?.setItemInMainHand(entity.equipment?.itemInMainHand)
-                    this.equipment?.setItemInOffHand(entity.equipment?.itemInOffHand)
+                    this.equipment?.apply {
+                        setItemInMainHand(entityEquipment.itemInMainHand, true)
+                        setItemInOffHand(entityEquipment.itemInOffHand, true)
+                        setHelmet(entityEquipment.helmet, true)
+                        setChestplate(entityEquipment.chestplate, true)
+                        setLeggings(entityEquipment.leggings, true)
+                        setBoots(entityEquipment.boots, true)
+                    }
                 }
             }
             disguiseEntity.teleport(entity)
         }, { undisguise(entity, false) }, 1, 1)
 
+        playSpawnEffects(disguiseEntity)
         sendStatus(entity, entityType)
     }
 
@@ -104,7 +118,10 @@ class NexusDisguiseProvider : DisguiseProvider {
         entity.isSilent = false
         entity.isVisibleByDefault = true
 
-        if (sendMessage && disguiseEntity != null) entity.sendActionBar(text("You've been undisguised", PRIMARY_COLOR))
+        if (sendMessage && disguiseEntity != null) {
+            entity.sendActionBar(text("You've been undisguised", PRIMARY_COLOR))
+            playSpawnEffects(entity)
+        }
     }
 
     override fun getDisguise(entity: Entity): EntityType? = disguises[entity]?.type
@@ -125,6 +142,24 @@ class NexusDisguiseProvider : DisguiseProvider {
             text("You are currently disguised as ", PRIMARY_COLOR)
                 .append(translatable(disguiseType.translationKey(), COMPLEMENTARY_COLOR))
         )
+    }
+
+    private fun playSpawnEffects(entity: Entity) {
+        val bb = entity.boundingBox
+        val world = entity.world
+        val centerLocation = bb.center.toLocation(world)
+        val particleCount = (bb.volume.toInt() * 20).coerceIn(20, 500)
+
+        world.spawnParticle(
+            Particle.CLOUD,
+            centerLocation,
+            particleCount,
+            bb.widthX / 3,
+            bb.height / 3,
+            bb.widthZ / 3,
+            0.025
+        )
+        world.playSound(entity.location, Sound.ENTITY_BREEZE_JUMP, .5f, 1f)
     }
 
     inner class NexusDisguiseListener : Listener {
@@ -157,7 +192,7 @@ class NexusDisguiseProvider : DisguiseProvider {
 
             if (disguisedEntity is Damageable) {
                 damageMethodWasCalled = true
-                disguisedEntity.damage(event.finalDamage, event.damageSource)
+                disguisedEntity.damage(event.damage, event.damageSource)
             }
 
             event.damage = 0.0
@@ -168,7 +203,7 @@ class NexusDisguiseProvider : DisguiseProvider {
             val entity = event.entity
 
             if (getDisguise(entity) != null) {
-                undisguise(entity)
+                undisguise(entity, sendMessage = false)
                 return
             }
 
@@ -253,6 +288,14 @@ class NexusDisguiseProvider : DisguiseProvider {
             val clickedEntity = event.rightClicked
 
             if (disguises.values.contains(clickedEntity)) event.isCancelled =  true
+        }
+
+        @EventHandler
+        fun on(event: PlayerArmSwingEvent) {
+            val disguiseEntity = disguises[event.player] as? LivingEntity ?: return
+
+            disguiseEntity.swingHand(event.hand)
+            disguiseEntity.playEffect(EntityEffect.ENTITY_ATTACK)
         }
     }
 }
