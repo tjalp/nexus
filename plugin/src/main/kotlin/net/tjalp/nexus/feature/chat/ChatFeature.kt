@@ -15,6 +15,10 @@ object ChatFeature : Feature {
 
     override val name: String = "chat"
 
+    private var _isEnabled: Boolean = false
+    override val isEnabled: Boolean
+        get() = _isEnabled
+
     val plugin: NexusPlugin; get() = NexusServices.get<NexusPlugin>()
     val database: Database; get() = NexusServices.get<Database>()
 
@@ -23,6 +27,8 @@ object ChatFeature : Feature {
     private lateinit var listener: ChatListener
 
     override fun enable() {
+        this._isEnabled = true
+
         this.chatService = ChatService()
 
         listener = ChatListener(this).also { it.register() }
@@ -30,5 +36,7 @@ object ChatFeature : Feature {
 
     override fun disable() {
         listener.unregister()
+
+        this._isEnabled = false
     }
 }

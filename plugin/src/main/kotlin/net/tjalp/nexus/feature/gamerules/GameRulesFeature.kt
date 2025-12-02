@@ -15,11 +15,17 @@ object GameRulesFeature : Feature {
 
     override val name: String = "gamerules"
 
+    private var _isEnabled: Boolean = false
+    override val isEnabled: Boolean
+        get() = _isEnabled
+
     val plugin: NexusPlugin; get() = NexusServices.get<NexusPlugin>()
 
     private val listeners = mutableListOf<Listener>()
 
     override fun enable() {
+        this._isEnabled = true
+
         listeners += CreeperGriefListener(this)
         listeners += CropTramplingListener(this)
         listeners += EndermanGriefListener(this)
@@ -32,5 +38,7 @@ object GameRulesFeature : Feature {
         // run unregister() on all listeners and clear the map
         listeners.forEach { it.unregister() }
         listeners.clear()
+
+        this._isEnabled = false
     }
 }

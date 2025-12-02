@@ -18,9 +18,10 @@ object NexusCommand {
                 .executes { context ->
                     plugin.reloadConfig()
                     plugin.features.forEach {
-                        it.disable()
+                        if (it.isEnabled) it.disable()
                         it.enable()
                     }
+                    context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
                     context.source.sender.sendMessage("Reloaded config and features")
                     return@executes Command.SINGLE_SUCCESS
                 })
@@ -34,14 +35,14 @@ object NexusCommand {
                         })
                     .then(Commands.literal("disable")
                         .executes { context ->
-                            val feature = context.getArgument("feature", Feature::class.java).also { it.disable() }
+                            val feature = context.getArgument("feature", Feature::class.java).also { if (it.isEnabled) it.disable() }
                             context.source.sender.sendMessage(text("Disabled feature '${feature.name}'"))
                             return@executes Command.SINGLE_SUCCESS
                         })
                     .then(Commands.literal("reload")
                         .executes { context ->
                             val feature = context.getArgument("feature", Feature::class.java).also {
-                                it.disable()
+                                if (it.isEnabled) it.disable()
                                 it.enable()
                             }
                             context.source.sender.sendMessage(text("Reloaded feature '${feature.name}'"))

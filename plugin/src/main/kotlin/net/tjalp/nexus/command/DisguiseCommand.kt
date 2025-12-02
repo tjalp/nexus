@@ -16,7 +16,7 @@ object DisguiseCommand {
 
     fun create(nexus: NexusPlugin): LiteralCommandNode<CommandSourceStack> {
         return literal("disguise")
-            .requires { DisguiseFeature.provider != null && it.sender.hasPermission("nexus.command.disguise") }
+            .requires { DisguiseFeature.isEnabled && it.sender.hasPermission("nexus.command.disguise") }
             .then(literal("set")
                 .then(argument("targets", ArgumentTypes.entities())
                     .then(argument("entity", ArgumentTypes.resource(RegistryKey.ENTITY_TYPE))

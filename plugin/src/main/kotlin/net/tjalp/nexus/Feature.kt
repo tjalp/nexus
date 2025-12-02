@@ -13,6 +13,11 @@ interface Feature {
     val name: String
 
     /**
+     * Indicates whether the feature is currently enabled.
+     */
+    val isEnabled: Boolean
+
+    /**
      * The scheduler to be used for coroutine operations within the feature.
      */
     val scheduler: CoroutineScope

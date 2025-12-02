@@ -75,7 +75,7 @@ class NexusPlugin : JavaPlugin() {
     }
 
     override fun onDisable() {
-        features.forEach { it.disable() }
+        features.filter { it.isEnabled }.forEach { it.disable() }
         listeners.forEach { it.unregister() }
         NexusServices.clear()
     }

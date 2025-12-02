@@ -12,11 +12,18 @@ import org.bukkit.Bukkit
 object DisguiseFeature : Feature {
 
     override val name: String = "disguises"
+
+    private var _isEnabled: Boolean = false
+    override val isEnabled: Boolean
+        get() = _isEnabled
+
     override lateinit var scheduler: CoroutineScope; private set
 
     var provider: DisguiseProvider? = null; private set
 
     override fun enable() {
+        this._isEnabled = true
+
         scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
         provider = if (Bukkit.getPluginManager()
                 .isPluginEnabled("LibsDisguises")
@@ -26,5 +33,7 @@ object DisguiseFeature : Feature {
     override fun disable() {
         provider?.dispose()
         scheduler.cancel()
+
+        this._isEnabled = false
     }
 }

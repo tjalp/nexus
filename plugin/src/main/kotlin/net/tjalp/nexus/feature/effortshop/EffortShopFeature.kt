@@ -18,6 +18,11 @@ import org.bukkit.entity.Player
 object EffortShopFeature : Feature {
 
     override val name: String = "effort_shop"
+
+    private var _isEnabled: Boolean = false
+    override val isEnabled: Boolean
+        get() = _isEnabled
+
     override lateinit var scheduler: CoroutineScope; private set
 
     val profiles: ProfilesService; get() = NexusServices.get<ProfilesService>()
@@ -25,6 +30,8 @@ object EffortShopFeature : Feature {
     private lateinit var listener: EffortShopListener
 
     override fun enable() {
+        this._isEnabled = true
+
         AttachmentRegistry.register(EffortShopAttachmentProvider.also { runBlocking { it.init() } })
         scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
         listener = EffortShopListener(this).also { it.register() }
@@ -61,6 +68,8 @@ object EffortShopFeature : Feature {
         listener.unregister()
         scheduler.cancel()
         AttachmentRegistry.unregister(EffortShopAttachmentProvider)
+
+        this._isEnabled = false
     }
 
     fun sendFooter(player: Player) {
