@@ -30,12 +30,14 @@ object NexusCommand {
                     .then(Commands.literal("enable")
                         .executes { context ->
                             val feature = context.getArgument("feature", Feature::class.java).also { it.enable() }
+                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
                             context.source.sender.sendMessage(text("Enabled feature '${feature.name}'"))
                             return@executes Command.SINGLE_SUCCESS
                         })
                     .then(Commands.literal("disable")
                         .executes { context ->
                             val feature = context.getArgument("feature", Feature::class.java).also { if (it.isEnabled) it.disable() }
+                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
                             context.source.sender.sendMessage(text("Disabled feature '${feature.name}'"))
                             return@executes Command.SINGLE_SUCCESS
                         })
@@ -45,6 +47,7 @@ object NexusCommand {
                                 if (it.isEnabled) it.disable()
                                 it.enable()
                             }
+                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
                             context.source.sender.sendMessage(text("Reloaded feature '${feature.name}'"))
                             return@executes Command.SINGLE_SUCCESS
                         })))
