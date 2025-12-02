@@ -7,6 +7,7 @@ import net.tjalp.nexus.profile.model.ProfileSnapshot
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
+import java.util.*
 
 /**
  * Registers this listener to the server.
@@ -33,3 +34,10 @@ fun Player.profile(): ProfileSnapshot {
     return NexusServices.get<ProfilesService>().getCached(this.uniqueId)
         ?: error("Cached profile for player ${this.uniqueId} not found")
 }
+
+/**
+ * Converts this UUID to a Player, if they are online.
+ *
+ * @return The [Player] corresponding to this UUID, or null if they are not online
+ */
+fun UUID.asPlayer(): Player? = NexusServices.get<NexusPlugin>().server.getPlayer(this)
