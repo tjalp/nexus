@@ -25,10 +25,10 @@ class PlayerTeleportRequest(
     private var expireJob: Job? = null
 
     override fun request() {
-//        if (source == target) {
-//            this.source.sendMessage(text("You cannot send a request to yourself, silly!", RED))
-//            return
-//        }
+        if (source == target) {
+            this.source.sendMessage(text("You cannot send a request to yourself, silly!", RED))
+            return
+        }
         if (requests.any { it.target == target && it.source == source }) {
             this.source.sendMessage(
                 text("You already have an active teleport request to", RED)

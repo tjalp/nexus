@@ -7,7 +7,6 @@ import kotlinx.coroutines.launch
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
-import net.kyori.adventure.util.TriState
 import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
@@ -78,9 +77,10 @@ class NexusDisguiseProvider : DisguiseProvider {
             disguiseEntity.apply {
                 isSneaking = entity.isSneaking
                 pose = entity.pose
-                visualFire = TriState.byBoolean(entity.fireTicks > 0)
+//                visualFire = TriState.byBoolean(entity.fireTicks > 0)
                 isGlowing = entity.isGlowing
                 isInvulnerable = entity.isInvulnerable
+                fireTicks = entity.fireTicks
                 if (entity is LivingEntity && this is LivingEntity) {
                     val relativeHealth = entity.health / entity.getAttribute(Attribute.MAX_HEALTH)!!.value
                     health = (relativeHealth * this.getAttribute(Attribute.MAX_HEALTH)!!.value)
