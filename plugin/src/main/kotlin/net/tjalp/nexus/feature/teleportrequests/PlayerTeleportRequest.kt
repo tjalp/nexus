@@ -51,7 +51,7 @@ class PlayerTeleportRequest(
             )
             target.sendMessage(
                 text().color(GRAY)
-                    .append(source.name())
+                    .append(source.name().colorIfAbsent(PRIMARY_COLOR))
                     .append(text("'s teleport request has expired"))
             )
         }
