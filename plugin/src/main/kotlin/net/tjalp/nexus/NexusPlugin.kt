@@ -11,6 +11,7 @@ import net.tjalp.nexus.command.TeleportRequestCommand
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
+import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.profile.ProfileListener
 import net.tjalp.nexus.profile.ProfilesService
@@ -39,6 +40,7 @@ class NexusPlugin : JavaPlugin() {
             DisguiseFeature,
 //            EffortShopFeature,
             GameRulesFeature,
+            SeasonsFeature,
             TeleportRequestsFeature
         )
 

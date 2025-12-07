@@ -23,6 +23,7 @@ object TeleportRequestsFeature : Feature {
     }
 
     override fun disable() {
+        PlayerTeleportRequest.clearAllRequests()
         scheduler.cancel()
 
         this._isEnabled = false

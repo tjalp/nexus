@@ -151,5 +151,9 @@ class PlayerTeleportRequest(
         private val requests = mutableListOf<PlayerTeleportRequest>()
 
         fun requests(): List<PlayerTeleportRequest> = this.requests.toList()
+
+        fun clearAllRequests() {
+            requests.clear()
+        }
     }
 }
