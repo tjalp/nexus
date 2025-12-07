@@ -1,10 +1,11 @@
 package net.tjalp.nexus.feature.effortshop
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
-import net.tjalp.nexus.Feature
+import net.tjalp.nexus.feature.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.EFFORT_SHOP
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
@@ -14,23 +15,14 @@ import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.entity.Player
 
-object EffortShopFeature : Feature {
-
-    override val name: String = "effort_shop"
-
-    private var _isEnabled: Boolean = false
-    override val isEnabled: Boolean
-        get() = _isEnabled
-
-    override lateinit var scheduler: CoroutineScope; private set
+object EffortShopFeature : Feature("effort_shop") {
 
     private lateinit var listener: EffortShopListener
 
     override fun enable() {
-        this._isEnabled = true
+        super.enable()
 
         AttachmentRegistry.register(EffortShopAttachmentProvider.also { runBlocking { it.init() } })
-        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
         listener = EffortShopListener(this).also { it.register() }
 
 //        val uncraftableBlocks = Registry.ITEM.filter {
@@ -63,10 +55,9 @@ object EffortShopFeature : Feature {
 
     override fun disable() {
         listener.unregister()
-        scheduler.cancel()
         AttachmentRegistry.unregister(EffortShopAttachmentProvider)
 
-        this._isEnabled = false
+        super.disable()
     }
 
     fun sendFooter(player: Player) {

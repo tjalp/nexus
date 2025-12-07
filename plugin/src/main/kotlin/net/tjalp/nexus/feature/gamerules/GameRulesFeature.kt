@@ -1,6 +1,6 @@
 package net.tjalp.nexus.feature.gamerules
 
-import net.tjalp.nexus.Feature
+import net.tjalp.nexus.feature.Feature
 import net.tjalp.nexus.feature.gamerules.listener.CreeperGriefListener
 import net.tjalp.nexus.feature.gamerules.listener.CropTramplingListener
 import net.tjalp.nexus.feature.gamerules.listener.EndermanGriefListener
@@ -9,18 +9,12 @@ import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
 
-object GameRulesFeature : Feature {
-
-    override val name: String = "gamerules"
-
-    private var _isEnabled: Boolean = false
-    override val isEnabled: Boolean
-        get() = _isEnabled
+object GameRulesFeature : Feature("gamerules") {
 
     private val listeners = mutableListOf<Listener>()
 
     override fun enable() {
-        this._isEnabled = true
+        super.enable()
 
         listeners += CreeperGriefListener(this)
         listeners += CropTramplingListener(this)
@@ -35,6 +29,6 @@ object GameRulesFeature : Feature {
         listeners.forEach { it.unregister() }
         listeners.clear()
 
-        this._isEnabled = false
+        super.disable()
     }
 }

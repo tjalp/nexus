@@ -2,17 +2,13 @@ package net.tjalp.nexus.feature.seasons
 
 import io.papermc.paper.registry.RegistryAccess
 import io.papermc.paper.registry.RegistryKey
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import net.kyori.adventure.key.Key
 import net.minecraft.core.RegistrySynchronization
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket
 import net.minecraft.server.MinecraftServer
 import net.minecraft.world.level.biome.Biome
-import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.Feature
 import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
 import org.bukkit.craftbukkit.block.CraftBiome
@@ -21,30 +17,20 @@ import org.spongepowered.configurate.reactive.Disposable
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
-object SeasonsFeature : Feature {
-
-    override val name: String = "seasons"
-
-    private var _isEnabled: Boolean = false
-    override val isEnabled: Boolean
-        get() = _isEnabled
-
-    override lateinit var scheduler: CoroutineScope; private set
+object SeasonsFeature : Feature("seasons") {
 
     private var packetListener: Disposable? = null
 
     override fun enable() {
-        this._isEnabled = true
+        super.enable()
 
-        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
         packetListener = PacketManager.addPacketListener(ClientboundRegistryDataPacket::class, ::onRegistryDataPacket)
     }
 
     override fun disable() {
         packetListener?.dispose()
-        scheduler.cancel()
 
-        this._isEnabled = false
+        super.disable()
     }
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {

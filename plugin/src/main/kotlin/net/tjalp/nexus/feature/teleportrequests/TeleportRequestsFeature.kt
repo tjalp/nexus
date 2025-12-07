@@ -1,31 +1,12 @@
 package net.tjalp.nexus.feature.teleportrequests
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.Feature
 
-object TeleportRequestsFeature : Feature {
-
-    override val name: String = "teleport_requests"
-
-    private var _isEnabled: Boolean = false
-    override val isEnabled: Boolean
-        get() = _isEnabled
-
-    override lateinit var scheduler: CoroutineScope; private set
-
-    override fun enable() {
-        this._isEnabled = true
-
-        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
-    }
+object TeleportRequestsFeature : Feature("teleport_requests") {
 
     override fun disable() {
         PlayerTeleportRequest.clearAllRequests()
-        scheduler.cancel()
 
-        this._isEnabled = false
+        super.disable()
     }
 }
