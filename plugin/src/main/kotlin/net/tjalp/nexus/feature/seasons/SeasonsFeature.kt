@@ -53,8 +53,8 @@ object SeasonsFeature : Feature {
         if (registryPath != "worldgen/biome") return PacketAction.Continue
 
         val registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME)
-        val newEntries = packet.entries.mapNotNull { entry ->
-            val biome = registry.get(Key.key(entry.id.namespace, entry.id.path)) ?: return@mapNotNull null
+        val newEntries = packet.entries.map { entry ->
+            val biome = registry.get(Key.key(entry.id.namespace, entry.id.path)) ?: return@map entry
             val nmsBiome = (biome as CraftBiome).handle
             val ops = MinecraftServer.getServer().registryAccess().createSerializationContext(NbtOps.INSTANCE)
             val tag = Biome.NETWORK_CODEC.encodeStart(ops, nmsBiome)?.result()?.getOrNull()?.asCompound()?.getOrNull()
