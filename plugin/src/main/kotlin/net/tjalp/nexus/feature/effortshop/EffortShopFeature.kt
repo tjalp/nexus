@@ -5,8 +5,7 @@ import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusServices
-import net.tjalp.nexus.profile.ProfilesService
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.EFFORT_SHOP
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.EffortShopAttachmentProvider
@@ -25,15 +24,13 @@ object EffortShopFeature : Feature {
 
     override lateinit var scheduler: CoroutineScope; private set
 
-    val profiles: ProfilesService; get() = NexusServices.get<ProfilesService>()
-
     private lateinit var listener: EffortShopListener
 
     override fun enable() {
         this._isEnabled = true
 
         AttachmentRegistry.register(EffortShopAttachmentProvider.also { runBlocking { it.init() } })
-        scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
+        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
         listener = EffortShopListener(this).also { it.register() }
 
 //        val uncraftableBlocks = Registry.ITEM.filter {
@@ -56,7 +53,7 @@ object EffortShopFeature : Feature {
 //        }
 
         scheduler.launch {
-            profiles.updates.collect { event ->
+            NexusPlugin.profiles.updates.collect { event ->
                 val oldBalance = event.old?.getAttachment(EFFORT_SHOP)?.effortBalance
                 val newBalance = event.new.getAttachment(EFFORT_SHOP)?.effortBalance
                 if (newBalance != oldBalance) event.player?.let { player -> sendFooter(player) }

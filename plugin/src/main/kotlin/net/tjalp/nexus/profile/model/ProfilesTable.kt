@@ -1,8 +1,7 @@
 package net.tjalp.nexus.profile.model
 
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.AttachmentKey
-import net.tjalp.nexus.profile.ProfilesService
 import org.bukkit.Bukkit
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
@@ -43,7 +42,7 @@ data class ProfileSnapshot(
 
     suspend fun update(statement: () -> Unit) = update(*arrayOf(statement))
 
-    suspend fun update(vararg statements: () -> Unit) = NexusServices.get<ProfilesService>()
+    suspend fun update(vararg statements: () -> Unit) = NexusPlugin.profiles
         .upsert(this, cache = Bukkit.getPlayer(this.id) != null, statements = statements)
 
     override fun toString(): String {

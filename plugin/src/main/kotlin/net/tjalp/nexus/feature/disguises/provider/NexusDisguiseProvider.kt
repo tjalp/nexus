@@ -10,7 +10,6 @@ import net.kyori.adventure.text.Component.translatable
 import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.NexusServices
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.disguises.DisguiseProvider
 import net.tjalp.nexus.scheduler.ticks
@@ -37,7 +36,6 @@ import org.bukkit.event.vehicle.VehicleDestroyEvent
 class NexusDisguiseProvider : DisguiseProvider {
 
     private val disguises = HashMap<Entity, Entity>()
-    private val nexus; get() = NexusServices.get<NexusPlugin>()
     private val listener = NexusDisguiseListener().also { it.register() }
 
     init {
@@ -61,7 +59,7 @@ class NexusDisguiseProvider : DisguiseProvider {
                 it.isPersistent = false
                 it.setGravity(false)
 
-                if (entity is Player) entity.hideEntity(nexus, it)
+                if (entity is Player) entity.hideEntity(NexusPlugin, it)
                 if (it is LivingEntity) {
                     it.setAI(false)
                     it.isCollidable = false
@@ -69,7 +67,7 @@ class NexusDisguiseProvider : DisguiseProvider {
                 if (it is Mob) it.server.mobGoals.removeAllGoals(it)
             }
 
-        disguiseEntity.scheduler.runAtFixedRate(nexus, {
+        disguiseEntity.scheduler.runAtFixedRate(NexusPlugin, {
             if (!entity.isValid) {
                 undisguise(entity)
                 return@runAtFixedRate

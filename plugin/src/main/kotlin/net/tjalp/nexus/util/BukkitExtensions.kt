@@ -1,8 +1,6 @@
 package net.tjalp.nexus.util
 
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.NexusServices
-import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
@@ -13,8 +11,7 @@ import java.util.*
  * Registers this listener to the server.
  */
 fun Listener.register() {
-    val plugin = NexusServices.get<NexusPlugin>()
-    plugin.server.pluginManager.registerEvents(this, plugin)
+    NexusPlugin.server.pluginManager.registerEvents(this, NexusPlugin)
 }
 
 /**
@@ -31,7 +28,7 @@ fun Listener.unregister() {
  * @return The cached [ProfileSnapshot] for this player
  */
 fun Player.profile(): ProfileSnapshot {
-    return NexusServices.get<ProfilesService>().getCached(this.uniqueId)
+    return NexusPlugin.profiles.getCached(this.uniqueId)
         ?: error("Cached profile for player ${this.uniqueId} not found")
 }
 
@@ -40,4 +37,4 @@ fun Player.profile(): ProfileSnapshot {
  *
  * @return The [Player] corresponding to this UUID, or null if they are not online
  */
-fun UUID.asPlayer(): Player? = NexusServices.get<NexusPlugin>().server.getPlayer(this)
+fun UUID.asPlayer(): Player? = NexusPlugin.server.getPlayer(this)

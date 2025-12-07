@@ -3,18 +3,15 @@ package net.tjalp.nexus.scheduler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Runnable
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.NexusServices
 import org.bukkit.Bukkit
 import kotlin.coroutines.CoroutineContext
 
 object BukkitDispatcher : CoroutineDispatcher() {
 
-    private val nexus: NexusPlugin = NexusServices.get<NexusPlugin>()
-
     override fun isDispatchNeeded(context: CoroutineContext): Boolean = !Bukkit.isPrimaryThread()
 
     override fun dispatch(context: CoroutineContext, block: Runnable) {
-        Bukkit.getScheduler().runTask(nexus, block)
+        Bukkit.getScheduler().runTask(NexusPlugin, block)
     }
 }
 

@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.gamerules.listener
 
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import org.bukkit.entity.Fireball
 import org.bukkit.entity.Ghast
@@ -12,7 +13,7 @@ class GhastGriefListener(private val feature: GameRulesFeature) : Listener {
     @EventHandler
     fun on(event: EntityExplodeEvent) {
         val entity = event.entity
-        val ghastGrievingEnabled = feature.plugin.config.getBoolean("modules.${feature.name}.ghast-grieving", true)
+        val ghastGrievingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.ghast-grieving", true)
 
         if (entity !is Fireball || entity.shooter !is Ghast || ghastGrievingEnabled) return
 

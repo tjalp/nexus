@@ -26,7 +26,7 @@ import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.exposed.v1.jdbc.Database
 
-class NexusPlugin : JavaPlugin() {
+object NexusPlugin : JavaPlugin() {
 
     lateinit var profiles: ProfilesService; private set
     lateinit var database: Database; private set
@@ -47,21 +47,14 @@ class NexusPlugin : JavaPlugin() {
     override fun onEnable() {
         saveDefaultConfig()
 
-        NexusServices.register(NexusPlugin::class, this)
-
-        scheduler = CoroutineScope(BukkitDispatcher + SupervisorJob()).also {
-            NexusServices.register(
-                CoroutineScope::class,
-                it
-            )
-        }
+        scheduler = CoroutineScope(BukkitDispatcher + SupervisorJob())
         database = Database.connect(
             url = config.getString("database.url") ?: error("Database URL not specified in config"),
             driver = config.getString("database.driver") ?: error("Database driver not specified in config"),
             user = config.getString("database.user") ?: error("Database user not specified in config"),
             password = config.getString("database.user") ?: error("Database password not specified in config")
-        ).also { NexusServices.register(Database::class, it) }
-        profiles = ExposedProfilesService(database).also { NexusServices.register(ProfilesService::class, it) }
+        )
+        profiles = ExposedProfilesService(database)
         PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }
 
@@ -83,7 +76,6 @@ class NexusPlugin : JavaPlugin() {
     override fun onDisable() {
         features.filter { it.isEnabled }.forEach { it.disable() }
         listeners.forEach { it.unregister() }
-        NexusServices.clear()
     }
 
     private fun enableFeatures() {

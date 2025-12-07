@@ -2,12 +2,11 @@ package net.tjalp.nexus.profile
 
 import com.destroystokyo.paper.event.player.PlayerConnectionCloseEvent
 import io.papermc.paper.event.connection.configuration.AsyncPlayerConnectionConfigureEvent
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.RED
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import org.bukkit.event.EventHandler
@@ -35,7 +34,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
             }
         }
 
-        NexusServices.get<CoroutineScope>().launch {
+        NexusPlugin.scheduler.launch {
             profile?.update {
                 GeneralTable.update({ GeneralTable.profileId eq uniqueId }) {
                     it[GeneralTable.lastKnownName] = username

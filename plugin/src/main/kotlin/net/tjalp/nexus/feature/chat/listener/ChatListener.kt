@@ -4,6 +4,7 @@ import io.papermc.paper.event.player.AsyncChatCommandDecorateEvent
 import io.papermc.paper.event.player.AsyncChatDecorateEvent
 import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.chat.NexusChatRenderer
 import org.bukkit.event.EventHandler
@@ -13,7 +14,7 @@ class ChatListener(private val feature: ChatFeature) : Listener {
 
     @EventHandler
     fun on(event: AsyncChatEvent) {
-        val format = feature.plugin.config.getString("modules.${feature.name}.format", "<<name>> <message>")!!
+        val format = NexusPlugin.config.getString("modules.${feature.name}.format", "<<name>> <message>")!!
 
         event.renderer(NexusChatRenderer.renderer(format, event.signedMessage()))
     }

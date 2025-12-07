@@ -5,7 +5,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket
 import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
 import org.bukkit.entity.Player
@@ -26,7 +26,7 @@ object SeasonsFeature : Feature {
     override fun enable() {
         this._isEnabled = true
 
-        scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
+        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
         packetListener = PacketManager.addPacketListener(ClientboundRegistryDataPacket::class, ::onRegistryDataPacket)
     }
 

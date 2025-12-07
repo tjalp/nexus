@@ -1,6 +1,6 @@
 package net.tjalp.nexus.profile.attachment
 
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.AttachmentKey
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
@@ -8,7 +8,6 @@ import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -34,13 +33,11 @@ data class EffortShopAttachment(
 object EffortShopAttachmentProvider : AttachmentProvider<EffortShopAttachment> {
     override val key: AttachmentKey<EffortShopAttachment> = AttachmentKeys.EFFORT_SHOP
 
-    private val db; get() = NexusServices.get<Database>()
-
     override suspend fun init() = suspendTransaction {
         SchemaUtils.create(EffortShopTable)
     }
 
-    override suspend fun load(profile: ProfileSnapshot): EffortShopAttachment? = suspendTransaction(db) {
+    override suspend fun load(profile: ProfileSnapshot): EffortShopAttachment? = suspendTransaction(NexusPlugin.database) {
         val attachment = EffortShopTable.selectAll().where(EffortShopTable.profileId eq profile.id)
             .firstOrNull()?.toEffortShopAttachment()
 

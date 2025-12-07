@@ -11,7 +11,6 @@ import io.papermc.paper.command.brigadier.argument.CustomArgumentType
 import net.kyori.adventure.text.Component
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.NexusServices
 import java.util.concurrent.CompletableFuture
 
 object FeatureArgument : CustomArgumentType.Converted<Feature, String> {
@@ -21,7 +20,7 @@ object FeatureArgument : CustomArgumentType.Converted<Feature, String> {
     }
 
     override fun convert(nativeType: String): Feature {
-        return NexusServices.get<NexusPlugin>().features.find { it.name.equals(nativeType, ignoreCase = true) }
+        return NexusPlugin.features.find { it.name.equals(nativeType, ignoreCase = true) }
             ?: throw ERROR_INVALID_FEATURE.create(nativeType)
     }
 
@@ -31,7 +30,7 @@ object FeatureArgument : CustomArgumentType.Converted<Feature, String> {
         context: CommandContext<S>,
         builder: SuggestionsBuilder
     ): CompletableFuture<Suggestions> {
-        NexusServices.get<NexusPlugin>().features
+        NexusPlugin.features
             .map { it.name }
             .filter { it.startsWith(builder.remainingLowerCase) }
             .sorted()

@@ -10,8 +10,6 @@ import net.kyori.adventure.text.event.ClickEvent.callback
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.format.TextDecoration.BOLD
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
-import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.NexusServices
 import org.bukkit.entity.Player
 import kotlin.time.Duration.Companion.minutes
 
@@ -20,7 +18,6 @@ class PlayerTeleportRequest(
     val target: Player
 ) : TeleportRequest {
 
-    private val nexus: NexusPlugin; get() = NexusServices.get<NexusPlugin>()
     private val scheduler; get() = TeleportRequestsFeature.scheduler
     private var expireJob: Job? = null
 

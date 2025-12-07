@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.NexusPlugin
 
 object TeleportRequestsFeature : Feature {
 
@@ -19,7 +19,7 @@ object TeleportRequestsFeature : Feature {
     override fun enable() {
         this._isEnabled = true
 
-        scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
+        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
     }
 
     override fun disable() {

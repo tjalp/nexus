@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.gamerules.listener
 
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import org.bukkit.Material
 import org.bukkit.event.Event
@@ -18,7 +19,7 @@ class CropTramplingListener(private val feature: GameRulesFeature) : Listener {
          if (block == null || block.type != Material.FARMLAND || event.action != Action.PHYSICAL) return
 
         // todo make this an actual gamerule
-        val cropTramplingEnabled = feature.plugin.config.getBoolean("modules.${feature.name}.crop-trampling", true)
+        val cropTramplingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.crop-trampling", true)
 
         if (cropTramplingEnabled) return
 
@@ -32,7 +33,7 @@ class CropTramplingListener(private val feature: GameRulesFeature) : Listener {
         if (block.type != Material.FARMLAND) return
 
         // todo make this an actual gamerule
-        val cropTramplingEnabled = feature.plugin.config.getBoolean("modules.${feature.name}.crop-trampling", true)
+        val cropTramplingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.crop-trampling", true)
 
         if (cropTramplingEnabled) return
 

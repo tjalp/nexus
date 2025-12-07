@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusServices
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.disguises.provider.LibsDisguisesDisguiseProvider
 import net.tjalp.nexus.feature.disguises.provider.NexusDisguiseProvider
 import org.bukkit.Bukkit
@@ -24,7 +24,7 @@ object DisguiseFeature : Feature {
     override fun enable() {
         this._isEnabled = true
 
-        scheduler = CoroutineScope(NexusServices.get<CoroutineScope>().coroutineContext + SupervisorJob())
+        scheduler = CoroutineScope(NexusPlugin.scheduler.coroutineContext + SupervisorJob())
         provider = if (Bukkit.getPluginManager()
                 .isPluginEnabled("LibsDisguises")
         ) LibsDisguisesDisguiseProvider() else NexusDisguiseProvider()

@@ -1,0 +1,11 @@
+name: Nexus
+version: '1.2.0'
+main: net.tjalp.nexus.NexusPlugin
+description: A Minecraft server plugin providing various utilities and features.
+api-version: '1.21.10'
+bootstrapper: net.tjalp.nexus.NexusBootstrap
+dependencies:
+  server:
+    LibsDisguises:
+      load: BEFORE
+      required: false

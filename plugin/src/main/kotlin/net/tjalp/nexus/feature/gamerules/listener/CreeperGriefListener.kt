@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.gamerules.listener
 
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import org.bukkit.entity.EntityType
 import org.bukkit.event.EventHandler
@@ -11,7 +12,7 @@ class CreeperGriefListener(private val feature: GameRulesFeature) : Listener {
     @EventHandler
     fun on(event: EntityExplodeEvent) {
         val entity = event.entity
-        val creeperGrievingEnabled = feature.plugin.config.getBoolean("modules.${feature.name}.creeper-grieving", true)
+        val creeperGrievingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.creeper-grieving", true)
 
         if (entity.type != EntityType.CREEPER || creeperGrievingEnabled) return
 
