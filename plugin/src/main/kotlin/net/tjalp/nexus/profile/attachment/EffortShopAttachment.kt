@@ -33,11 +33,8 @@ data class EffortShopAttachment(
 object EffortShopAttachmentProvider : AttachmentProvider<EffortShopAttachment> {
     override val key: AttachmentKey<EffortShopAttachment> = AttachmentKeys.EFFORT_SHOP
 
-    override suspend fun init() = suspendTransaction {
-        SchemaUtils.create(EffortShopTable)
-    }
-
     override suspend fun load(profile: ProfileSnapshot): EffortShopAttachment? = suspendTransaction(NexusPlugin.database) {
+        SchemaUtils.create(EffortShopTable)
         val attachment = EffortShopTable.selectAll().where(EffortShopTable.profileId eq profile.id)
             .firstOrNull()?.toEffortShopAttachment()
 

@@ -33,11 +33,8 @@ data class GeneralAttachment(
 object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
     override val key: AttachmentKey<GeneralAttachment> = AttachmentKeys.GENERAL
 
-    override suspend fun init() = suspendTransaction {
-        SchemaUtils.create(GeneralTable)
-    }
-
     override suspend fun load(profile: ProfileSnapshot): GeneralAttachment? = suspendTransaction(NexusPlugin.database) {
+        SchemaUtils.create(GeneralTable)
         val attachment = GeneralTable.selectAll().where(GeneralTable.profileId eq profile.id)
             .firstOrNull()?.toGeneralAttachment()
 

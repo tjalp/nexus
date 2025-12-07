@@ -15,7 +15,6 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 import java.util.*
 import kotlin.time.ExperimentalTime
@@ -29,18 +28,13 @@ class ExposedProfilesService(
 
     private val profileCache = hashMapOf<UUID, ProfileSnapshot>()
 
-    init {
-        transaction(db) {
-            SchemaUtils.create(ProfilesTable)
-        }
-    }
-
     override suspend fun get(
         id: UUID,
         cache: Boolean,
         bypassCache: Boolean,
         allowCreation: Boolean
     ): ProfileSnapshot? = suspendTransaction(db) {
+        SchemaUtils.create(ProfilesTable) // ensure schema
         if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
         var profile = ProfilesTable.selectAll().where(ProfilesTable.id eq id).firstOrNull()?.toProfileSnapshot()

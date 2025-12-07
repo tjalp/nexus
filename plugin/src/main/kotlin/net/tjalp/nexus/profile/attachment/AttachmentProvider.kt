@@ -18,7 +18,9 @@ interface AttachmentProvider<T : Any> {
     /**
      * Initializes the attachment provider.
      */
-    suspend fun init()
+    suspend fun init() {
+        // optional
+    }
 
     /**
      * Loads the attachment for the given profile.
