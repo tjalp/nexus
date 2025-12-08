@@ -12,20 +12,18 @@ import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
-import net.tjalp.nexus.util.register
-import net.tjalp.nexus.util.unregister
+import net.tjalp.nexus.util.asNmsBiome
 import org.bukkit.GameRule
 import org.bukkit.HeightMap
 import org.bukkit.World
-import org.bukkit.craftbukkit.block.CraftBiome
 import org.bukkit.entity.Player
-import org.bukkit.event.Listener
 import org.spongepowered.configurate.reactive.Disposable
+import java.awt.Color
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.jvm.optionals.getOrNull
 
-object SeasonsFeature : Feature("seasons"), Listener {
+object SeasonsFeature : Feature("seasons") {
 
     private var packetListener: Disposable? = null
 
@@ -35,7 +33,6 @@ object SeasonsFeature : Feature("seasons"), Listener {
         super.enable()
 
         packetListener = PacketManager.addPacketListener(ClientboundRegistryDataPacket::class, ::onRegistryDataPacket)
-        this.register()
 
         scheduler.repeat(interval = 1) {
             val ticker = currentSeason.ticker ?: return@repeat
@@ -62,7 +59,6 @@ object SeasonsFeature : Feature("seasons"), Listener {
 
     override fun disable() {
         packetListener?.dispose()
-        this.unregister()
 
         super.disable()
     }
@@ -70,18 +66,25 @@ object SeasonsFeature : Feature("seasons"), Listener {
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
         if (currentSeason != Season.WINTER) return PacketAction.Continue
         val registryPath = packet.registry.location().path
+        val foliageColor = Color(0x858780).rgb
 
         if (registryPath != "worldgen/biome") return PacketAction.Continue
 
         val registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME)
         val newEntries = packet.entries.map { entry ->
             val biome = registry.get(Key.key(entry.id.namespace, entry.id.path)) ?: return@map entry
-            val nmsBiome = (biome as CraftBiome).handle
             val ops = MinecraftServer.getServer().registryAccess().createSerializationContext(NbtOps.INSTANCE)
-            val tag = Biome.NETWORK_CODEC.encodeStart(ops, nmsBiome)?.result()?.getOrNull()?.asCompound()?.getOrNull()
+            val tag = Biome.NETWORK_CODEC.encodeStart(ops, biome.asNmsBiome())?.result()?.getOrNull()?.asCompound()?.getOrNull()
 
             tag?.putBoolean("has_precipitation", true)
             tag?.putFloat("temperature", -0.7f)
+            tag?.get("effects")?.asCompound()?.getOrNull()?.apply {
+                putInt("foliage_color", foliageColor)
+                putInt("dry_foliage_color", foliageColor)
+                putInt("grass_color", foliageColor)
+                putInt("water_color", 4020182)
+                putInt("water_fog_color", 329011)
+            }
 
             RegistrySynchronization.PackedRegistryEntry(entry.id, Optional.ofNullable(tag))
         }
