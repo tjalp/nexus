@@ -12,7 +12,7 @@ import net.kyori.adventure.text.format.NamedTextColor.*
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.FeatureArgument
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.scheduler.Scheduler
 
 object NexusCommand {

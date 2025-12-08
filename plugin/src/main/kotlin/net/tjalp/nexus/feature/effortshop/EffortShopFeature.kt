@@ -5,7 +5,7 @@ import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.EFFORT_SHOP
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry

@@ -1,6 +1,6 @@
 package net.tjalp.nexus.feature.chat
 
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.feature.chat.listener.ChatListener
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister

@@ -2,11 +2,8 @@ package net.tjalp.nexus
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import kotlinx.coroutines.runBlocking
-import net.tjalp.nexus.command.DisguiseCommand
-import net.tjalp.nexus.command.NexusCommand
-import net.tjalp.nexus.command.ProfileCommand
-import net.tjalp.nexus.command.TeleportRequestCommand
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.command.*
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
@@ -67,6 +64,7 @@ object NexusPlugin : JavaPlugin() {
             commands.registrar().register(DisguiseCommand.create(this), "Disguise management commands")
             commands.registrar().register(NexusCommand.create(this), "Nexus-specific commands")
             commands.registrar().register(ProfileCommand.create(this), "Profile management commands")
+            commands.registrar().register(SeasonCommand.create(), "Season management commands")
             commands.registrar().register(TeleportRequestCommand.create(), "Teleport request commands",
                 TeleportRequestCommand.aliases)
         }

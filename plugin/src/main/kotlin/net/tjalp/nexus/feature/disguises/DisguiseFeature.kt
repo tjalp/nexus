@@ -1,6 +1,6 @@
 package net.tjalp.nexus.feature.disguises
 
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.feature.disguises.provider.LibsDisguisesDisguiseProvider
 import net.tjalp.nexus.feature.disguises.provider.NexusDisguiseProvider
 import org.bukkit.Bukkit

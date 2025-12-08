@@ -1,6 +1,5 @@
-package net.tjalp.nexus.feature
+package net.tjalp.nexus
 
-import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.scheduler.Scheduler
 
 /**

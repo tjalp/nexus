@@ -9,7 +9,7 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType
 import net.kyori.adventure.text.Component
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import java.util.concurrent.CompletableFuture
 

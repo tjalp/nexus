@@ -1,6 +1,6 @@
 package net.tjalp.nexus.feature.teleportrequests
 
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 
 object TeleportRequestsFeature : Feature("teleport_requests") {
 

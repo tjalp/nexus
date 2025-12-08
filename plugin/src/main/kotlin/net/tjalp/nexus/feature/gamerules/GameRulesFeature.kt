@@ -1,6 +1,6 @@
 package net.tjalp.nexus.feature.gamerules
 
-import net.tjalp.nexus.feature.Feature
+import net.tjalp.nexus.Feature
 import net.tjalp.nexus.feature.gamerules.listener.CreeperGriefListener
 import net.tjalp.nexus.feature.gamerules.listener.CropTramplingListener
 import net.tjalp.nexus.feature.gamerules.listener.EndermanGriefListener
