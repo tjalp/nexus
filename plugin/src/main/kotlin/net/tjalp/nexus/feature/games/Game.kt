@@ -1,6 +1,9 @@
 package net.tjalp.nexus.feature.games
 
+import net.tjalp.nexus.util.asPlayer
+import org.bukkit.entity.Player
 import org.spongepowered.configurate.reactive.Disposable
+import java.util.*
 
 abstract class Game(
     val id: String = List(6) {
@@ -10,8 +13,11 @@ abstract class Game(
 ) : Disposable {
 
     val scheduler = GamesFeature.scheduler.fork("game/$id")
-
     var currentPhase: GamePhase? = null; private set
+
+    private val _participants = mutableSetOf<UUID>()
+    val participants: Set<Player> get() = _participants.mapNotNull { it.asPlayer() }.toSet()
+
     abstract val nextPhase: GamePhase
 
     suspend fun enterPhase(phase: GamePhase) {
@@ -31,6 +37,22 @@ abstract class Game(
 
     suspend fun enterNextPhase() {
         enterPhase(nextPhase)
+    }
+
+    suspend fun join(player: Player): Boolean {
+        val success = currentPhase?.onJoin(player) ?: false
+
+        if (success) {
+            _participants.add(player.uniqueId)
+        }
+
+        return success
+    }
+
+    fun leave(player: Player) {
+        currentPhase?.onLeave(player)
+
+        _participants.remove(player.uniqueId)
     }
 
     override fun dispose() {

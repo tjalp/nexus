@@ -5,9 +5,14 @@ import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.argument
 import io.papermc.paper.command.brigadier.Commands.literal
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes
+import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.textOfChildren
+import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.GameArgument
 import net.tjalp.nexus.feature.games.Game
@@ -60,6 +65,31 @@ object GameCommand {
 
                         return@executes Command.SINGLE_SUCCESS
                     }))
+            .then(literal("join")
+                .then(argument("id", GameArgument)
+                    .then(argument("targets", ArgumentTypes.players())
+                        .executes { context ->
+                            val game = context.getArgument("id", Game::class.java)
+                            val resolver = context.getArgument("targets", PlayerSelectorArgumentResolver::class.java)
+                            val players = resolver.resolve(context.source)
+
+                            game.scheduler.launch {
+                                val joined = players.map { player ->
+                                    async {
+                                        val success = game.join(player)
+
+                                        if (!success) {
+                                            context.source.sender.sendMessage(text("Failed to join player ${player.name} to game ${game.id}", RED))
+                                        }
+                                        success
+                                    }
+                                }.awaitAll()
+
+                                context.source.sender.sendMessage(text("Joined ${joined.count { it }} player(s) to game with ID ${game.id}"))
+                            }
+
+                            return@executes Command.SINGLE_SUCCESS
+                        })))
             .build()
     }
 }
