@@ -97,7 +97,7 @@ class Scheduler(
         tasks.forEach { it.cancel() }
         tasks.clear()
 
-        children.iterator().forEachRemaining { it.dispose() }
+        children.toList().forEach { it.dispose() }
         cancel("Scheduler '$id' (path: $path) disposed")
     }
 }

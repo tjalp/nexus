@@ -9,19 +9,19 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType
 import net.kyori.adventure.text.Component
-import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.games.Game
+import net.tjalp.nexus.feature.games.GamesFeature
 import java.util.concurrent.CompletableFuture
 
-object FeatureArgument : CustomArgumentType.Converted<Feature, String> {
+object GameArgument : CustomArgumentType.Converted<Game, String> {
 
-    private val ERROR_INVALID_FEATURE: DynamicCommandExceptionType = DynamicCommandExceptionType { feature: Any? ->
-        MessageComponentSerializer.message().serialize(Component.text("Unknown feature: $feature"))
+    private val ERROR_INVALID_GAME_ID: DynamicCommandExceptionType = DynamicCommandExceptionType { feature: Any? ->
+        MessageComponentSerializer.message().serialize(Component.text("No game found with id: $feature"))
     }
 
-    override fun convert(nativeType: String): Feature {
-        return NexusPlugin.features.find { it.name.equals(nativeType, ignoreCase = true) }
-            ?: throw ERROR_INVALID_FEATURE.create(nativeType)
+    override fun convert(nativeType: String): Game {
+        return GamesFeature.activeGames.find { it.id.equals(nativeType, ignoreCase = true) }
+            ?: throw ERROR_INVALID_GAME_ID.create(nativeType)
     }
 
     override fun getNativeType(): ArgumentType<String> = StringArgumentType.string()
@@ -30,8 +30,8 @@ object FeatureArgument : CustomArgumentType.Converted<Feature, String> {
         context: CommandContext<S>,
         builder: SuggestionsBuilder
     ): CompletableFuture<Suggestions> {
-        NexusPlugin.features
-            .map { it.name }
+        GamesFeature.activeGames
+            .map { it.id }
             .filter { it.startsWith(builder.remaining, ignoreCase = true) }
             .sorted()
             .forEach { builder.suggest(it) }

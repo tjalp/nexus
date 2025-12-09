@@ -125,7 +125,7 @@ class NexusDisguiseProvider : DisguiseProvider {
     override fun getDisguise(entity: Entity): EntityType? = disguises[entity]?.type
 
     override fun dispose() {
-        disguises.iterator().forEach { undisguise(it.key) }
+        disguises.keys.forEach { undisguise(it) }
         listener.unregister()
     }
 

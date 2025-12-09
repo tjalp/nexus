@@ -5,25 +5,53 @@ import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
+import io.papermc.paper.command.brigadier.Commands.literal
 import kotlinx.coroutines.isActive
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.command.argument.FeatureArgument
-import net.tjalp.nexus.Feature
 import net.tjalp.nexus.scheduler.Scheduler
 
 object NexusCommand {
 
-    fun create(plugin: NexusPlugin): LiteralCommandNode<CommandSourceStack> {
-        return Commands.literal("nexus")
+    fun create(): LiteralCommandNode<CommandSourceStack> {
+        val featureNode = literal("feature")
+
+        NexusPlugin.features.forEach { feature ->
+            featureNode
+                .then(literal(feature.name.lowercase())
+                    .then(literal("enable")
+                        .executes { context ->
+                            feature.enable()
+                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
+                            context.source.sender.sendMessage(text("Enabled feature '${feature.name}'"))
+                            return@executes Command.SINGLE_SUCCESS
+                        })
+                    .then(literal("disable")
+                        .executes { context ->
+                            if (feature.isEnabled) feature.disable()
+                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
+                            context.source.sender.sendMessage(text("Disabled feature '${feature.name}'"))
+                            return@executes Command.SINGLE_SUCCESS
+                        })
+                    .then(literal("reload")
+                        .executes { context ->
+                            if (feature.isEnabled) feature.disable()
+                            feature.enable()
+                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
+                            context.source.sender.sendMessage(text("Reloaded feature '${feature.name}'"))
+                            return@executes Command.SINGLE_SUCCESS
+                        }))
+        }
+
+        return literal("nexus")
             .requires(Commands.restricted { source -> source.sender.hasPermission("nexus.command.nexus") })
-            .then(Commands.literal("reload")
+            .then(literal("reload")
                 .executes { context ->
-                    plugin.reloadConfig()
-                    plugin.features.forEach {
+                    NexusPlugin.reloadConfig()
+                    NexusPlugin.features.forEach {
                         if (it.isEnabled) it.disable()
                         it.enable()
                     }
@@ -31,34 +59,9 @@ object NexusCommand {
                     context.source.sender.sendMessage("Reloaded config and features")
                     return@executes Command.SINGLE_SUCCESS
                 })
-            .then(Commands.literal("schedulers")
+            .then(literal("schedulers")
                 .executes(::listSchedulers))
-            .then(Commands.literal("feature")
-                .then(Commands.argument("feature", FeatureArgument)
-                    .then(Commands.literal("enable")
-                        .executes { context ->
-                            val feature = context.getArgument("feature", Feature::class.java).also { it.enable() }
-                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
-                            context.source.sender.sendMessage(text("Enabled feature '${feature.name}'"))
-                            return@executes Command.SINGLE_SUCCESS
-                        })
-                    .then(Commands.literal("disable")
-                        .executes { context ->
-                            val feature = context.getArgument("feature", Feature::class.java).also { if (it.isEnabled) it.disable() }
-                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
-                            context.source.sender.sendMessage(text("Disabled feature '${feature.name}'"))
-                            return@executes Command.SINGLE_SUCCESS
-                        })
-                    .then(Commands.literal("reload")
-                        .executes { context ->
-                            val feature = context.getArgument("feature", Feature::class.java).also {
-                                if (it.isEnabled) it.disable()
-                                it.enable()
-                            }
-                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
-                            context.source.sender.sendMessage(text("Reloaded feature '${feature.name}'"))
-                            return@executes Command.SINGLE_SUCCESS
-                        })))
+            .then(featureNode)
             .build()
     }
 
