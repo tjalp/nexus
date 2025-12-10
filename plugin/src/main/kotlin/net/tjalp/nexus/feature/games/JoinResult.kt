@@ -8,6 +8,8 @@ enum class JoinFailureReason {
     WRONG_PHASE,
     GAME_FULL,
     ALREADY_IN_GAME,
+    REQUIRES_EMPTY_INVENTORY,
+    REQUIRES_EMPTY_SLOT,
     UNKNOWN
 }
 

@@ -1,6 +1,14 @@
 package net.tjalp.nexus.feature.games
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.asPlayer
+import net.tjalp.nexus.util.register
+import net.tjalp.nexus.util.unregister
 import org.bukkit.entity.Player
 import org.spongepowered.configurate.reactive.Disposable
 import java.util.*
@@ -41,6 +49,13 @@ abstract class Game(
     abstract val nextPhase: GamePhase
 
     /**
+     * The scoreboard used for this game instance.
+     */
+    val scoreboard = NexusPlugin.server.scoreboardManager.newScoreboard
+
+    private val listener: GameListener = GameListener(this).apply { register() }
+
+    /**
      * Enters the specified game phase, handling loading, disposal of the previous phase, and starting the new phase.
      *
      * @param phase The game phase to enter.
@@ -57,6 +72,8 @@ abstract class Game(
             previousPhase?.dispose()
             currentPhase = phase
             phase.start(previousPhase)
+
+            runJoinsConcurrently(phase, participants)
         } catch (e: Exception) {
             throw RuntimeException(
                 "Failed to load game phase ${phase::class.simpleName} for game $id of type ${type.name}",
@@ -78,7 +95,7 @@ abstract class Game(
      * @param player The player attempting to join.
      * @return The result of the join attempt.
      */
-    suspend fun join(player: Player): JoinResult {
+    open suspend fun join(player: Player): JoinResult {
         if (player.currentGame != null) {
             return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Player is already in a game")
         }
@@ -91,8 +108,28 @@ abstract class Game(
         if (success !is JoinResult.Success) return success
 
         _participants.add(player.uniqueId)
+        player.scoreboard = scoreboard
 
         return JoinResult.Success
+    }
+
+    private suspend fun runJoinsConcurrently(phase: GamePhase, players: Set<Player>) = coroutineScope {
+        players.map { player ->
+            async {
+                val result = phase.onJoin(player)
+
+                if (result !is JoinResult.Failure) return@async result
+
+                // leave on failure to join and send message
+                leave(player)
+
+                player.sendMessage(
+                    text("You were kicked out of the game, because: ${result.message ?: "Unknown reason (${result.reason})"}", RED)
+                )
+
+                return@async result
+            }
+        }.awaitAll()
     }
 
     /**
@@ -100,13 +137,17 @@ abstract class Game(
      *
      * @param player The player leaving the game.
      */
-    fun leave(player: Player) {
+    open fun leave(player: Player) {
         currentPhase?.onLeave(player)
 
         _participants.remove(player.uniqueId)
+        player.scoreboard = NexusPlugin.server.scoreboardManager.mainScoreboard
     }
 
     override fun dispose() {
+        participants.forEach { leave(it) }
+        currentPhase?.dispose()
+        listener.unregister()
         scheduler.dispose()
     }
 }
