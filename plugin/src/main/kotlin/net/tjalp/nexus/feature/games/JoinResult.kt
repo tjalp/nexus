@@ -7,7 +7,7 @@ enum class JoinFailureReason {
     OUT_OF_BOUNDS,
     WRONG_PHASE,
     GAME_FULL,
-    ALREADY_JOINED,
+    ALREADY_IN_GAME,
     UNKNOWN
 }
 

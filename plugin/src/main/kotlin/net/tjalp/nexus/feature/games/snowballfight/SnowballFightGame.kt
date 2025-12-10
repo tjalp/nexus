@@ -1,7 +1,6 @@
 package net.tjalp.nexus.feature.games.snowballfight
 
 import net.kyori.adventure.text.Component.text
-import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.games.Game
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.GameType
@@ -23,11 +22,14 @@ class SnowballFightPhase(private val game: SnowballFightGame) : GamePhase {
     val scheduler = game.scheduler.fork("phase/fight")
 
     override suspend fun load(previous: GamePhase?) {
-        NexusPlugin.server.sendMessage(text("Loading Snowball Fight Phase"))
+        scheduler.repeat(interval = 15) {
+            game.participants.forEach { player ->
+                player.sendActionBar(text("Throw snowballs at your opponents!"))
+            }
+        }
     }
 
     override suspend fun start(previous: GamePhase?) {
-        NexusPlugin.server.sendMessage(text("Starting Snowball Fight Phase"))
     }
 
     override suspend fun onJoin(player: Player): JoinResult {
@@ -39,17 +41,23 @@ class SnowballFightPhase(private val game: SnowballFightGame) : GamePhase {
     }
 
     override fun dispose() {
-        NexusPlugin.server.sendMessage(text("Disposing Snowball Fight Phase"))
+        scheduler.dispose()
     }
 }
 
 class SnowballFightWaitingPhase(private val game: SnowballFightGame) : GamePhase {
+
+    val scheduler = game.scheduler.fork("phase/waiting")
+
     override suspend fun load(previous: GamePhase?) {
-        NexusPlugin.server.sendMessage(text("Loading Snowball Waiting Phase"))
+        scheduler.repeat(interval = 15) {
+            game.participants.forEach { player ->
+                player.sendActionBar(text("Waiting for the game to start..."))
+            }
+        }
     }
 
     override suspend fun start(previous: GamePhase?) {
-        NexusPlugin.server.sendMessage(text("Starting Snowball Waiting Phase"))
     }
 
     override suspend fun onJoin(player: Player): JoinResult {
@@ -61,6 +69,6 @@ class SnowballFightWaitingPhase(private val game: SnowballFightGame) : GamePhase
     }
 
     override fun dispose() {
-        NexusPlugin.server.sendMessage(text("Disposing Snowball Waiting Phase"))
+        scheduler.dispose()
     }
 }
