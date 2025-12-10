@@ -18,6 +18,7 @@ import net.tjalp.nexus.command.argument.GameArgument
 import net.tjalp.nexus.feature.games.Game
 import net.tjalp.nexus.feature.games.GameType
 import net.tjalp.nexus.feature.games.GamesFeature
+import net.tjalp.nexus.feature.games.JoinResult
 
 object GameCommand {
 
@@ -76,16 +77,22 @@ object GameCommand {
                             game.scheduler.launch {
                                 val joined = players.map { player ->
                                     async {
-                                        val success = game.join(player)
-
-                                        if (!success) {
-                                            context.source.sender.sendMessage(text("Failed to join player ${player.name} to game ${game.id}", RED))
+                                        when (val result = game.join(player)) {
+                                            is JoinResult.Success -> true
+                                            is JoinResult.Failure -> {
+                                                val msg = result.message ?: "Unknown reason (${result.reason})"
+                                                context.source.sender.sendMessage(
+                                                    text("Failed to join player ${player.name} to game ${game.id}: $msg", RED)
+                                                )
+                                                false
+                                            }
                                         }
-                                        success
                                     }
                                 }.awaitAll()
 
-                                context.source.sender.sendMessage(text("Joined ${joined.count { it }} player(s) to game with ID ${game.id}"))
+                                context.source.sender.sendMessage(
+                                    text("Joined ${joined.count { it }} player(s) to game with ID ${game.id}")
+                                )
                             }
 
                             return@executes Command.SINGLE_SUCCESS

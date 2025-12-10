@@ -26,9 +26,9 @@ interface GamePhase : Disposable {
      * Handles a player joining the game phase.
      *
      * @param player The player joining.
-     * @return True if the player successfully joined, false otherwise.
+     * @return The result of the join attempt.
      */
-    suspend fun onJoin(player: Player): Boolean
+    suspend fun onJoin(player: Player): JoinResult
 
     /**
      * Handles a player leaving the game phase.

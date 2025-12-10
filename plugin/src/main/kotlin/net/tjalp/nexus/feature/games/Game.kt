@@ -31,7 +31,10 @@ abstract class Game(
             currentPhase = phase
             phase.start(previousPhase)
         } catch (e: Exception) {
-            throw RuntimeException("Failed to load game phase ${phase::class.simpleName} for game $id of type ${type.name}", e)
+            throw RuntimeException(
+                "Failed to load game phase ${phase::class.simpleName} for game $id of type ${type.name}",
+                e
+            )
         }
     }
 
@@ -39,14 +42,15 @@ abstract class Game(
         enterPhase(nextPhase)
     }
 
-    suspend fun join(player: Player): Boolean {
-        val success = currentPhase?.onJoin(player) ?: false
+    suspend fun join(player: Player): JoinResult {
+        val result =
+            currentPhase?.onJoin(player) ?: JoinResult.Failure(JoinFailureReason.WRONG_PHASE, "No active phase to join")
 
-        if (success) {
+        if (result is JoinResult.Success) {
             _participants.add(player.uniqueId)
         }
 
-        return success
+        return result
     }
 
     fun leave(player: Player) {
