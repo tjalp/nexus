@@ -1,12 +1,15 @@
 package net.tjalp.nexus.feature.games.snowballfight
 
-import io.papermc.paper.scoreboard.numbers.NumberFormat
+import io.papermc.paper.scoreboard.numbers.NumberFormat.styled
+import kotlinx.coroutines.launch
 import net.kyori.adventure.key.Key.key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.Sound.sound
 import net.kyori.adventure.text.Component.empty
+import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
-import net.kyori.adventure.text.format.Style
+import net.kyori.adventure.text.format.Style.style
+import net.kyori.adventure.text.format.TextColor.color
 import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.title.Title.Times.times
@@ -14,6 +17,7 @@ import net.kyori.adventure.title.Title.title
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.JoinResult
+import net.tjalp.nexus.util.CountdownTimer
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.Material
@@ -36,6 +40,8 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 
     lateinit var snowballHitsObjective: Objective; private set
 
+    private lateinit var timer: CountdownTimer
+
     override suspend fun load(previous: GamePhase?) {
 
     }
@@ -48,9 +54,12 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             null
         ).apply {
             displaySlot = DisplaySlot.SIDEBAR
-            numberFormat(NumberFormat.styled(Style.style().color(PRIMARY_COLOR).build()))
+            numberFormat(styled(style(PRIMARY_COLOR)))
         }
-        snowballHitsObjective.displaySlot = DisplaySlot.SIDEBAR
+
+        timer = CountdownTimer(scheduler, 10.seconds) {
+            finish()
+        }.also { it.start() }
 
         var offset = 0f
 
@@ -60,6 +69,14 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             snowballHitsObjective.displayName(title)
 
             offset = ((offset + 1f + 0.02f) % 2f) - 1f
+        }
+
+        scheduler.repeat(interval = 1) {
+            game.participants.forEach { player ->
+                player.sendActionBar {
+                    text("Time left: ${timer.remaining.inWholeSeconds.seconds}", PRIMARY_COLOR)
+                }
+            }
         }
     }
 
@@ -73,6 +90,12 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 
     override fun onLeave(player: Player) {
 
+    }
+
+    fun finish() {
+        game.scheduler.launch {
+            game.enterNextPhase()
+        }
     }
 
     override fun dispose() {
@@ -100,6 +123,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         val hitEntity = event.hitEntity as? Player ?: return
 
         if (projectile.type != EntityType.SNOWBALL
+            || shooter == hitEntity
             || !game.participants.containsAll(listOf(shooter, hitEntity))
         ) return
 
@@ -113,8 +137,14 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         val hitByMessage = miniMessage().deserialize(
             HIT_BY_MESSAGES.random(),
             Placeholder.component("shooter", shooter.name().colorIfAbsent(WHITE))
-        ).colorIfAbsent(PRIMARY_COLOR)
-        hitEntity.sendActionBar(hitByMessage)
+        ).colorIfAbsent(color(0x71A6D1))
+        val hitByTitle = title(
+            empty(),
+            hitByMessage,
+            times(0.seconds.toJavaDuration(), 750.milliseconds.toJavaDuration(), 500.milliseconds.toJavaDuration())
+        )
+//        hitEntity.sendActionBar(hitByMessage)
+        hitEntity.showTitle(hitByTitle)
 
         snowballHitsObjective.getScore(shooter.name).score += 1
 
