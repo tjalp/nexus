@@ -2,11 +2,13 @@ package net.tjalp.nexus.feature.games.snowballfight
 
 import io.papermc.paper.scoreboard.numbers.NumberFormat.styled
 import kotlinx.coroutines.launch
+import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.key.Key.key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.Sound.sound
 import net.kyori.adventure.text.Component.empty
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
 import net.kyori.adventure.text.format.Style.style
 import net.kyori.adventure.text.format.TextColor.color
@@ -41,6 +43,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     lateinit var snowballHitsObjective: Objective; private set
 
     private lateinit var timer: CountdownTimer
+    private lateinit var bossBar: BossBar
 
     override suspend fun load(previous: GamePhase?) {
 
@@ -57,9 +60,10 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             numberFormat(styled(style(PRIMARY_COLOR)))
         }
 
-        timer = CountdownTimer(scheduler, 10.seconds) {
+        timer = CountdownTimer(scheduler, 15.seconds) {
             finish()
         }.also { it.start() }
+        bossBar = BossBar.bossBar(empty(), 1f, BossBar.Color.WHITE, BossBar.Overlay.PROGRESS)
 
         var offset = 0f
 
@@ -71,16 +75,45 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             offset = ((offset + 1f + 0.02f) % 2f) - 1f
         }
 
-        scheduler.repeat(interval = 1) {
-            game.participants.forEach { player ->
-                player.sendActionBar {
-                    text("Time left: ${timer.remaining.inWholeSeconds.seconds}", PRIMARY_COLOR)
+        scheduler.repeat(interval = 20) {
+            // 1.6s becomes 2.1s -> 2s, 1.4s becomes 1.9s -> 1s
+            val secondsRemaining = (timer.remaining + 500.milliseconds).inWholeSeconds
+            val progress =
+                (timer.remaining.inWholeMilliseconds.toFloat() / timer.initialDuration.inWholeMilliseconds.toFloat())
+                    .coerceIn(0f, 1f)
+            val text = text().content("⌚ ${secondsRemaining.seconds}").color(WHITE)
+
+            if (secondsRemaining <= 10) {
+                val isEven = secondsRemaining % 2 == 0L
+                val bossBarColor = if (isEven) BossBar.Color.RED else BossBar.Color.WHITE
+                val textColor = if (isEven) RED else WHITE
+
+                bossBar.color(bossBarColor)
+                bossBar.addFlag(BossBar.Flag.DARKEN_SCREEN)
+                text.color(textColor)
+
+                game.participants.forEach { player ->
+                    player.playSound(
+                        sound(
+                            key("block.note_block.cow_bell"),
+                            Sound.Source.MASTER,
+                            .5f,
+                            if (isEven) 1.1f else .9f
+                        ),
+                        Sound.Emitter.self()
+                    )
                 }
+            } else {
+                bossBar.removeFlag(BossBar.Flag.DARKEN_SCREEN)
             }
+
+            bossBar.name(text)
+            bossBar.progress(progress)
         }
     }
 
     override suspend fun onJoin(player: Player): JoinResult {
+        bossBar.addViewer(player)
         val score = snowballHitsObjective.getScore(player)
 
         if (!score.isScoreSet) score.score = 0
@@ -89,7 +122,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     }
 
     override fun onLeave(player: Player) {
-
+        bossBar.removeViewer(player)
     }
 
     fun finish() {

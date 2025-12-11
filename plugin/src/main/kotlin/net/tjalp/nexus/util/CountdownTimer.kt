@@ -18,7 +18,7 @@ import kotlin.time.TimeSource
  */
 class CountdownTimer(
     private val scheduler: Scheduler,
-    initialDuration: Duration,
+    val initialDuration: Duration,
     private val onTick: (remaining: Duration) -> Unit = {},
     private val onFinished: () -> Unit
 ) : Disposable {

@@ -69,6 +69,7 @@ abstract class Game(
 
         try {
             phase.load(previousPhase)
+            participants.forEach { previousPhase?.onLeave(it) }
             previousPhase?.dispose()
             currentPhase = phase
             phase.start(previousPhase)
