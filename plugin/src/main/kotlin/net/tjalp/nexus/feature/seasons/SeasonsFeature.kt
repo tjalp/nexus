@@ -28,11 +28,24 @@ object SeasonsFeature : Feature("seasons") {
     private var packetListener: Disposable? = null
 
     var currentSeason: Season = Season.DEFAULT
+        set(value) {
+            @Suppress("UnstableApiUsage")
+            if (field != value) NexusPlugin.server.onlinePlayers.forEach { player ->
+                player.transfer(
+                    player.connection.virtualHost?.hostName.toString(),
+                    player.connection.virtualHost?.port ?: 25565
+                )
+            }
+            field = value
+        }
 
     override fun enable() {
         super.enable()
 
         packetListener = PacketManager.addPacketListener(ClientboundRegistryDataPacket::class, ::onRegistryDataPacket)
+
+        @Suppress("UnstableApiUsage")
+        NexusPlugin.server.onlinePlayers.forEach { player -> player.connection.reenterConfiguration() }
 
         scheduler.repeat(interval = 1) {
             val ticker = currentSeason.ticker ?: return@repeat
@@ -64,6 +77,7 @@ object SeasonsFeature : Feature("seasons") {
     }
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
+        println("test")
         if (currentSeason != Season.WINTER) return PacketAction.Continue
         val registryPath = packet.registry.location().path
         val foliageColor = Color(0x858780).rgb
@@ -74,7 +88,8 @@ object SeasonsFeature : Feature("seasons") {
         val newEntries = packet.entries.map { entry ->
             val biome = registry.get(Key.key(entry.id.namespace, entry.id.path)) ?: return@map entry
             val ops = MinecraftServer.getServer().registryAccess().createSerializationContext(NbtOps.INSTANCE)
-            val tag = Biome.NETWORK_CODEC.encodeStart(ops, biome.asNmsBiome())?.result()?.getOrNull()?.asCompound()?.getOrNull()
+            val tag = Biome.NETWORK_CODEC.encodeStart(ops, biome.asNmsBiome())?.result()?.getOrNull()?.asCompound()
+                ?.getOrNull()
 
             tag?.putBoolean("has_precipitation", true)
             tag?.putFloat("temperature", -0.7f)

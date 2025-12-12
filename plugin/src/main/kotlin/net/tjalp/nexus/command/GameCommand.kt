@@ -1,6 +1,7 @@
 package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.argument
@@ -15,10 +16,9 @@ import net.kyori.adventure.text.Component.textOfChildren
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.GameArgument
-import net.tjalp.nexus.feature.games.Game
-import net.tjalp.nexus.feature.games.GameType
-import net.tjalp.nexus.feature.games.GamesFeature
-import net.tjalp.nexus.feature.games.JoinResult
+import net.tjalp.nexus.feature.games.*
+import net.tjalp.nexus.feature.games.addition.TimerPhase
+import kotlin.time.Duration.Companion.seconds
 
 object GameCommand {
 
@@ -94,6 +94,54 @@ object GameCommand {
                                     text("Joined ${joined.count { it }} player(s) to game with ID ${game.id}")
                                 )
                             }
+
+                            return@executes Command.SINGLE_SUCCESS
+                        })))
+            .then(literal("leave")
+                .then(argument("targets", ArgumentTypes.players())
+                    .executes { context ->
+                        val resolver = context.getArgument("targets", PlayerSelectorArgumentResolver::class.java)
+                        val players = resolver.resolve(context.source)
+
+                        players.forEach { player ->
+                            val game = player.currentGame ?: return@forEach
+
+                            game.leave(player)
+                        }
+
+                        context.source.sender.sendMessage(
+                            text("Removed ${players.size} player(s) from their current games")
+                        )
+
+                        return@executes Command.SINGLE_SUCCESS
+                    }))
+            .then(literal("timer")
+                .then(argument("id", GameArgument)
+                    .then(argument("remaining", IntegerArgumentType.integer(0))
+                        .executes { context ->
+                            val game = context.getArgument("id", Game::class.java)
+                            val remaining = context.getArgument("remaining", Int::class.java)
+                            val phase = game.currentPhase
+
+                            if (phase == null) {
+                                context.source.sender.sendMessage(
+                                    text("Game with ID ${game.id} does not have an active phase", RED)
+                                )
+                                return@executes Command.SINGLE_SUCCESS
+                            }
+
+                            if (phase !is TimerPhase) {
+                                context.source.sender.sendMessage(
+                                    text("Game with ID ${game.id} does not have a timer in the current phase", RED)
+                                )
+                                return@executes Command.SINGLE_SUCCESS
+                            }
+
+                            phase.timer.setRemaining(remaining.seconds)
+
+                            context.source.sender.sendMessage(
+                                text("Set timer for game with ID ${game.id} to ${remaining.seconds} remaining")
+                            )
 
                             return@executes Command.SINGLE_SUCCESS
                         })))

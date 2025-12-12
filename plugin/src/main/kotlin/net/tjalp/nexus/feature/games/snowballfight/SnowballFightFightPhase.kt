@@ -19,6 +19,7 @@ import net.kyori.adventure.title.Title.title
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.JoinResult
+import net.tjalp.nexus.feature.games.addition.TimerPhase
 import net.tjalp.nexus.util.CountdownTimer
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
@@ -33,16 +34,17 @@ import org.bukkit.scoreboard.Criteria
 import org.bukkit.scoreboard.DisplaySlot
 import org.bukkit.scoreboard.Objective
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, Listener {
+class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, TimerPhase, Listener {
 
     val scheduler = game.scheduler.fork("phase/fight")
 
     lateinit var snowballHitsObjective: Objective; private set
 
-    private lateinit var timer: CountdownTimer
+    override lateinit var timer: CountdownTimer
     private lateinit var bossBar: BossBar
 
     override suspend fun load(previous: GamePhase?) {
@@ -60,7 +62,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             numberFormat(styled(style(PRIMARY_COLOR)))
         }
 
-        timer = CountdownTimer(scheduler, 15.seconds) {
+        timer = CountdownTimer(scheduler, 10.minutes) {
             finish()
         }.also { it.start() }
         bossBar = BossBar.bossBar(empty(), 1f, BossBar.Color.WHITE, BossBar.Overlay.PROGRESS)
@@ -78,16 +80,18 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         scheduler.repeat(interval = 20) {
             // 1.6s becomes 2.1s -> 2s, 1.4s becomes 1.9s -> 1s
             val secondsRemaining = (timer.remaining + 500.milliseconds).inWholeSeconds
-            val progress =
-                (timer.remaining.inWholeMilliseconds.toFloat() / timer.initialDuration.inWholeMilliseconds.toFloat())
+            var progress =
+                (secondsRemaining.toFloat() / (timer.initialDuration + 500.milliseconds).inWholeSeconds.toFloat())
                     .coerceIn(0f, 1f)
             val text = text().content("⌚ ${secondsRemaining.seconds}").color(WHITE)
+            val warningThreshold = 10
 
-            if (secondsRemaining <= 10) {
+            if (secondsRemaining <= warningThreshold) {
                 val isEven = secondsRemaining % 2 == 0L
                 val bossBarColor = if (isEven) BossBar.Color.RED else BossBar.Color.WHITE
                 val textColor = if (isEven) RED else WHITE
 
+                progress = (secondsRemaining.toFloat() / warningThreshold.toFloat()).coerceIn(0f, 1f)
                 bossBar.color(bossBarColor)
                 bossBar.addFlag(BossBar.Flag.DARKEN_SCREEN)
                 text.color(textColor)
@@ -104,6 +108,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
                     )
                 }
             } else {
+                bossBar.color(BossBar.Color.WHITE)
                 bossBar.removeFlag(BossBar.Flag.DARKEN_SCREEN)
             }
 
@@ -126,6 +131,21 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     }
 
     fun finish() {
+        // in case of a tie, no one wins!
+        val winner = game.participants.groupBy { snowballHitsObjective.getScore(it).score }
+            .maxByOrNull { it.key }?.value
+            ?.let { if (it.size == 1) it.first() else null }
+        val title = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1>FIGHT OVER!")
+        val subtitle = text().color(color(0x71A6D1)).append(winner?.name()?.colorIfAbsent(WHITE) ?: text("No one", WHITE))
+            .append(text(" wins the snowball fight!")).build()
+        val times = times(0.seconds.toJavaDuration(), 4.seconds.toJavaDuration(), 1.seconds.toJavaDuration())
+        val finishedTitle = title(title, subtitle, times)
+
+        game.participants.forEach {
+            it.showTitle(finishedTitle)
+            it.playSound(sound(key("block.note_block.bit"), Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
+        }
+
         game.scheduler.launch {
             game.enterNextPhase()
         }
