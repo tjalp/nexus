@@ -7,9 +7,17 @@ modules:
   chat:
     enabled: true
     format: "<<name>> <message>"
+  disguises:
+    enabled: false
   gamerules:
-    enabled: true
+    enabled: false
     creeper-grieving: true
     crop-trampling: true
     enderman-grieving: true
     ghast-grieving: true
+  games:
+    enabled: false
+  seasons:
+    enabled: false
+  teleport_requests:
+    enabled: false

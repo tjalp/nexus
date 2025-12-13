@@ -49,7 +49,7 @@ object NexusPlugin : JavaPlugin() {
             url = config.getString("database.url") ?: error("Database URL not specified in config"),
             driver = config.getString("database.driver") ?: error("Database driver not specified in config"),
             user = config.getString("database.user") ?: error("Database user not specified in config"),
-            password = config.getString("database.user") ?: error("Database password not specified in config")
+            password = config.getString("database.password") ?: error("Database password not specified in config")
         )
         profiles = ExposedProfilesService(database)
         PacketManager.init()
