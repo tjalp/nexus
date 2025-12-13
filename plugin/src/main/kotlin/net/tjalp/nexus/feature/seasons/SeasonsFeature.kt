@@ -77,7 +77,6 @@ object SeasonsFeature : Feature("seasons") {
     }
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
-        println("test")
         if (currentSeason != Season.WINTER) return PacketAction.Continue
         val registryPath = packet.registry.location().path
         val foliageColor = Color(0x858780).rgb
