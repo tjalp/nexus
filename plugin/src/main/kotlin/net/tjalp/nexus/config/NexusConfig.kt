@@ -73,7 +73,15 @@ data class GamesConfig(
 
 @ConfigSerializable
 data class SeasonsConfig(
-    val enable: Boolean = true
+    val enable: Boolean = true,
+    val winter: SeasonWinterConfig
+)
+
+@ConfigSerializable
+data class SeasonWinterConfig(
+    val allowSnowFormation: Boolean = true,
+    val allowIceFormation: Boolean = true,
+    val iceFormationRequiresSurroundedByWater: Boolean = false
 )
 
 @ConfigSerializable
