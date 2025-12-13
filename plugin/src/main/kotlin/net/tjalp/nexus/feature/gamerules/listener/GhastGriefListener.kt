@@ -13,7 +13,7 @@ class GhastGriefListener(private val feature: GameRulesFeature) : Listener {
     @EventHandler
     fun on(event: EntityExplodeEvent) {
         val entity = event.entity
-        val ghastGrievingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.ghast-grieving", true)
+        val ghastGrievingEnabled = NexusPlugin.configuration.modules.gamerules.ghastGrieving
 
         if (entity !is Fireball || entity.shooter !is Ghast || ghastGrievingEnabled) return
 

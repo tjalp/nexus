@@ -14,7 +14,7 @@ class ChatListener(private val feature: ChatFeature) : Listener {
 
     @EventHandler
     fun on(event: AsyncChatEvent) {
-        val format = NexusPlugin.config.getString("modules.${feature.name}.format", "<<name>> <message>")!!
+        val format = NexusPlugin.configuration.modules.chat.format
 
         event.renderer(NexusChatRenderer.renderer(format, event.signedMessage()))
     }

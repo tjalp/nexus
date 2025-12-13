@@ -1,9 +1,11 @@
 package net.tjalp.nexus.feature.teleportrequests
 
+import org.spongepowered.configurate.reactive.Disposable
+
 /**
  * Represents a teleport request.
  */
-interface TeleportRequest {
+interface TeleportRequest : Disposable {
 
     /**
      * Send the teleport request.

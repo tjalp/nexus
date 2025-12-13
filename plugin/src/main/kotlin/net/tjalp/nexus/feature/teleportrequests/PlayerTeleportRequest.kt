@@ -10,8 +10,9 @@ import net.kyori.adventure.text.event.ClickEvent.callback
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.format.TextDecoration.BOLD
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
+import net.tjalp.nexus.NexusPlugin
 import org.bukkit.entity.Player
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class PlayerTeleportRequest(
     val source: Player,
@@ -37,7 +38,7 @@ class PlayerTeleportRequest(
         requests += this
 
         this.expireJob = this.scheduler.launch {
-            delay(1.5.minutes)
+            delay(NexusPlugin.configuration.modules.teleportRequests.requestTimeoutSeconds.seconds)
 
             requests -= this@PlayerTeleportRequest
 
@@ -144,13 +145,14 @@ class PlayerTeleportRequest(
         )
     }
 
+    override fun dispose() {
+        requests -= this
+        this.expireJob?.cancel()
+    }
+
     companion object {
         private val requests = mutableListOf<PlayerTeleportRequest>()
 
         fun requests(): List<PlayerTeleportRequest> = this.requests.toList()
-
-        fun clearAllRequests() {
-            requests.clear()
-        }
     }
 }

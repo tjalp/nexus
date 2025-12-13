@@ -19,7 +19,7 @@ class CropTramplingListener(private val feature: GameRulesFeature) : Listener {
          if (block == null || block.type != Material.FARMLAND || event.action != Action.PHYSICAL) return
 
         // todo make this an actual gamerule
-        val cropTramplingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.crop-trampling", true)
+        val cropTramplingEnabled = NexusPlugin.configuration.modules.gamerules.cropTrampling
 
         if (cropTramplingEnabled) return
 
@@ -33,7 +33,7 @@ class CropTramplingListener(private val feature: GameRulesFeature) : Listener {
         if (block.type != Material.FARMLAND) return
 
         // todo make this an actual gamerule
-        val cropTramplingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.crop-trampling", true)
+        val cropTramplingEnabled = NexusPlugin.configuration.modules.gamerules.cropTrampling
 
         if (cropTramplingEnabled) return
 

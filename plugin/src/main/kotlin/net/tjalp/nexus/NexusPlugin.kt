@@ -3,6 +3,7 @@ package net.tjalp.nexus
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import kotlinx.coroutines.runBlocking
 import net.tjalp.nexus.command.*
+import net.tjalp.nexus.config.NexusConfig
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
@@ -21,12 +22,15 @@ import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.spongepowered.configurate.kotlin.extensions.get
+import org.spongepowered.configurate.kotlin.extensions.set
 
 object NexusPlugin : JavaPlugin() {
 
     lateinit var profiles: ProfilesService; private set
     lateinit var database: Database; private set
     lateinit var scheduler: Scheduler; private set
+    lateinit var configuration: NexusConfig; private set
 
     private val listeners = mutableListOf<Listener>()
 
@@ -42,14 +46,17 @@ object NexusPlugin : JavaPlugin() {
         )
 
     override fun onEnable() {
-        saveDefaultConfig()
+        val rootNode = NexusConfig.LOADER.load()
+        configuration = rootNode?.get() ?: error("Failed to load configuration")
+        rootNode.set(NexusConfig::class, configuration)
+        NexusConfig.LOADER.save(rootNode)
 
         scheduler = Scheduler(id = "nexus")
         database = Database.connect(
-            url = config.getString("database.url") ?: error("Database URL not specified in config"),
-            driver = config.getString("database.driver") ?: error("Database driver not specified in config"),
-            user = config.getString("database.user") ?: error("Database user not specified in config"),
-            password = config.getString("database.password") ?: error("Database password not specified in config")
+            url = configuration.database.url,
+            driver = configuration.database.driver,
+            user = configuration.database.user,
+            password = configuration.database.password
         )
         profiles = ExposedProfilesService(database)
         PacketManager.init()
@@ -78,14 +85,25 @@ object NexusPlugin : JavaPlugin() {
     }
 
     private fun enableFeatures() {
-        features.filter { config.getBoolean("modules.${it.name}.enabled", true) }
-            .forEach {
-                try {
-                    it.enable()
-                } catch (e: Throwable) {
-                    logger.severe("Failed to enable feature '${it.name}': ${e.message}")
-                    e.printStackTrace()
-                }
+        val modules = configuration.modules
+
+        features.filter {
+            when(it) {
+                is ChatFeature -> modules.chat.enable
+                is DisguiseFeature -> modules.disguises.enable
+                is GameRulesFeature -> modules.gamerules.enable
+                is GamesFeature -> modules.games.enable
+                is SeasonsFeature -> modules.seasons.enable
+                is TeleportRequestsFeature -> modules.teleportRequests.enable
+                else -> false
             }
+        }.forEach {
+            try {
+                it.enable()
+            } catch (e: Throwable) {
+                logger.severe("Failed to enable feature '${it.name}': ${e.message}")
+                e.printStackTrace()
+            }
+        }
     }
 }

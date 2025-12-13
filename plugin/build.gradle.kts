@@ -26,6 +26,7 @@ paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArt
 dependencies {
     implementation(libs.bundles.kotlinxEcosystem)
     implementation(libs.bundles.database)
+    implementation(libs.configurateKotlinExtras)
     implementation(libs.commonsCollections)
 
     compileOnly(libs.libsDisguises)

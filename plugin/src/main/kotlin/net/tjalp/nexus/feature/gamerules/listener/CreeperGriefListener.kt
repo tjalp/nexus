@@ -12,7 +12,7 @@ class CreeperGriefListener(private val feature: GameRulesFeature) : Listener {
     @EventHandler
     fun on(event: EntityExplodeEvent) {
         val entity = event.entity
-        val creeperGrievingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.creeper-grieving", true)
+        val creeperGrievingEnabled = NexusPlugin.configuration.modules.gamerules.creeperGrieving
 
         if (entity.type != EntityType.CREEPER || creeperGrievingEnabled) return
 

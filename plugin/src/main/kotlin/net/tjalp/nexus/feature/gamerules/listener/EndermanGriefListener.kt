@@ -12,7 +12,7 @@ class EndermanGriefListener(private val feature: GameRulesFeature) : Listener {
     @EventHandler
     fun on(event: EntityChangeBlockEvent) {
         val entity = event.entity
-        val endermanGrievingEnabled = NexusPlugin.config.getBoolean("modules.${feature.name}.enderman-grieving", true)
+        val endermanGrievingEnabled = NexusPlugin.configuration.modules.gamerules.endermanGrieving
 
         if (entity.type != EntityType.ENDERMAN || endermanGrievingEnabled) return
 
