@@ -15,8 +15,10 @@ import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.asNmsBiome
 import org.bukkit.GameRule
 import org.bukkit.HeightMap
+import org.bukkit.NamespacedKey
 import org.bukkit.World
 import org.bukkit.entity.Player
+import org.bukkit.persistence.PersistentDataType
 import org.spongepowered.configurate.reactive.Disposable
 import java.awt.Color
 import java.util.*
@@ -26,9 +28,11 @@ import kotlin.jvm.optionals.getOrNull
 object SeasonsFeature : Feature("seasons") {
 
     private var packetListener: Disposable? = null
+    private val SEASON_KEY = NamespacedKey(NexusPlugin, "season")
 
     var currentSeason: Season = Season.DEFAULT
         set(value) {
+            NexusPlugin.server.worlds.firstOrNull()?.persistentDataContainer?.set(SEASON_KEY, PersistentDataType.STRING, value.name)
             @Suppress("UnstableApiUsage")
             if (field != value) NexusPlugin.server.onlinePlayers.forEach { player ->
                 player.transfer(
@@ -44,8 +48,14 @@ object SeasonsFeature : Feature("seasons") {
 
         packetListener = PacketManager.addPacketListener(ClientboundRegistryDataPacket::class, ::onRegistryDataPacket)
 
-        @Suppress("UnstableApiUsage")
-        NexusPlugin.server.onlinePlayers.forEach { player -> player.connection.reenterConfiguration() }
+        val seasonName = NexusPlugin.server.worlds.firstOrNull()?.persistentDataContainer?.get(SEASON_KEY,
+            PersistentDataType.STRING)
+        currentSeason = try {
+            if (seasonName != null) Season.valueOf(seasonName) else Season.DEFAULT
+        } catch (e: IllegalArgumentException) {
+            NexusPlugin.logger.warning("Invalid season name: $seasonName, defaulting to DEFAULT season.")
+            Season.DEFAULT
+        }
 
         scheduler.repeat(interval = 1) {
             val ticker = currentSeason.ticker ?: return@repeat

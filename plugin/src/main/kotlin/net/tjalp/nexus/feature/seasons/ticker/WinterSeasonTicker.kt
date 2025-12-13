@@ -8,6 +8,7 @@ import org.bukkit.World
 import org.bukkit.block.Block
 import org.bukkit.block.BlockFace
 import org.bukkit.block.BlockSupport
+import org.bukkit.block.data.Levelled
 import org.bukkit.block.data.type.Snow
 
 object WinterSeasonTicker : SeasonTicker {
@@ -35,6 +36,8 @@ object WinterSeasonTicker : SeasonTicker {
                 blockAbove.blockData = it
             } ?: run { blockAbove.type = Material.SNOW }
         }
-        if (block.type == Material.WATER) block.type = Material.ICE
+        if (block.type == Material.WATER && (block.blockData as Levelled).level == 0) {
+            block.type = Material.ICE
+        }
     }
 }
