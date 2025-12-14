@@ -16,18 +16,19 @@ import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.JoinResult
+import net.tjalp.nexus.feature.games.phase.FinishablePhase
 import net.tjalp.nexus.feature.games.phase.TimerPhase
 import net.tjalp.nexus.util.SecondCountdownTimer
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.Material
-import org.bukkit.entity.Entity
-import org.bukkit.entity.EntityType
-import org.bukkit.entity.HumanEntity
-import org.bukkit.entity.LivingEntity
+import org.bukkit.craftbukkit.entity.CraftMob
+import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.ProjectileHitEvent
@@ -40,7 +41,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, TimerPhase, Listener {
+class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, FinishablePhase, TimerPhase, Listener {
 
     val scheduler = game.scheduler.fork("phase/fight")
 
@@ -61,7 +62,9 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         }
 
         timer = SecondCountdownTimer(scheduler, 10.minutes.inWholeSeconds, onTick = ::onTimerTick) {
-            finish()
+            scheduler.launch {
+                finish()
+            }
         }.also { it.start() }
         bossBar = BossBar.bossBar(text("⌚ ${timer.remaining.seconds}", WHITE), 1f, BossBar.Color.WHITE, BossBar.Overlay.PROGRESS)
 
@@ -82,11 +85,33 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 
         if (!score.isScoreSet) score.score = 0
 
+        if (entity is Mob) {
+            val handle = (entity as CraftMob).handle
+            val targetSelector = handle.targetSelector
+
+            targetSelector.addGoal(-1,
+                NearestAttackableTargetGoal(
+                    handle,
+                    net.minecraft.world.entity.LivingEntity::class.java,
+                    10,
+                    true,
+                    false
+                ) { entity: net.minecraft.world.entity.LivingEntity, level: ServerLevel -> game.participants.contains(entity.bukkitLivingEntity) })
+        }
+
         return JoinResult.Success
     }
 
     override fun onLeave(entity: Entity) {
         bossBar.removeViewer(entity)
+
+        if (entity is Mob) {
+            val handle = (entity as CraftMob).handle
+            val targetSelector = handle.targetSelector
+
+            entity.target = null
+            targetSelector.availableGoals.filter { it.priority == -1 }.forEach { targetSelector.removeGoal(it.goal) }
+        }
     }
 
     private fun onTimerTick(remainingSeconds: Long) {
@@ -126,7 +151,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         bossBar.progress(progress)
     }
 
-    fun finish() {
+    override suspend fun finish() {
         // in case of a tie, no one wins!
         val winner = game.participants.groupBy { snowballHitsObjective.getScoreFor(it).score }
             .maxByOrNull { it.key }?.value

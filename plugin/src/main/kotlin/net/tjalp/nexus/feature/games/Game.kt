@@ -92,6 +92,13 @@ abstract class Game(
     }
 
     /**
+     * Ends the game, removing it from active games and disposing of its resources.
+     *
+     * @see GamesFeature.endGame
+     */
+    fun end() = GamesFeature.endGame(this)
+
+    /**
      * Allows an entity to join the game, if it is not already in another game and the current phase allows it.
      *
      * @param entity The entity attempting to join.
@@ -99,7 +106,7 @@ abstract class Game(
      */
     open suspend fun join(entity: Entity): JoinResult {
         if (entity.currentGame != null) {
-            return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Player is already in a game")
+            return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Entity is already in a game")
         }
 
         val success = currentPhase?.onJoin(entity) ?: return JoinResult.Failure(
