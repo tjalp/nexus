@@ -13,7 +13,7 @@ interface GamePhase : Disposable {
      *
      * @param previous The previous game phase, if any.
      */
-    suspend fun load(previous: GamePhase?)
+    suspend fun load(previous: GamePhase?) {}
 
     /**
      * Starts the game phase, making it active.

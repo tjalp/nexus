@@ -1,7 +1,7 @@
 package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
-import com.mojang.brigadier.arguments.IntegerArgumentType
+import com.mojang.brigadier.arguments.LongArgumentType
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.argument
@@ -17,7 +17,7 @@ import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.GameArgument
 import net.tjalp.nexus.feature.games.*
-import net.tjalp.nexus.feature.games.addition.TimerPhase
+import net.tjalp.nexus.feature.games.phase.TimerPhase
 import kotlin.time.Duration.Companion.seconds
 
 object GameCommand {
@@ -117,10 +117,10 @@ object GameCommand {
                     }))
             .then(literal("timer")
                 .then(argument("id", GameArgument)
-                    .then(argument("remaining", IntegerArgumentType.integer(0))
+                    .then(argument("remaining", LongArgumentType.longArg(0))
                         .executes { context ->
                             val game = context.getArgument("id", Game::class.java)
-                            val remaining = context.getArgument("remaining", Int::class.java)
+                            val remaining = context.getArgument("remaining", Long::class.java)
                             val phase = game.currentPhase
 
                             if (phase == null) {
@@ -137,7 +137,7 @@ object GameCommand {
                                 return@executes Command.SINGLE_SUCCESS
                             }
 
-                            phase.timer.setRemaining(remaining.seconds)
+                            phase.timer.remaining = remaining
 
                             context.source.sender.sendMessage(
                                 text("Set timer for game with ID ${game.id} to ${remaining.seconds} remaining")

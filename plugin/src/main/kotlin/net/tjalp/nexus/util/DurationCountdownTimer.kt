@@ -16,7 +16,7 @@ import kotlin.time.TimeSource
  * - Supports adding arbitrary time while running.
  * - Calls onFinished when the remaining time reaches zero.
  */
-class CountdownTimer(
+class DurationCountdownTimer(
     private val scheduler: Scheduler,
     val initialDuration: Duration,
     private val onTick: (remaining: Duration) -> Unit = {},
