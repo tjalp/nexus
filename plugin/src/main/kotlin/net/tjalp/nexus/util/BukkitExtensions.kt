@@ -7,6 +7,7 @@ import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.block.Biome
 import org.bukkit.craftbukkit.block.CraftBiome
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
@@ -43,6 +44,13 @@ fun Player.profile(): ProfileSnapshot {
  * @return The [Player] corresponding to this UUID, or null if they are not online
  */
 fun UUID.asPlayer(): Player? = NexusPlugin.server.getPlayer(this)
+
+/**
+ * Converts this UUID to an Entity, if it exists.
+ *
+ * @return The [Entity] corresponding to this UUID, or null if it does not exist
+ */
+fun UUID.asEntity(): Entity? = NexusPlugin.server.getEntity(this)
 
 /**
  * Converts this Location to a BlockPos.

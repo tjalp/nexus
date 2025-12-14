@@ -7,7 +7,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.argument
 import io.papermc.paper.command.brigadier.Commands.literal
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes
-import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver
+import io.papermc.paper.command.brigadier.argument.resolvers.selector.EntitySelectorArgumentResolver
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -68,21 +68,21 @@ object GameCommand {
                     }))
             .then(literal("join")
                 .then(argument("id", GameArgument)
-                    .then(argument("targets", ArgumentTypes.players())
+                    .then(argument("targets", ArgumentTypes.entities())
                         .executes { context ->
                             val game = context.getArgument("id", Game::class.java)
-                            val resolver = context.getArgument("targets", PlayerSelectorArgumentResolver::class.java)
-                            val players = resolver.resolve(context.source)
+                            val resolver = context.getArgument("targets", EntitySelectorArgumentResolver::class.java)
+                            val entities = resolver.resolve(context.source)
 
                             game.scheduler.launch {
-                                val joined = players.map { player ->
+                                val joined = entities.map { entity ->
                                     async {
-                                        when (val result = game.join(player)) {
+                                        when (val result = game.join(entity)) {
                                             is JoinResult.Success -> true
                                             is JoinResult.Failure -> {
                                                 val msg = result.message ?: "Unknown reason (${result.reason})"
                                                 context.source.sender.sendMessage(
-                                                    text("Failed to join player ${player.name} to game ${game.id}: $msg", RED)
+                                                    text("Failed to join entity ${entity.name} to game ${game.id}: $msg", RED)
                                                 )
                                                 false
                                             }
@@ -91,26 +91,26 @@ object GameCommand {
                                 }.awaitAll()
 
                                 context.source.sender.sendMessage(
-                                    text("Joined ${joined.count { it }} player(s) to game with ID ${game.id}")
+                                    text("Joined ${joined.count { it }} entities to game with ID ${game.id}")
                                 )
                             }
 
                             return@executes Command.SINGLE_SUCCESS
                         })))
             .then(literal("leave")
-                .then(argument("targets", ArgumentTypes.players())
+                .then(argument("targets", ArgumentTypes.entities())
                     .executes { context ->
-                        val resolver = context.getArgument("targets", PlayerSelectorArgumentResolver::class.java)
-                        val players = resolver.resolve(context.source)
+                        val resolver = context.getArgument("targets", EntitySelectorArgumentResolver::class.java)
+                        val entities = resolver.resolve(context.source)
 
-                        players.forEach { player ->
+                        entities.forEach { player ->
                             val game = player.currentGame ?: return@forEach
 
                             game.leave(player)
                         }
 
                         context.source.sender.sendMessage(
-                            text("Removed ${players.size} player(s) from their current games")
+                            text("Removed ${entities.size} entities from their current games")
                         )
 
                         return@executes Command.SINGLE_SUCCESS

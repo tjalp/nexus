@@ -6,9 +6,10 @@ import kotlinx.coroutines.coroutineScope
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.util.asPlayer
+import net.tjalp.nexus.util.asEntity
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.spongepowered.configurate.reactive.Disposable
 import java.util.*
@@ -39,9 +40,9 @@ abstract class Game(
     private val _participants = mutableSetOf<UUID>()
 
     /**
-     * The set of players currently participating in the game.
+     * The set of entities currently participating in the game.
      */
-    val participants: Set<Player> get() = _participants.mapNotNull { it.asPlayer() }.toSet()
+    val participants: Set<Entity> get() = _participants.mapNotNull { it.asEntity() }.toSet()
 
     /**
      * The next phase to transition to when advancing the game.
@@ -91,31 +92,31 @@ abstract class Game(
     }
 
     /**
-     * Allows a player to join the game, if they are not already in another game and the current phase allows it.
+     * Allows an entity to join the game, if it is not already in another game and the current phase allows it.
      *
-     * @param player The player attempting to join.
+     * @param entity The entity attempting to join.
      * @return The result of the join attempt.
      */
-    open suspend fun join(player: Player): JoinResult {
-        if (player.currentGame != null) {
+    open suspend fun join(entity: Entity): JoinResult {
+        if (entity.currentGame != null) {
             return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Player is already in a game")
         }
 
-        val success = currentPhase?.onJoin(player) ?: return JoinResult.Failure(
+        val success = currentPhase?.onJoin(entity) ?: return JoinResult.Failure(
             JoinFailureReason.WRONG_PHASE,
             "No active phase to join"
         )
 
         if (success !is JoinResult.Success) return success
 
-        _participants.add(player.uniqueId)
-        player.scoreboard = scoreboard
+        _participants.add(entity.uniqueId)
+        if (entity is Player) entity.scoreboard = scoreboard
 
         return JoinResult.Success
     }
 
-    private suspend fun runJoinsConcurrently(phase: GamePhase, players: Set<Player>) = coroutineScope {
-        players.map { player ->
+    private suspend fun runJoinsConcurrently(phase: GamePhase, entities: Set<Entity>) = coroutineScope {
+        entities.map { player ->
             async {
                 val result = phase.onJoin(player)
 
@@ -136,13 +137,13 @@ abstract class Game(
     /**
      * Handles a player leaving the game, notifying the current phase.
      *
-     * @param player The player leaving the game.
+     * @param entity The player leaving the game.
      */
-    open fun leave(player: Player) {
-        currentPhase?.onLeave(player)
+    open fun leave(entity: Entity) {
+        currentPhase?.onLeave(entity)
 
-        _participants.remove(player.uniqueId)
-        player.scoreboard = NexusPlugin.server.scoreboardManager.mainScoreboard
+        _participants.remove(entity.uniqueId)
+        if (entity is Player) entity.scoreboard = NexusPlugin.server.scoreboardManager.mainScoreboard
     }
 
     override fun dispose() {
@@ -154,7 +155,7 @@ abstract class Game(
 }
 
 /**
- * Retrieves the current game a player is participating in, if any.
+ * Retrieves the current game an entity is participating in, if any.
  */
-val Player.currentGame: Game?
+val Entity.currentGame: Game?
     get() = GamesFeature.activeGames.firstOrNull { it.participants.contains(this) }

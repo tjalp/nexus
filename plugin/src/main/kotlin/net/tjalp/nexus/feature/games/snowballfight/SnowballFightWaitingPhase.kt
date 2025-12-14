@@ -2,7 +2,7 @@ package net.tjalp.nexus.feature.games.snowballfight
 
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.JoinResult
-import org.bukkit.entity.Player
+import org.bukkit.entity.Entity
 
 class SnowballFightWaitingPhase(private val game: SnowballFightGame) : GamePhase {
 
@@ -15,11 +15,11 @@ class SnowballFightWaitingPhase(private val game: SnowballFightGame) : GamePhase
     override suspend fun start(previous: GamePhase?) {
     }
 
-    override suspend fun onJoin(player: Player): JoinResult {
+    override suspend fun onJoin(entity: Entity): JoinResult {
         return JoinResult.Success
     }
 
-    override fun onLeave(player: Player) {
+    override fun onLeave(entity: Entity) {
 
     }
 

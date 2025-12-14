@@ -10,6 +10,7 @@ enum class JoinFailureReason {
     ALREADY_IN_GAME,
     REQUIRES_EMPTY_INVENTORY,
     REQUIRES_EMPTY_SLOT,
+    WRONG_ENTITY_TYPE,
     UNKNOWN
 }
 

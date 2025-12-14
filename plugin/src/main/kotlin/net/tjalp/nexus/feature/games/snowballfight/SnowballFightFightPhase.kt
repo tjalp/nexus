@@ -24,8 +24,10 @@ import net.tjalp.nexus.util.SecondCountdownTimer
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.Material
+import org.bukkit.entity.Entity
 import org.bukkit.entity.EntityType
-import org.bukkit.entity.Player
+import org.bukkit.entity.HumanEntity
+import org.bukkit.entity.LivingEntity
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.ProjectileHitEvent
@@ -74,17 +76,17 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         }
     }
 
-    override suspend fun onJoin(player: Player): JoinResult {
-        bossBar.addViewer(player)
-        val score = snowballHitsObjective.getScore(player)
+    override suspend fun onJoin(entity: Entity): JoinResult {
+        bossBar.addViewer(entity)
+        val score = snowballHitsObjective.getScoreFor(entity)
 
         if (!score.isScoreSet) score.score = 0
 
         return JoinResult.Success
     }
 
-    override fun onLeave(player: Player) {
-        bossBar.removeViewer(player)
+    override fun onLeave(entity: Entity) {
+        bossBar.removeViewer(entity)
     }
 
     private fun onTimerTick(remainingSeconds: Long) {
@@ -126,7 +128,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 
     fun finish() {
         // in case of a tie, no one wins!
-        val winner = game.participants.groupBy { snowballHitsObjective.getScore(it).score }
+        val winner = game.participants.groupBy { snowballHitsObjective.getScoreFor(it).score }
             .maxByOrNull { it.key }?.value
             ?.let { if (it.size == 1) it.first() else null }
         val title = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1>FIGHT OVER!")
@@ -154,20 +156,20 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     @EventHandler
     fun on(event: ProjectileLaunchEvent) {
         val projectile = event.entity
-        val shooter = projectile.shooter as? Player ?: return
+        val shooter = projectile.shooter as? Entity ?: return
 
         if (projectile.type != EntityType.SNOWBALL
             || !game.participants.contains(shooter)
         ) return
 
-        shooter.setCooldown(Material.SNOWBALL, 7)
+        if (shooter is HumanEntity) shooter.setCooldown(Material.SNOWBALL, 7)
     }
 
     @EventHandler
     fun on(event: ProjectileHitEvent) {
         val projectile = event.entity
-        val shooter = projectile.shooter as? Player ?: return
-        val hitEntity = event.hitEntity as? Player ?: return
+        val shooter = projectile.shooter as? Entity ?: return
+        val hitEntity = event.hitEntity ?: return
 
         if (projectile.type != EntityType.SNOWBALL
             || shooter == hitEntity
@@ -177,9 +179,9 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         // simulate knockback for players using velocity
         hitEntity.velocity = hitEntity.velocity.add(projectile.velocity.clone().normalize().multiply(1.4)).setY(.45)
         val hurtAnimationYaw = ((projectile.location.yaw - hitEntity.location.yaw + 360) % 360)
-        hitEntity.playHurtAnimation(hurtAnimationYaw)
+        if (hitEntity is LivingEntity) hitEntity.playHurtAnimation(hurtAnimationYaw)
         hitEntity.freezeTicks = 60
-        hitEntity.world.playSound(sound(key("entity.player.hurt_freeze"), Sound.Source.PLAYER, 1.5f, 1f), hitEntity)
+        hitEntity.world.playSound(sound(key("entity.player.hurt_freeze"), Sound.Source.MASTER, 1.5f, 1f), hitEntity)
 
         val hitByMessage = miniMessage().deserialize(
             HIT_BY_MESSAGES.random(),
@@ -193,7 +195,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 //        hitEntity.sendActionBar(hitByMessage)
         hitEntity.showTitle(hitByTitle)
 
-        snowballHitsObjective.getScore(shooter.name).score += 1
+        snowballHitsObjective.getScoreFor(shooter).score += 1
 
         val targetHitMessage = miniMessage().deserialize(
             TARGET_HIT_MESSAGES.random(),

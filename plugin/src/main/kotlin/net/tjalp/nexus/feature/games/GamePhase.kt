@@ -1,6 +1,6 @@
 package net.tjalp.nexus.feature.games
 
-import org.bukkit.entity.Player
+import org.bukkit.entity.Entity
 import org.spongepowered.configurate.reactive.Disposable
 
 /**
@@ -23,17 +23,17 @@ interface GamePhase : Disposable {
     suspend fun start(previous: GamePhase?)
 
     /**
-     * Handles a player joining the game phase.
+     * Handles an entity joining the game phase.
      *
-     * @param player The player joining.
+     * @param entity The entity joining.
      * @return The result of the join attempt.
      */
-    suspend fun onJoin(player: Player): JoinResult
+    suspend fun onJoin(entity: Entity): JoinResult
 
     /**
-     * Handles a player leaving the game phase.
+     * Handles an entity leaving the game phase.
      *
-     * @param player The player leaving.
+     * @param entity The entity leaving.
      */
-    fun onLeave(player: Player)
+    fun onLeave(entity: Entity)
 }
