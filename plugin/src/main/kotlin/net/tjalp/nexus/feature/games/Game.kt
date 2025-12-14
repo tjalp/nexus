@@ -50,6 +50,11 @@ abstract class Game(
     abstract val nextPhase: GamePhase
 
     /**
+     * The settings specific to this game instance.
+     */
+    abstract val settings: GameSettings
+
+    /**
      * The scoreboard used for this game instance.
      */
     val scoreboard = NexusPlugin.server.scoreboardManager.newScoreboard

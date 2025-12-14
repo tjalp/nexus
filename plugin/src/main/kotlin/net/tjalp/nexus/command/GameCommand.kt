@@ -186,6 +186,16 @@ object GameCommand {
 
                         return@executes Command.SINGLE_SUCCESS
                     }))
+            .then(literal("settings")
+                .then(argument("id", GameArgument)
+                    .executes { context ->
+                        val game = context.getArgument("id", Game::class.java)
+                        val settings = game.settings
+
+                        context.source.sender.showDialog(settings.dialog())
+
+                        return@executes Command.SINGLE_SUCCESS
+                    }))
             .build()
     }
 }
