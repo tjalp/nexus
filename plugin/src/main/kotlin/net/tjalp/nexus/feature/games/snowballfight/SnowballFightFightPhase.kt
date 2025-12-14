@@ -12,12 +12,14 @@ import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
 import net.kyori.adventure.text.format.Style.style
 import net.kyori.adventure.text.format.TextColor.color
+import net.kyori.adventure.text.format.TextDecoration.BOLD
 import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
+import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.JoinResult
@@ -58,7 +60,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             null
         ).apply {
             displaySlot = DisplaySlot.SIDEBAR
-            numberFormat(styled(style(PRIMARY_COLOR)))
+            numberFormat(styled(style(MONOCHROME_COLOR, BOLD)))
         }
 
         timer = SecondCountdownTimer(scheduler, 10.minutes.inWholeSeconds, onTick = ::onTimerTick) {
@@ -82,6 +84,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     override suspend fun onJoin(entity: Entity): JoinResult {
         bossBar.addViewer(entity)
         val score = snowballHitsObjective.getScoreFor(entity)
+        score.customName(entity.name().colorIfAbsent(PRIMARY_COLOR))
 
         if (!score.isScoreSet) score.score = 0
 
@@ -220,18 +223,22 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 //        hitEntity.sendActionBar(hitByMessage)
         hitEntity.showTitle(hitByTitle)
 
-        snowballHitsObjective.getScoreFor(shooter).score += 1
+        snowballHitsObjective.getScoreFor(shooter).apply {
+            score += 1
+            customName(shooter.name().colorIfAbsent(PRIMARY_COLOR))
+        }
 
         val targetHitMessage = miniMessage().deserialize(
             TARGET_HIT_MESSAGES.random(),
             Placeholder.component("target", hitEntity.name().colorIfAbsent(WHITE))
         ).colorIfAbsent(PRIMARY_COLOR)
-        val title = title(
-            empty(),
-            targetHitMessage,
-            times(0.seconds.toJavaDuration(), 350.milliseconds.toJavaDuration(), 400.milliseconds.toJavaDuration())
-        )
-        shooter.showTitle(title)
+        shooter.sendActionBar(targetHitMessage)
+//        val title = title(
+//            empty(),
+//            targetHitMessage,
+//            times(0.seconds.toJavaDuration(), 350.milliseconds.toJavaDuration(), 400.milliseconds.toJavaDuration())
+//        )
+//        shooter.showTitle(title)
         shooter.playSound(sound(key("entity.arrow.hit_player"), Sound.Source.PLAYER, 1f, 1f), Sound.Emitter.self())
     }
 
