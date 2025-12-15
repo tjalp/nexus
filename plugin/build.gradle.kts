@@ -36,7 +36,7 @@ dependencies {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.10")
+        minecraftVersion("1.21.11")
         downloadPlugins {
 //            github("libraryaddict", "LibsDisguises", "v11.0.13", "LibsDisguises-11.0.13-Github.jar")
         }

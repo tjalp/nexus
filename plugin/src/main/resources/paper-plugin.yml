@@ -1,8 +1,8 @@
 name: Nexus
-version: '2025.12.13'
+version: '2025.12.15'
 main: net.tjalp.nexus.NexusPlugin
 description: A Minecraft server plugin providing various utilities and features.
-api-version: '1.21.10'
+api-version: '1.21.11'
 bootstrapper: net.tjalp.nexus.NexusBootstrap
 dependencies:
   server:

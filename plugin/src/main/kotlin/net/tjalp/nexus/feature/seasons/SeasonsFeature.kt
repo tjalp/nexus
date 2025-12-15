@@ -4,6 +4,7 @@ import io.papermc.paper.registry.RegistryAccess
 import io.papermc.paper.registry.RegistryKey
 import net.kyori.adventure.key.Key
 import net.minecraft.core.RegistrySynchronization
+import net.minecraft.core.registries.Registries
 import net.minecraft.nbt.NbtOps
 import net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket
 import net.minecraft.server.MinecraftServer
@@ -88,10 +89,12 @@ object SeasonsFeature : Feature("seasons") {
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
         if (currentSeason != Season.WINTER) return PacketAction.Continue
-        val registryPath = packet.registry.location().path
         val foliageColor = Color(0x858780).rgb
 
-        if (registryPath != "worldgen/biome") return PacketAction.Continue
+        println("Packet: ${packet.registry.identifier()}")
+        println("Registry: ${Registries.BIOME.identifier()}")
+
+        if (packet.registry.identifier() != Registries.BIOME.identifier()) return PacketAction.Continue
 
         val registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME)
         val newEntries = packet.entries.map { entry ->
