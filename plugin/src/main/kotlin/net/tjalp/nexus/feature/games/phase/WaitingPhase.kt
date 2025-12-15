@@ -2,7 +2,6 @@ package net.tjalp.nexus.feature.games.phase
 
 import net.tjalp.nexus.feature.games.Game
 import net.tjalp.nexus.feature.games.GamePhase
-import net.tjalp.nexus.feature.games.JoinResult
 import org.bukkit.entity.Entity
 
 /**
@@ -15,7 +14,7 @@ open class WaitingPhase(private val game: Game) : GamePhase {
 
     override suspend fun start(previous: GamePhase?) {}
 
-    override suspend fun onJoin(entity: Entity): JoinResult = JoinResult.Success
+    override suspend fun onJoin(entity: Entity) {}
 
     override fun onLeave(entity: Entity) {}
 

@@ -3,8 +3,14 @@ package net.tjalp.nexus.feature.games
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import net.kyori.adventure.audience.Audience
+import net.kyori.adventure.audience.ForwardingAudience
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.textOfChildren
+import net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.kyori.adventure.text.format.TextDecoration.BOLD
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.asEntity
 import net.tjalp.nexus.util.register
@@ -25,7 +31,7 @@ abstract class Game(
         ('a'..'z') + ('A'..'Z') + ('0'..'9')
     }.flatten().shuffled().take(6).joinToString(""),
     val type: GameType
-) : Disposable {
+) : Disposable, ForwardingAudience {
 
     /**
      * Scheduler dedicated to this game instance.
@@ -110,36 +116,45 @@ abstract class Game(
      * @return The result of the join attempt.
      */
     open suspend fun join(entity: Entity): JoinResult {
-        if (entity.currentGame != null) {
-            return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Entity is already in a game")
-        }
-
-        val success = currentPhase?.onJoin(entity) ?: return JoinResult.Failure(
+        val phase = currentPhase ?: return JoinResult.Failure(
             JoinFailureReason.WRONG_PHASE,
             "No active phase to join"
         )
 
-        if (success !is JoinResult.Success) return success
+        if (entity.currentGame != null) {
+            return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Entity is already in a game")
+        }
+
+        val result = phase.canJoin(entity)
+
+        if (result !is JoinResult.Success) return result
 
         _participants.add(entity.uniqueId)
+
         if (entity is Player) entity.scoreboard = scoreboard
+
+        phase.onJoin(entity)
 
         return JoinResult.Success
     }
 
     private suspend fun runJoinsConcurrently(phase: GamePhase, entities: Set<Entity>) = coroutineScope {
-        entities.map { player ->
+        entities.map { entity ->
             async {
-                val result = phase.onJoin(player)
+                val result = phase.canJoin(entity)
 
-                if (result !is JoinResult.Failure) return@async result
+                if (result is JoinResult.Failure) {
+                    // leave on failure to join and send message
+                    leave(entity)
 
-                // leave on failure to join and send message
-                leave(player)
+                    entity.sendMessage(
+                        text("You were kicked out of the game, because: ${result.message ?: "Unknown reason (${result.reason})"}", RED)
+                    )
 
-                player.sendMessage(
-                    text("You were kicked out of the game, because: ${result.message ?: "Unknown reason (${result.reason})"}", RED)
-                )
+                    return@async result
+                }
+
+                phase.onJoin(entity)
 
                 return@async result
             }
@@ -152,9 +167,11 @@ abstract class Game(
      * @param entity The player leaving the game.
      */
     open fun leave(entity: Entity) {
-        currentPhase?.onLeave(entity)
+        if (_participants.none { it == entity.uniqueId }) return
 
         _participants.remove(entity.uniqueId)
+        currentPhase?.onLeave(entity)
+
         if (entity is Player) entity.scoreboard = NexusPlugin.server.scoreboardManager.mainScoreboard
     }
 
@@ -164,6 +181,8 @@ abstract class Game(
         listener.unregister()
         scheduler.dispose()
     }
+
+    override fun audiences(): Iterable<Audience> = participants
 }
 
 /**
@@ -171,3 +190,12 @@ abstract class Game(
  */
 val Entity.currentGame: Game?
     get() = GamesFeature.activeGames.firstOrNull { it.participants.contains(this) }
+
+/**
+ * Formats the game prefix for messages, including the game type.
+ */
+val Game.prefix: Component
+    get() = textOfChildren(
+        type.friendlyName.decoration(BOLD, true),
+        text(" → ", DARK_GRAY)
+    )

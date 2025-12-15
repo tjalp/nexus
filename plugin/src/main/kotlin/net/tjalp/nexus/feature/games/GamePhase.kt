@@ -23,12 +23,19 @@ interface GamePhase : Disposable {
     suspend fun start(previous: GamePhase?)
 
     /**
+     * Determines if an entity can join the game phase.
+     *
+     * @param entity The entity attempting to join.
+     * @return The result of the join attempt.
+     */
+    suspend fun canJoin(entity: Entity): JoinResult = JoinResult.Success
+
+    /**
      * Handles an entity joining the game phase.
      *
      * @param entity The entity joining.
-     * @return The result of the join attempt.
      */
-    suspend fun onJoin(entity: Entity): JoinResult
+    suspend fun onJoin(entity: Entity)
 
     /**
      * Handles an entity leaving the game phase.

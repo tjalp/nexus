@@ -22,7 +22,6 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.feature.games.GamePhase
-import net.tjalp.nexus.feature.games.JoinResult
 import net.tjalp.nexus.feature.games.phase.FinishablePhase
 import net.tjalp.nexus.feature.games.phase.TimerPhase
 import net.tjalp.nexus.util.SecondCountdownTimer
@@ -79,9 +78,22 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 
             offset = ((offset + 1f + 0.02f) % 2f) - 1f
         }
+
+        val initialTitleText = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1>FIGHT!")
+        val initialSubtitleText = text("Throw snowballs at your opponents to score hits!", color(0x71A6D1))
+        val initialTitle = title(
+            initialTitleText,
+            initialSubtitleText,
+            times(0.seconds.toJavaDuration(), 2.seconds.toJavaDuration(), 500.milliseconds.toJavaDuration())
+        )
+        game.showTitle(initialTitle)
+        game.playSound(
+            sound(key("item.goat_horn.sound.1"), Sound.Source.MASTER, 1f, 1f),
+            Sound.Emitter.self()
+        )
     }
 
-    override suspend fun onJoin(entity: Entity): JoinResult {
+    override suspend fun onJoin(entity: Entity) {
         bossBar.addViewer(entity)
         val score = snowballHitsObjective.getScoreFor(entity)
         score.customName(entity.name().colorIfAbsent(PRIMARY_COLOR))
@@ -101,8 +113,6 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
                     false
                 ) { entity: net.minecraft.world.entity.LivingEntity, level: ServerLevel -> game.participants.contains(entity.bukkitLivingEntity) })
         }
-
-        return JoinResult.Success
     }
 
     override fun onLeave(entity: Entity) {
