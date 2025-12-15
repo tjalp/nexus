@@ -6,8 +6,8 @@ import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.key.Key.key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.Sound.sound
-import net.kyori.adventure.text.Component.empty
-import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.*
+import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.text.format.NamedTextColor.WHITE
 import net.kyori.adventure.text.format.Style.style
@@ -21,6 +21,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.phase.FinishablePhase
 import net.tjalp.nexus.feature.games.phase.TimerPhase
@@ -37,6 +38,7 @@ import org.bukkit.event.entity.ProjectileLaunchEvent
 import org.bukkit.scoreboard.Criteria
 import org.bukkit.scoreboard.DisplaySlot
 import org.bukkit.scoreboard.Objective
+import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -165,13 +167,27 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     }
 
     override suspend fun finish() {
-        // in case of a tie, no one wins!
-        val winner = game.participants.groupBy { snowballHitsObjective.getScoreFor(it).score }
+        val winners = game.scoreboard.entries
+            .filter { entry -> snowballHitsObjective.getScore(entry).isScoreSet }
+            .groupBy { entry -> snowballHitsObjective.getScore(entry).score }
             .maxByOrNull { it.key }?.value
-            ?.let { if (it.size == 1) it.first() else null }
+            ?.map { entry ->
+                val uuid = try { UUID.fromString(entry) } catch (e: IllegalArgumentException) { null }
+                val entity = uuid?.let { NexusPlugin.server.getEntity(it) } ?: NexusPlugin.server.getPlayerExact(entry)
+
+                entity
+            }
+        val winnerNames = winners?.map { it?.name() ?: text("Unknown") } ?: listOf(text("No one"))
+        val winnersComponent = join(
+            JoinConfiguration.builder()
+                .separator(text(", "))
+                .lastSeparator(text(" and "))
+                .parentStyle(style(color(0x71A6D1))),
+            winnerNames.map { it.colorIfAbsent(WHITE) }
+        )
         val title = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1>FIGHT OVER!")
-        val subtitle = text().color(color(0x71A6D1)).append(winner?.name()?.colorIfAbsent(WHITE) ?: text("No one", WHITE))
-            .append(text(" wins the snowball fight!")).build()
+        val subtitle = text().color(color(0x71A6D1)).append(winnersComponent)
+            .append(text(" win${if (winners?.size == 1) "s" else ""} the snowball fight!")).build()
         val times = times(0.seconds.toJavaDuration(), 4.seconds.toJavaDuration(), 1.seconds.toJavaDuration())
         val finishedTitle = title(title, subtitle, times)
 

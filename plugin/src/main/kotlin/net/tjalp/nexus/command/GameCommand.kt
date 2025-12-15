@@ -144,7 +144,12 @@ object GameCommand {
 
                             if (phase !is TimerPhase) throw ERROR_PHASE_HAS_NO_TIMER.create(game.id)
 
+                            val wasRunning = phase.timer.isRunning
+
+                            phase.timer.pause()
                             phase.timer.remaining = remaining
+
+                            if (wasRunning) phase.timer.start()
 
                             context.source.sender.sendMessage(
                                 text("Set timer for game with ID ${game.id} to ${remaining.seconds} remaining")
