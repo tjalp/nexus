@@ -91,9 +91,6 @@ object SeasonsFeature : Feature("seasons") {
         if (currentSeason != Season.WINTER) return PacketAction.Continue
         val foliageColor = Color(0x858780).rgb
 
-        println("Packet: ${packet.registry.identifier()}")
-        println("Registry: ${Registries.BIOME.identifier()}")
-
         if (packet.registry.identifier() != Registries.BIOME.identifier()) return PacketAction.Continue
 
         val registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME)
