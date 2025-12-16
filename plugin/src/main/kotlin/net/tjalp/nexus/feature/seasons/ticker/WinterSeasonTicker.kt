@@ -16,22 +16,29 @@ import org.bukkit.block.data.type.Snow
 object WinterSeasonTicker : SeasonTicker {
 
     override fun condition(world: World): Boolean =
-        !world.isClearWeather && (world.getGameRuleValue(GameRules.MAX_SNOW_ACCUMULATION_HEIGHT) ?: 1) > 0
+        (world.getGameRuleValue(GameRules.MAX_SNOW_ACCUMULATION_HEIGHT) ?: 1) > 0
 
     override fun tick(block: Block) {
-        val blockAbove = block.getRelative(BlockFace.UP)
+        if (block.world.isClearWeather) return
+
         val allowSnowFormation = NexusPlugin.configuration.modules.seasons.winter.allowSnowFormation
         val allowIceFormation = NexusPlugin.configuration.modules.seasons.winter.allowIceFormation
 
+        if (allowSnowFormation) tryPlaceSnow(block)
+        if (allowIceFormation) tryPlaceIce(block)
+    }
+
+    private fun tryPlaceSnow(block: Block) {
+        val blockAbove = block.getRelative(BlockFace.UP)
         // todo check whether face is full, instead of just checking whether block is sturdy on top or leaves.
         // unfortunately the api does not expose this, so nms would have to be used
-        if (allowSnowFormation && (blockAbove.type == Material.SNOW || blockAbove.type.isAir && !Tag.ICE.isTagged(block.type) && !Tag.SNOW_LAYER_CANNOT_SURVIVE_ON.isTagged(
+        if ((blockAbove.type == Material.SNOW || blockAbove.type.isAir && !Tag.ICE.isTagged(block.type) && !Tag.SNOW_LAYER_CANNOT_SURVIVE_ON.isTagged(
                 block.type
             ) && (block.blockData.isFaceSturdy(
                 BlockFace.UP,
                 BlockSupport.RIGID
             ) || Tag.LEAVES.isTagged(block.type))
-        )) {
+                    )) {
             (blockAbove.blockData as? Snow)?.let {
                 if ((block.world.getGameRuleValue(GameRules.MAX_SNOW_ACCUMULATION_HEIGHT)
                         ?: 1) <= it.layers
@@ -40,8 +47,10 @@ object WinterSeasonTicker : SeasonTicker {
                 blockAbove.blockData = it
             } ?: run { blockAbove.type = Material.SNOW }
         }
+    }
 
-        if (allowIceFormation && block.type == Material.WATER && (block.blockData as Levelled).level == 0) {
+    private fun tryPlaceIce(block: Block) {
+        if (block.type == Material.WATER && (block.blockData as Levelled).level == 0) {
             val requiresWater = NexusPlugin.configuration.modules.seasons.winter.iceFormationRequiresSurroundedByWater
 
             if (requiresWater) {
