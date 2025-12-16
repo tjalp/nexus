@@ -74,6 +74,7 @@ data class GamesConfig(
 @ConfigSerializable
 data class SeasonsConfig(
     val enable: Boolean = true,
+    val shouldTick: Boolean = true,
     val winter: SeasonWinterConfig
 )
 

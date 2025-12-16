@@ -56,6 +56,8 @@ object SeasonsFeature : Feature("seasons") {
         }
 
         scheduler.repeat(interval = 1) {
+            if (!NexusPlugin.configuration.modules.seasons.shouldTick) return@repeat
+
             val ticker = currentSeason.ticker ?: return@repeat
 
             NexusPlugin.server.worlds.filter { it.environment == World.Environment.NORMAL && ticker.condition(it) }
