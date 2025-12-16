@@ -2,7 +2,7 @@ package net.tjalp.nexus.feature.seasons.ticker
 
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.seasons.SeasonTicker
-import org.bukkit.GameRule
+import org.bukkit.GameRules
 import org.bukkit.Material
 import org.bukkit.Tag
 import org.bukkit.World
@@ -16,7 +16,7 @@ import org.bukkit.block.data.type.Snow
 object WinterSeasonTicker : SeasonTicker {
 
     override fun condition(world: World): Boolean =
-        !world.isClearWeather && (world.getGameRuleValue(GameRule.SNOW_ACCUMULATION_HEIGHT) ?: 1) > 0
+        !world.isClearWeather && (world.getGameRuleValue(GameRules.MAX_SNOW_ACCUMULATION_HEIGHT) ?: 1) > 0
 
     override fun tick(block: Block) {
         val blockAbove = block.getRelative(BlockFace.UP)
@@ -33,7 +33,7 @@ object WinterSeasonTicker : SeasonTicker {
             ) || Tag.LEAVES.isTagged(block.type))
         )) {
             (blockAbove.blockData as? Snow)?.let {
-                if ((block.world.getGameRuleValue(GameRule.SNOW_ACCUMULATION_HEIGHT)
+                if ((block.world.getGameRuleValue(GameRules.MAX_SNOW_ACCUMULATION_HEIGHT)
                         ?: 1) <= it.layers
                 ) return@let
                 it.layers += 1

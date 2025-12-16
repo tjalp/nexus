@@ -14,7 +14,7 @@ import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.asNmsBiome
-import org.bukkit.GameRule
+import org.bukkit.GameRules
 import org.bukkit.HeightMap
 import org.bukkit.NamespacedKey
 import org.bukkit.World
@@ -63,7 +63,7 @@ object SeasonsFeature : Feature("seasons") {
 
             NexusPlugin.server.worlds.filter { it.environment == World.Environment.NORMAL && ticker.condition(it) }
                 .forEach { world ->
-                    val randomTickSpeed = world.getGameRuleValue(GameRule.RANDOM_TICK_SPEED) ?: 3
+                    val randomTickSpeed = world.getGameRuleValue(GameRules.RANDOM_TICK_SPEED) ?: 3
                     world.loadedChunks.forEach { chunk ->
                         repeat(randomTickSpeed) {
                             val random = ThreadLocalRandom.current()
