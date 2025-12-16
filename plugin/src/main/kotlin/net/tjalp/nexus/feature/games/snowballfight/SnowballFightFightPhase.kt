@@ -19,7 +19,6 @@ import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
-import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.games.GamePhase
@@ -61,7 +60,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             null
         ).apply {
             displaySlot = DisplaySlot.SIDEBAR
-            numberFormat(styled(style(MONOCHROME_COLOR, BOLD)))
+            numberFormat(styled(style(PRIMARY_COLOR, BOLD)))
         }
 
         timer = SecondCountdownTimer(scheduler, 10.minutes.inWholeSeconds, onTick = ::onTimerTick) {
@@ -98,7 +97,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
     override suspend fun onJoin(entity: Entity) {
         bossBar.addViewer(entity)
         val score = snowballHitsObjective.getScoreFor(entity)
-        score.customName(entity.name().colorIfAbsent(PRIMARY_COLOR))
+//        score.customName(entity.name().colorIfAbsent(PRIMARY_COLOR))
 
         if (!score.isScoreSet) score.score = 0
 
@@ -171,13 +170,24 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
             .filter { entry -> snowballHitsObjective.getScore(entry).isScoreSet }
             .groupBy { entry -> snowballHitsObjective.getScore(entry).score }
             .maxByOrNull { it.key }?.value
-            ?.map { entry ->
+//        val winnerEntities = winners?.map { entry ->
+//            val uuid = try { UUID.fromString(entry) } catch (e: IllegalArgumentException) { null }
+//            val entity = uuid?.let { NexusPlugin.server.getEntity(it) } ?: NexusPlugin.server.getPlayerExact(entry)
+//
+//            entity
+//        }
+        val winnerNames = winners?.map { entry ->
+            var name = snowballHitsObjective.getScore(entry).customName()
+
+            if (name == null || name == empty()) {
                 val uuid = try { UUID.fromString(entry) } catch (e: IllegalArgumentException) { null }
                 val entity = uuid?.let { NexusPlugin.server.getEntity(it) } ?: NexusPlugin.server.getPlayerExact(entry)
 
-                entity
+                name = entity?.name() ?: text("Unknown")
             }
-        val winnerNames = winners?.map { it?.name() ?: text("Unknown") } ?: listOf(text("No one"))
+
+            name
+        } ?: listOf(text("No one"))
         val winnersComponent = join(
             JoinConfiguration.builder()
                 .separator(text(", "))
@@ -251,7 +261,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
 
         snowballHitsObjective.getScoreFor(shooter).apply {
             score += 1
-            customName(shooter.name().colorIfAbsent(PRIMARY_COLOR))
+//            customName(shooter.name().colorIfAbsent(PRIMARY_COLOR))
         }
 
         val targetHitMessage = miniMessage().deserialize(
