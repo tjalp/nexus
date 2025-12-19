@@ -1,4 +1,4 @@
-package net.tjalp.nexus.feature.games.snowballfight
+package net.tjalp.nexus.feature.games.frostball_frenzy
 
 import kotlinx.coroutines.launch
 import net.kyori.adventure.bossbar.BossBar
@@ -22,7 +22,7 @@ import org.bukkit.entity.Entity
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class SnowballFightWaitingPhase(private val game: Game) : WaitingPhase(game), TimerPhase {
+class FrostballFrenzyWaitingPhase(private val game: Game) : WaitingPhase(game), TimerPhase {
 
     private val scheduler = game.scheduler.fork("phase/waiting")
 
@@ -87,7 +87,7 @@ class SnowballFightWaitingPhase(private val game: Game) : WaitingPhase(game), Ti
         val name = text().color(nameColor).content("⌚ ${remaining.seconds}")
 
         if (!timer.isRunning) {
-            name.append(text(" - Waiting for players... (${game.participants.size}/${game.settings.minPlayers})", nameColor))
+            name.append(text(" | Waiting for players... (${game.participants.size}/${game.settings.minPlayers})", nameColor))
         }
 
         bossBar.progress(progress.toFloat().coerceIn(0f, 1f))

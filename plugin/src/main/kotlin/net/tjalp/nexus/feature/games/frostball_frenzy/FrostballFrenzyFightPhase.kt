@@ -1,4 +1,4 @@
-package net.tjalp.nexus.feature.games.snowballfight
+package net.tjalp.nexus.feature.games.frostball_frenzy
 
 import io.papermc.paper.scoreboard.numbers.NumberFormat.styled
 import kotlinx.coroutines.launch
@@ -43,7 +43,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, FinishablePhase, TimerPhase, Listener {
+class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePhase, FinishablePhase, TimerPhase, Listener {
 
     val scheduler = game.scheduler.fork("phase/fight")
 
@@ -73,7 +73,7 @@ class SnowballFightFightPhase(private val game: SnowballFightGame) : GamePhase, 
         var offset = 0f
 
         scheduler.repeat(interval = 1) {
-            val title = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1:$offset>SNOWBALL FIGHT")
+            val title = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1:$offset>FROSTBALL FRENZY")
 
             snowballHitsObjective.displayName(title)
 

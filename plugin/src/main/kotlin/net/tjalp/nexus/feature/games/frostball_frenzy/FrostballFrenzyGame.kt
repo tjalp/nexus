@@ -1,4 +1,4 @@
-package net.tjalp.nexus.feature.games.snowballfight
+package net.tjalp.nexus.feature.games.frostball_frenzy
 
 import io.papermc.paper.dialog.Dialog
 import io.papermc.paper.registry.data.dialog.ActionButton
@@ -15,15 +15,15 @@ import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.GameSettings
 import net.tjalp.nexus.feature.games.GameType
 
-class SnowballFightGame : Game(type = GameType.SNOWBALL_FIGHT) {
+class FrostballFrenzyGame : Game(type = GameType.FROSTBALL_FRENZY) {
 
     override val settings: Settings = Settings()
 
     override val nextPhase: GamePhase
-        get() = if (currentPhase == null || currentPhase is SnowballFightFightPhase) {
-            SnowballFightWaitingPhase(this)
+        get() = if (currentPhase == null || currentPhase is FrostballFrenzyFightPhase) {
+            FrostballFrenzyWaitingPhase(this)
         } else {
-            SnowballFightFightPhase(this)
+            FrostballFrenzyFightPhase(this)
         }
 
     inner class Settings : GameSettings {

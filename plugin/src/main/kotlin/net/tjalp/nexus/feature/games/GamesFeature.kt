@@ -1,7 +1,7 @@
 package net.tjalp.nexus.feature.games
 
 import net.tjalp.nexus.Feature
-import net.tjalp.nexus.feature.games.snowballfight.SnowballFightGame
+import net.tjalp.nexus.feature.games.frostball_frenzy.FrostballFrenzyGame
 
 object GamesFeature : Feature("games") {
 
@@ -21,7 +21,7 @@ object GamesFeature : Feature("games") {
      */
     fun createGame(type: GameType): Game {
         val game = when (type) {
-            GameType.SNOWBALL_FIGHT -> SnowballFightGame()
+            GameType.FROSTBALL_FRENZY -> FrostballFrenzyGame()
         }
 
         _activeGames.add(game)
