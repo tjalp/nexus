@@ -17,8 +17,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
-import net.minecraft.server.level.ServerLevel
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.games.GamePhase
@@ -105,14 +103,16 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
             val handle = (entity as CraftMob).handle
             val targetSelector = handle.targetSelector
 
-            targetSelector.addGoal(-1,
-                NearestAttackableTargetGoal(
-                    handle,
-                    net.minecraft.world.entity.LivingEntity::class.java,
-                    10,
-                    true,
-                    false
-                ) { entity: net.minecraft.world.entity.LivingEntity, level: ServerLevel -> game.participants.contains(entity.bukkitLivingEntity) })
+            NexusPlugin.server.mobGoals.addGoal(entity, -1, FrostballFrenzyGoal(entity))
+
+//            targetSelector.addGoal(-1,
+//                NearestAttackableTargetGoal(
+//                    handle,
+//                    net.minecraft.world.entity.LivingEntity::class.java,
+//                    10,
+//                    true,
+//                    false
+//                ) { entity: net.minecraft.world.entity.LivingEntity, level: ServerLevel -> game.participants.contains(entity.bukkitLivingEntity) })
         }
     }
 
@@ -123,8 +123,10 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
             val handle = (entity as CraftMob).handle
             val targetSelector = handle.targetSelector
 
-            entity.target = null
-            targetSelector.availableGoals.filter { it.priority == -1 }.forEach { targetSelector.removeGoal(it.goal) }
+            NexusPlugin.server.mobGoals.removeGoal(entity, FrostballFrenzyGoal.KEY)
+
+//            entity.target = null
+//            targetSelector.availableGoals.filter { it.priority == -1 }.forEach { targetSelector.removeGoal(it.goal) }
         }
     }
 
