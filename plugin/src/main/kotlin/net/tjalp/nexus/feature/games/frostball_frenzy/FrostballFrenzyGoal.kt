@@ -17,6 +17,8 @@ class FrostballFrenzyGoal(
     private val mob: Mob
 ) : Goal<Mob> {
 
+    var cooldown = 0
+
     override fun shouldActivate(): Boolean {
         val game = mob.currentGame ?: return false
 
@@ -29,6 +31,7 @@ class FrostballFrenzyGoal(
     }
 
     override fun tick() {
+        if (cooldown > 0) cooldown--
         val game = mob.currentGame ?: run {
             stop()
             return
@@ -39,15 +42,19 @@ class FrostballFrenzyGoal(
                 stop()
                 return
             }
+        val distanceSquared = mob.location.distanceSquared(closestPlayer.location)
+        val hasLineOfSight = mob.hasLineOfSight(closestPlayer)
 
-        if (closestPlayer is LivingEntity) {
-            mob.target = closestPlayer
-            mob.pathfinder.moveTo(closestPlayer)
-        }
+        if (distanceSquared > 10.0.pow(2) || !hasLineOfSight) {
+            mob.pathfinder.moveTo(closestPlayer.location)
+        } else mob.pathfinder.stopPathfinding()
 
-        if (mob.location.distanceSquared(closestPlayer.location) <= 10.0.pow(2)) {
+//        if (closestPlayer is LivingEntity) mob.target = closestPlayer
+
+        if (hasLineOfSight && distanceSquared <= 20.0.pow(2) && cooldown <= 0) {
             val location = if (closestPlayer is LivingEntity) closestPlayer.eyeLocation else closestPlayer.location
-            mob.launchProjectile(Snowball::class.java, location.toVector().subtract(mob.eyeLocation.toVector()).normalize())
+            mob.launchProjectile(Snowball::class.java, location.toVector().subtract(mob.eyeLocation.toVector()).normalize().multiply(1.6))
+            cooldown = 8
         }
     }
 
