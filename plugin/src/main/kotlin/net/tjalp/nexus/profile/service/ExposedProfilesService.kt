@@ -60,6 +60,7 @@ class ExposedProfilesService(
         cache: Boolean,
         vararg statements: () -> Unit
     ): ProfileSnapshot = suspendTransaction(db) {
+        SchemaUtils.create(ProfilesTable) // ensure schema
         ProfilesTable.upsert {
             it[id] = profile.id
             it[modifiedAt] = CurrentTimestamp
