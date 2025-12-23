@@ -18,7 +18,6 @@ import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.persistence.PersistentDataType
 import org.spongepowered.configurate.reactive.Disposable
-import java.awt.Color
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.jvm.optionals.getOrNull
@@ -89,7 +88,14 @@ object SeasonsFeature : Feature("seasons") {
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
         if (currentSeason != Season.WINTER) return PacketAction.Continue
-        val foliageColor = Color(0x858780).rgb
+        val winterConfig = NexusPlugin.configuration.modules.seasons.winter
+        val colors = mapOf(
+            "foliage_color" to winterConfig.foliageColor,
+            "dry_foliage_color" to winterConfig.dryFoliageColor,
+            "grass_color" to winterConfig.grassColor,
+            "water_color" to winterConfig.waterColor,
+            "water_fog_color" to winterConfig.waterFogColor
+        )
 
         if (packet.registry.identifier() != Registries.BIOME.identifier()) return PacketAction.Continue
 
@@ -103,11 +109,9 @@ object SeasonsFeature : Feature("seasons") {
             tag?.putBoolean("has_precipitation", true)
             tag?.putFloat("temperature", -0.7f)
             tag?.get("effects")?.asCompound()?.getOrNull()?.apply {
-                putInt("foliage_color", foliageColor)
-                putInt("dry_foliage_color", foliageColor)
-                putInt("grass_color", foliageColor)
-                putInt("water_color", 4020182)
-                putInt("water_fog_color", 329011)
+                for (colorEntry in colors) {
+                    if (!colorEntry.value.isBlank()) putInt(colorEntry.key, colorEntry.value.hexToInt())
+                }
             }
 
             RegistrySynchronization.PackedRegistryEntry(entry.id, Optional.ofNullable(tag))

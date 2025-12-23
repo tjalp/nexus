@@ -49,6 +49,7 @@ class FrostballFrenzyGoal(
         val distanceSquared = mob.location.distanceSquared(closestPlayer.location)
         val hasLineOfSight = mob.hasLineOfSight(closestPlayer)
 
+        mob.target = closestPlayer as? LivingEntity
         mob.lookAt(closestPlayer)
 
         if (distanceSquared > 10.0.pow(2) || !hasLineOfSight) {

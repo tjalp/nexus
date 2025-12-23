@@ -116,16 +116,13 @@ abstract class Game(
      * @return The result of the join attempt.
      */
     open suspend fun join(entity: Entity): JoinResult {
-        val phase = currentPhase ?: return JoinResult.Failure(
-            JoinFailureReason.WRONG_PHASE,
-            "No active phase to join"
-        )
+        val phase = currentPhase
 
         if (entity.currentGame != null) {
             return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Entity is already in a game")
         }
 
-        val result = phase.canJoin(entity)
+        val result = phase?.canJoin(entity) ?: JoinResult.Success
 
         if (result !is JoinResult.Success) return result
 
@@ -133,7 +130,7 @@ abstract class Game(
 
         if (entity is Player) entity.scoreboard = scoreboard
 
-        phase.onJoin(entity)
+        phase?.onJoin(entity)
 
         return JoinResult.Success
     }

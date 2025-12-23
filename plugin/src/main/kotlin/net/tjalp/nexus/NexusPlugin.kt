@@ -46,10 +46,7 @@ object NexusPlugin : JavaPlugin() {
         )
 
     override fun onEnable() {
-        val rootNode = NexusConfig.LOADER.load()
-        configuration = rootNode?.get() ?: error("Failed to load configuration")
-        rootNode.set(NexusConfig::class, configuration)
-        NexusConfig.LOADER.save(rootNode)
+        reloadConfiguration()
 
         scheduler = Scheduler(id = "nexus")
         database = Database.connect(
@@ -77,6 +74,16 @@ object NexusPlugin : JavaPlugin() {
             commands.registrar().register(TeleportRequestCommand.create(), "Teleport request commands",
                 TeleportRequestCommand.aliases)
         }
+    }
+
+    /**
+     * Reloads the configuration from disk.
+     */
+    fun reloadConfiguration() {
+        val rootNode = NexusConfig.LOADER.load()
+        configuration = rootNode?.get() ?: error("Failed to load configuration")
+        rootNode.set(NexusConfig::class, configuration)
+        NexusConfig.LOADER.save(rootNode)
     }
 
     override fun onDisable() {

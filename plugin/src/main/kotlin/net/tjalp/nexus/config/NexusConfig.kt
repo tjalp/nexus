@@ -82,7 +82,12 @@ data class SeasonsConfig(
 data class SeasonWinterConfig(
     val allowSnowFormation: Boolean = true,
     val allowIceFormation: Boolean = true,
-    val iceFormationRequiresSurroundedByWater: Boolean = false
+    val iceFormationRequiresSurroundedByWater: Boolean = false,
+    val foliageColor: String = "858780",
+    val dryFoliageColor: String = "858780",
+    val grassColor: String = "858780",
+    val waterColor: String = "3d57d6",
+    val waterFogColor: String = "050533"
 )
 
 @ConfigSerializable

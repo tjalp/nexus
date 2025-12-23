@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.games.frostball_frenzy
 
+import com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent
 import io.papermc.paper.scoreboard.numbers.NumberFormat.styled
 import kotlinx.coroutines.launch
 import net.kyori.adventure.bossbar.BossBar
@@ -30,18 +31,21 @@ import org.bukkit.craftbukkit.entity.CraftMob
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.entity.ProjectileLaunchEvent
 import org.bukkit.scoreboard.Criteria
 import org.bukkit.scoreboard.DisplaySlot
 import org.bukkit.scoreboard.Objective
+import org.bukkit.util.Vector
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePhase, FinishablePhase, TimerPhase, Listener {
+class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePhase, FinishablePhase, TimerPhase,
+    Listener {
 
     val scheduler = game.scheduler.fork("phase/fight")
 
@@ -66,7 +70,12 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
                 finish()
             }
         }.also { it.start() }
-        bossBar = BossBar.bossBar(text("⌚ ${timer.remaining.seconds}", WHITE), 1f, BossBar.Color.WHITE, BossBar.Overlay.PROGRESS)
+        bossBar = BossBar.bossBar(
+            text("⌚ ${timer.remaining.seconds}", WHITE),
+            1f,
+            BossBar.Color.WHITE,
+            BossBar.Overlay.PROGRESS
+        )
 
         var offset = 0f
 
@@ -182,7 +191,11 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
             var name = snowballHitsObjective.getScore(entry).customName()
 
             if (name == null || name == empty()) {
-                val uuid = try { UUID.fromString(entry) } catch (e: IllegalArgumentException) { null }
+                val uuid = try {
+                    UUID.fromString(entry)
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
                 val entity = uuid?.let { NexusPlugin.server.getEntity(it) } ?: NexusPlugin.server.getPlayerExact(entry)
 
                 name = entity?.name() ?: text("Unknown")
@@ -242,12 +255,15 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
             || !game.participants.containsAll(listOf(shooter, hitEntity))
         ) return
 
-        // simulate knockback for players using velocity
-        hitEntity.velocity = hitEntity.velocity.add(projectile.velocity.clone().normalize().multiply(1.4)).setY(.45)
-        val hurtAnimationYaw = ((projectile.location.yaw - hitEntity.location.yaw + 360) % 360)
-        if (hitEntity is LivingEntity) hitEntity.playHurtAnimation(hurtAnimationYaw)
+//        applyHit(hitEntity, projectile)
+        if (hitEntity is Player) {
+            // depends on the projectile direction
+            val directionX = -projectile.velocity.clone().normalize().x
+            val directionZ = -projectile.velocity.clone().normalize().z
+            hitEntity.knockback(2.0, directionX, directionZ)
+            hitEntity.damage(0.0, projectile)
+        }
         hitEntity.freezeTicks = 60
-        hitEntity.world.playSound(sound(key("entity.player.hurt_freeze"), Sound.Source.MASTER, 1.5f, 1f), hitEntity)
 
         val hitByMessage = miniMessage().deserialize(
             HIT_BY_MESSAGES.random(),
@@ -278,6 +294,57 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
 //        )
 //        shooter.showTitle(title)
         shooter.playSound(sound(key("entity.arrow.hit_player"), Sound.Source.PLAYER, 1f, 1f), Sound.Emitter.self())
+    }
+
+    @EventHandler
+    fun on(event: EntityDamageByEntityEvent) {
+        val damaged = event.entity
+        var origin = event.damager
+
+        if (origin is Projectile) origin = origin.shooter as? Entity ?: return
+        if (damaged == origin || !game.participants.containsAll(listOf(damaged, origin))) return
+
+        event.damage = 0.0
+    }
+
+    @EventHandler
+    fun on(event: EntityKnockbackByEntityEvent) {
+        val damaged = event.entity
+        val hitBy = event.hitBy
+        var origin = hitBy
+
+        if (hitBy is Projectile) origin = hitBy.shooter as? Entity ?: return
+        if (damaged == origin || !game.participants.containsAll(listOf(damaged, origin))) return
+
+        if (hitBy is Projectile) {
+            event.knockback = event.knockback.multiply(Vector(2f, 1f, 2f))
+        }
+    }
+
+    /**
+     * Applies hit effects to the target entity when hit.
+     *
+     * @param to The entity that was hit.
+     * @param from The entity that caused the hit.
+     */
+    fun applyHit(to: Entity, from: Entity, useIceSounds: Boolean = true) {
+        val hurtAnimationYaw = ((from.location.yaw - to.location.yaw + 360) % 360)
+        val direction = if (from is Projectile) {
+            from.velocity.clone().normalize()
+        } else to.location.toVector().subtract(from.location.toVector()).normalize()
+
+        to.velocity = to.velocity.add(direction.multiply(1.4)).setY(.45)
+
+        if (to is LivingEntity) {
+            to.playHurtAnimation(hurtAnimationYaw)
+
+            if (to is Player && useIceSounds) {
+                to.world.playSound(
+                    sound(key("entity.player.hurt_freeze"), Sound.Source.MASTER, 1f, 1f),
+                    to
+                )
+            } else to.hurtSound?.let { sound -> to.world.playSound(to, sound, 1f, 1f) }
+        }
     }
 
     companion object {

@@ -50,7 +50,7 @@ object NexusCommand {
             .requires(Commands.restricted { source -> source.sender.hasPermission("nexus.command.nexus") })
             .then(literal("reload")
                 .executes { context ->
-                    NexusPlugin.reloadConfig()
+                    NexusPlugin.reloadConfiguration()
                     NexusPlugin.features.forEach {
                         if (it.isEnabled) it.disable()
                         it.enable()
