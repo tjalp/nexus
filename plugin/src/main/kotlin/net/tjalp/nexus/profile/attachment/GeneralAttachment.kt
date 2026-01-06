@@ -17,6 +17,7 @@ import java.util.*
 object GeneralTable : CompositeIdTable("general_attachment") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
     val lastKnownName = varchar("last_known_name", 16).nullable()
+    val preferredLocale = varchar("preferred_locale", 64).default(Locale.US.toLanguageTag())
 
     init {
         addIdColumn(profileId)
@@ -27,7 +28,8 @@ object GeneralTable : CompositeIdTable("general_attachment") {
 
 data class GeneralAttachment(
     val id: UUID,
-    val lastKnownName: String?
+    val lastKnownName: String?,
+    val preferredLocale: Locale,
 )
 
 object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
@@ -54,4 +56,5 @@ object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
 fun ResultRow.toGeneralAttachment(): GeneralAttachment = GeneralAttachment(
     id = this[GeneralTable.profileId].value,
     lastKnownName = this[GeneralTable.lastKnownName],
+    preferredLocale = this[GeneralTable.preferredLocale].let { Locale.forLanguageTag(it) } ?: Locale.US,
 )

@@ -8,10 +8,12 @@ import io.papermc.paper.command.brigadier.Commands
 import io.papermc.paper.command.brigadier.Commands.literal
 import kotlinx.coroutines.isActive
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.lang.Lang
 import net.tjalp.nexus.scheduler.Scheduler
 
 object NexusCommand {
@@ -51,6 +53,7 @@ object NexusCommand {
             .then(literal("reload")
                 .executes { context ->
                     NexusPlugin.reloadConfiguration()
+                    Lang.reload()
                     NexusPlugin.features.forEach {
                         if (it.isEnabled) it.disable()
                         it.enable()
@@ -62,6 +65,11 @@ object NexusCommand {
             .then(literal("schedulers")
                 .executes(::listSchedulers))
             .then(featureNode)
+            .then(literal("test")
+                .executes { context ->
+                    context.source.sender.sendMessage(translatable("test"))
+                    return@executes Command.SINGLE_SUCCESS
+                })
             .build()
     }
 

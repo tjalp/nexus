@@ -10,6 +10,7 @@ import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
+import net.tjalp.nexus.lang.Lang
 import net.tjalp.nexus.profile.ProfileListener
 import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
@@ -62,17 +63,23 @@ object NexusPlugin : JavaPlugin() {
         // Register global attachment providers
         AttachmentRegistry.register(GeneralAttachmentProvider.also { runBlocking { it.init() } })
 
+        Lang.init() // initialize localization system
+
         enableFeatures()
 
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
             commands.registrar().register(DisguiseCommand.create(this), "Disguise management commands")
             commands.registrar().register(GameCommand.create(), "Game management commands")
+            commands.registrar()
+                .register(LanguageCommand.create(), "Language management commands", LanguageCommand.aliases)
             commands.registrar().register(NexusCommand.create(), "Nexus-specific commands")
             commands.registrar().register(ProfileCommand.create(this), "Profile management commands")
             commands.registrar().register(SeasonCommand.create(), "Season management commands")
-            commands.registrar().register(TeleportRequestCommand.create(), "Teleport request commands",
-                TeleportRequestCommand.aliases)
+            commands.registrar().register(
+                TeleportRequestCommand.create(), "Teleport request commands",
+                TeleportRequestCommand.aliases
+            )
         }
     }
 
@@ -95,7 +102,7 @@ object NexusPlugin : JavaPlugin() {
         val modules = configuration.features
 
         features.filter {
-            when(it) {
+            when (it) {
                 is ChatFeature -> modules.chat.enable
                 is DisguiseFeature -> modules.disguises.enable
                 is GameRulesFeature -> modules.gamerules.enable
