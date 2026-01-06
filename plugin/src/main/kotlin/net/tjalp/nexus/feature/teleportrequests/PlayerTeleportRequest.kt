@@ -38,7 +38,7 @@ class PlayerTeleportRequest(
         requests += this
 
         this.expireJob = this.scheduler.launch {
-            delay(NexusPlugin.configuration.modules.teleportRequests.requestTimeoutSeconds.seconds)
+            delay(NexusPlugin.configuration.features.teleportRequests.requestTimeoutSeconds.seconds)
 
             requests -= this@PlayerTeleportRequest
 

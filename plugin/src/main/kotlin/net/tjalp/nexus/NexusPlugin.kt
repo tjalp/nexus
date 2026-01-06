@@ -92,7 +92,7 @@ object NexusPlugin : JavaPlugin() {
     }
 
     private fun enableFeatures() {
-        val modules = configuration.modules
+        val modules = configuration.features
 
         features.filter {
             when(it) {

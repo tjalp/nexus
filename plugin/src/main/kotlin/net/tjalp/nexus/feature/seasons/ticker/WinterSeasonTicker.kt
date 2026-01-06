@@ -21,8 +21,8 @@ object WinterSeasonTicker : SeasonTicker {
     override fun tick(block: Block) {
         if (block.world.isClearWeather) return
 
-        val allowSnowFormation = NexusPlugin.configuration.modules.seasons.winter.allowSnowFormation
-        val allowIceFormation = NexusPlugin.configuration.modules.seasons.winter.allowIceFormation
+        val allowSnowFormation = NexusPlugin.configuration.features.seasons.winter.allowSnowFormation
+        val allowIceFormation = NexusPlugin.configuration.features.seasons.winter.allowIceFormation
 
         if (allowSnowFormation) tryPlaceSnow(block)
         if (allowIceFormation) tryPlaceIce(block)
@@ -51,7 +51,7 @@ object WinterSeasonTicker : SeasonTicker {
 
     private fun tryPlaceIce(block: Block) {
         if (block.type == Material.WATER && (block.blockData as Levelled).level == 0) {
-            val requiresWater = NexusPlugin.configuration.modules.seasons.winter.iceFormationRequiresSurroundedByWater
+            val requiresWater = NexusPlugin.configuration.features.seasons.winter.iceFormationRequiresSurroundedByWater
 
             if (requiresWater) {
                 val faces = listOf(

@@ -55,7 +55,7 @@ object SeasonsFeature : Feature("seasons") {
         }
 
         scheduler.repeat(interval = 1) {
-            if (!NexusPlugin.configuration.modules.seasons.shouldTick) return@repeat
+            if (!NexusPlugin.configuration.features.seasons.shouldTick) return@repeat
 
             val ticker = currentSeason.ticker ?: return@repeat
 
@@ -88,7 +88,7 @@ object SeasonsFeature : Feature("seasons") {
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
         if (currentSeason != Season.WINTER) return PacketAction.Continue
-        val winterConfig = NexusPlugin.configuration.modules.seasons.winter
+        val winterConfig = NexusPlugin.configuration.features.seasons.winter
         val colors = mapOf(
             "foliage_color" to winterConfig.foliageColor,
             "dry_foliage_color" to winterConfig.dryFoliageColor,

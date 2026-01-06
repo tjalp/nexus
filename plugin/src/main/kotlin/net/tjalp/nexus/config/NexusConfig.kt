@@ -10,7 +10,7 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 @ConfigSerializable
 data class NexusConfig(
     val database: DatabaseConfig,
-    val modules: ModulesConfig
+    val features: FeaturesConfig
 ) {
 
     companion object {
@@ -37,7 +37,7 @@ data class DatabaseConfig(
 )
 
 @ConfigSerializable
-data class ModulesConfig(
+data class FeaturesConfig(
     val chat: ChatConfig,
     val disguises: DisguisesConfig,
     val gamerules: GameRulesConfig,
