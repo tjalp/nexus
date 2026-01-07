@@ -11,7 +11,6 @@ import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.LocaleArgument
-import net.tjalp.nexus.lang.langPointer
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
@@ -42,12 +41,9 @@ object LanguageCommand {
                             }
                         }
 
-                        val target = (sender as? Player)?.langPointer() ?: sender
-
                         sender.sendMessage(
                             translatable("command.language.set",
                                 Argument.string("lang", locale.getDisplayName(locale)),
-                                Argument.target(target)
                             )
                         )
                     }

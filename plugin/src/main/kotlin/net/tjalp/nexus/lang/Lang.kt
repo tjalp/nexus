@@ -1,17 +1,11 @@
 package net.tjalp.nexus.lang
 
-import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.key.Key
-import net.kyori.adventure.pointer.Pointered
-import net.kyori.adventure.pointer.Pointers
 import net.kyori.adventure.text.minimessage.translation.MiniMessageTranslationStore
 import net.kyori.adventure.translation.GlobalTranslator
 import net.kyori.adventure.translation.TranslationStore
 import net.kyori.adventure.util.UTF8ResourceBundleControl.utf8ResourceBundleControl
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
-import net.tjalp.nexus.util.profile
-import org.bukkit.entity.Player
 import java.util.*
 
 /**
@@ -70,13 +64,4 @@ object Lang {
             store.registerAll(locale, bundle, false)
         }
     }
-
-    fun pointered(locale: Locale): Pointered = object : Pointered {
-        private val pointers = Pointers.builder().withStatic(Identity.LOCALE, locale).build()
-
-        override fun pointers(): Pointers = pointers
-    }
 }
-
-fun Player.langPointer(): Pointered =
-    Lang.pointered(this.profile().getAttachment(GENERAL)?.preferredLocale ?: this.locale())

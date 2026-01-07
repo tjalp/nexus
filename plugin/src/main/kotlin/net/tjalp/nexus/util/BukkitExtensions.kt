@@ -7,6 +7,7 @@ import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.block.Biome
 import org.bukkit.craftbukkit.block.CraftBiome
+import org.bukkit.craftbukkit.entity.CraftPlayer
 import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
@@ -72,3 +73,10 @@ fun Biome.asNmsBiome() = (this as CraftBiome).handle
  * @return The NMS world corresponding to this World
  */
 fun World.asNmsWorld() = (this as org.bukkit.craftbukkit.CraftWorld).handle
+
+/**
+ * Converts this Player to an NMS ServerPlayer.
+ *
+ * @return The NMS ServerPlayer corresponding to this Player
+ */
+fun Player.asServerPlayer() = (this as CraftPlayer).handle
