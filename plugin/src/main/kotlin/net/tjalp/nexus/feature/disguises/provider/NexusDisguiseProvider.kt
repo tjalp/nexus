@@ -2,11 +2,9 @@ package net.tjalp.nexus.feature.disguises.provider
 
 import io.papermc.paper.event.player.PlayerArmSwingEvent
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import net.kyori.adventure.audience.Audience
-import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
+import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
@@ -39,11 +37,9 @@ class NexusDisguiseProvider : DisguiseProvider {
     private val listener = NexusDisguiseListener().also { it.register() }
 
     init {
-        DisguiseFeature.scheduler.launch {
-            while (isActive) {
-                disguises.forEach { (entity, disguise) -> sendStatus(entity, disguise.type) }
-                delay(15.ticks)
-            }
+        DisguiseFeature.scheduler.repeat(interval = 15) {
+            disguises.forEach { (entity, disguise) -> sendStatus(entity, disguise.type) }
+            delay(15.ticks)
         }
     }
 
@@ -117,7 +113,7 @@ class NexusDisguiseProvider : DisguiseProvider {
         entity.isVisibleByDefault = true
 
         if (sendMessage && disguiseEntity != null) {
-            entity.sendActionBar(text("You've been undisguised", PRIMARY_COLOR))
+            entity.sendActionBar(translatable("action.disguise.remove", PRIMARY_COLOR))
             playSpawnEffects(entity)
         }
     }
@@ -137,8 +133,14 @@ class NexusDisguiseProvider : DisguiseProvider {
      */
     private fun sendStatus(audience: Audience, disguiseType: EntityType) {
         audience.sendActionBar(
-            text("You are currently disguised as ", PRIMARY_COLOR)
-                .append(translatable(disguiseType.translationKey(), COMPLEMENTARY_COLOR))
+            translatable(
+                "action.disguise.status",
+                PRIMARY_COLOR,
+                Argument.component(
+                    "disguise",
+                    translatable(disguiseType.translationKey(), COMPLEMENTARY_COLOR)
+                )
+            )
         )
     }
 
@@ -285,7 +287,7 @@ class NexusDisguiseProvider : DisguiseProvider {
         private fun processInteraction(event: PlayerInteractEntityEvent) {
             val clickedEntity = event.rightClicked
 
-            if (disguises.values.contains(clickedEntity)) event.isCancelled =  true
+            if (disguises.values.contains(clickedEntity)) event.isCancelled = true
         }
 
         @EventHandler
