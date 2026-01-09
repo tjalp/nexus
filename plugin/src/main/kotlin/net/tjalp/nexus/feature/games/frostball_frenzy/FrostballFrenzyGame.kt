@@ -6,6 +6,7 @@ import io.papermc.paper.registry.data.dialog.DialogBase
 import io.papermc.paper.registry.data.dialog.action.DialogAction
 import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
+import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.event.ClickCallback
@@ -34,7 +35,10 @@ class FrostballFrenzyGame : Game(type = GameType.FROSTBALL_FRENZY) {
                 maxPlayers = view.getFloat("maxPlayers")!!.toInt()
 
                 audience.sendActionBar(
-                    text().color(PRIMARY_COLOR).append(type.friendlyName).append(text(" settings have been updated"))
+                    text()
+                        .color(PRIMARY_COLOR)
+                        .append(type.formattedName.invoke(audience.get(Identity.LOCALE).get()))
+                        .append(text(" settings have been updated"))
                 )
             }, ClickCallback.Options.builder().build())
 

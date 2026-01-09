@@ -3,11 +3,11 @@ package net.tjalp.nexus.feature.games.frostball_frenzy
 import kotlinx.coroutines.launch
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.bossbar.BossBar.bossBar
+import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.key.Key.key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.Sound.sound
-import net.kyori.adventure.text.Component.empty
-import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
@@ -19,6 +19,8 @@ import net.tjalp.nexus.feature.games.phase.WaitingPhase
 import net.tjalp.nexus.feature.games.prefix
 import net.tjalp.nexus.util.SecondCountdownTimer
 import org.bukkit.entity.Entity
+import java.util.*
+import kotlin.jvm.optionals.getOrDefault
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -58,7 +60,13 @@ class FrostballFrenzyWaitingPhase(private val game: Game) : WaitingPhase(game), 
         super.onJoin(entity)
 
         if (game.participants.size >= game.settings.minPlayers && !timer.isRunning) {
-            game.sendMessage(game.prefix.append(text("Minimum player count reached, starting the wait timer!", PRIMARY_COLOR)))
+            game.participants.forEach { participant ->
+                participant.sendMessage(
+                    game.prefix(participant.get(Identity.LOCALE).getOrDefault(Locale.US)).append(
+                        translatable("game.waiting.playercount.minimum.reached", PRIMARY_COLOR)
+                    )
+                )
+            }
             timer.start()
         }
 
@@ -70,7 +78,13 @@ class FrostballFrenzyWaitingPhase(private val game: Game) : WaitingPhase(game), 
         bossBar.removeViewer(entity)
 
         if (game.participants.size < game.settings.minPlayers && timer.isRunning) {
-            game.sendMessage(game.prefix.append(text("Not enough players, resetting the wait timer...", RED)))
+            game.participants.forEach { participant ->
+                participant.sendMessage(
+                    game.prefix(participant.get(Identity.LOCALE).get()).append(
+                        translatable("game.waiting.playercount.minimum.under", RED)
+                    )
+                )
+            }
             timer.pause()
             timer.reset()
         }

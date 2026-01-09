@@ -1,13 +1,22 @@
 package net.tjalp.nexus.feature.games
 
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText
+import net.kyori.adventure.translation.GlobalTranslator
+import java.util.*
 
 /**
  * Types of games available in the Nexus system.
  *
  * @param friendlyName A user-friendly name for the game type.
  */
-enum class GameType(val friendlyName: Component) {
-    FROSTBALL_FRENZY(miniMessage().deserialize("<gradient:#D4F1F8:#71A6D1>Frostball Frenzy")),
+enum class GameType(val friendlyName: Component, val formattedName: (Locale) -> Component = { friendlyName }) {
+    FROSTBALL_FRENZY(translatable("game.frostball_frenzy.name"), { locale ->
+        val translated = GlobalTranslator.render(translatable("game.frostball_frenzy.name"), locale)
+        val plain = plainText().serialize(translated)
+
+        miniMessage().deserialize("<gradient:#D4F1F8:#71A6D1>$plain")
+    }),
 }

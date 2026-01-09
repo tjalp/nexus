@@ -196,3 +196,12 @@ val Game.prefix: Component
         type.friendlyName.decoration(BOLD, true),
         text(" → ", DARK_GRAY)
     )
+
+fun Game.prefix(locale: Locale): Component {
+    val formattedName = type.formattedName.invoke(locale)
+
+    return textOfChildren(
+        formattedName.decoration(BOLD, true),
+        text(" → ", DARK_GRAY)
+    )
+}
