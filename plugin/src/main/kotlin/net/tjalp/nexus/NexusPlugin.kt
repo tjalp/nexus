@@ -45,7 +45,7 @@ object NexusPlugin : JavaPlugin() {
             GamesFeature,
             SeasonsFeature,
             TeleportRequestsFeature,
-            WaypointsFeature
+//            WaypointsFeature
         )
 
     override fun onEnable() {
