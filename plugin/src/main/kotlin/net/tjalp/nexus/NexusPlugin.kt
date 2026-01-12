@@ -10,6 +10,7 @@ import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
+import net.tjalp.nexus.feature.waypoints.WaypointsFeature
 import net.tjalp.nexus.lang.Lang
 import net.tjalp.nexus.profile.ProfileListener
 import net.tjalp.nexus.profile.ProfilesService
@@ -43,7 +44,8 @@ object NexusPlugin : JavaPlugin() {
             GameRulesFeature,
             GamesFeature,
             SeasonsFeature,
-            TeleportRequestsFeature
+            TeleportRequestsFeature,
+            WaypointsFeature
         )
 
     override fun onEnable() {
@@ -80,6 +82,7 @@ object NexusPlugin : JavaPlugin() {
                 TeleportRequestCommand.create(), "Teleport request commands",
                 TeleportRequestCommand.aliases
             )
+            commands.registrar().register(WaypointCommand.create(), "Waypoint management commands")
         }
     }
 
@@ -109,6 +112,7 @@ object NexusPlugin : JavaPlugin() {
                 is GamesFeature -> modules.games.enable
                 is SeasonsFeature -> modules.seasons.enable
                 is TeleportRequestsFeature -> modules.teleportRequests.enable
+                is WaypointsFeature -> modules.waypoints.enable
                 else -> false
             }
         }.forEach {

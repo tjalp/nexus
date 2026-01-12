@@ -43,7 +43,8 @@ data class FeaturesConfig(
     val gamerules: GameRulesConfig,
     val games: GamesConfig,
     val seasons: SeasonsConfig,
-    @Setting("teleport_requests") val teleportRequests: TeleportRequestsConfig
+    @Setting("teleport_requests") val teleportRequests: TeleportRequestsConfig,
+    val waypoints: WaypointsConfig
 )
 
 @ConfigSerializable
@@ -94,4 +95,9 @@ data class SeasonWinterConfig(
 data class TeleportRequestsConfig(
     val enable: Boolean = true,
     val requestTimeoutSeconds: Long = 90
+)
+
+@ConfigSerializable
+data class WaypointsConfig(
+    val enable: Boolean = true
 )
