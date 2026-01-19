@@ -5,7 +5,7 @@ import kotlinx.coroutines.delay
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.translation.Argument
-import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
+import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
@@ -138,7 +138,7 @@ class NexusDisguiseProvider : DisguiseProvider {
                 PRIMARY_COLOR,
                 Argument.component(
                     "disguise",
-                    translatable(disguiseType.translationKey(), COMPLEMENTARY_COLOR)
+                    translatable(disguiseType.translationKey(), MONOCHROME_COLOR)
                 )
             )
         )

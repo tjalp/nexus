@@ -27,10 +27,10 @@ object NexusChatRenderer {
     fun renderer(
         format: String,
         signedMessage: SignedMessage
-    ): ChatRenderer = ChatRenderer { source, sourceDisplayName, message, viewer ->
+    ): ChatRenderer = ChatRenderer { source, _, message, viewer ->
         val base = miniMessage.deserialize(
             format,
-            Placeholder.component("name", sourceDisplayName),
+            Placeholder.component("name", source.teamDisplayName()),
             Placeholder.component("message", message)
         )
 

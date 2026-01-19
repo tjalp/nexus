@@ -11,7 +11,7 @@ object GamesFeature : Feature("games") {
      * A list of currently active games, not necessarily running.
      */
     val activeGames: List<Game>
-        get() = _activeGames
+        get() = _activeGames.toList()
 
     /**
      * Creates a new game instance based on the provided [GameType].
