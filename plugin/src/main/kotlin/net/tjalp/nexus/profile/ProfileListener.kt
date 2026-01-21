@@ -8,14 +8,11 @@ import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
-import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.util.profile
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerLocaleChangeEvent
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.update
 import kotlin.time.ExperimentalTime
 
 class ProfileListener(private val profiles: ProfilesService) : Listener {
@@ -38,10 +35,8 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
         }
 
         NexusPlugin.scheduler.launch {
-            profile?.update {
-                GeneralTable.update({ GeneralTable.profileId eq uniqueId }) {
-                    it[GeneralTable.lastKnownName] = username
-                }
+            profile?.update(GENERAL) {
+                it.lastKnownName = username
             }
         }
     }
@@ -56,13 +51,9 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
         val profile = event.player.profile()
         val locale = event.locale()
 
-        if (profile.getAttachment(GENERAL)?.preferredLocale != null) return
-
         NexusPlugin.scheduler.launch {
-            profile.update {
-                GeneralTable.update({ GeneralTable.profileId eq profile.id }) {
-                    it[GeneralTable.preferredLocale] = locale.toLanguageTag()
-                }
+            profile.update(GENERAL) {
+                it.preferredLocale = locale
             }
         }
     }

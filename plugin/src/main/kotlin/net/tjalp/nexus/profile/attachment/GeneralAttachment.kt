@@ -11,6 +11,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
 import java.util.*
 
@@ -26,11 +27,30 @@ object GeneralTable : CompositeIdTable("general_attachment") {
     override val primaryKey = PrimaryKey(profileId)
 }
 
-data class GeneralAttachment(
+class GeneralAttachment(
     val id: UUID,
-    val lastKnownName: String?,
-    val preferredLocale: Locale,
-)
+    lastKnownName: String?,
+    preferredLocale: Locale,
+) {
+
+    var lastKnownName: String? = lastKnownName
+        set(value) {
+            GeneralTable.update({ GeneralTable.profileId eq id }) {
+                it[GeneralTable.lastKnownName] = value
+            }
+        }
+
+    var preferredLocale: Locale = preferredLocale
+        set(value) {
+            GeneralTable.update({ GeneralTable.profileId eq id }) {
+                it[GeneralTable.preferredLocale] = value.toLanguageTag()
+            }
+        }
+
+    override fun toString(): String {
+        return "GeneralAttachment(id=$id, lastKnownName=$lastKnownName, preferredLocale=$preferredLocale)"
+    }
+}
 
 object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
     override val key: AttachmentKey<GeneralAttachment> = AttachmentKeys.GENERAL
