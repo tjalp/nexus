@@ -56,8 +56,8 @@ object NexusCommand {
                     Lang.reload()
                     NexusPlugin.features.forEach {
                         if (it.isEnabled) it.disable()
-                        it.enable()
                     }
+                    NexusPlugin.enableFeatures()
                     context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
                     context.source.sender.sendMessage("Reloaded config and features")
                     return@executes Command.SINGLE_SUCCESS

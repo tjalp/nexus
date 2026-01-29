@@ -59,3 +59,10 @@ tasks.withType(xyz.jpenilla.runtask.task.AbstractRun::class) {
     }
     jvmArgs("-XX:+AllowEnhancedClassRedefinition")
 }
+
+tasks.register<JavaExec>("generateMigrationScript") {
+    group = "application"
+    description = "Generate a migration script in the path plugin/src/main/resources/db/migration"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "net.tjalp.nexus.GenerateMigrationScriptKt"
+}

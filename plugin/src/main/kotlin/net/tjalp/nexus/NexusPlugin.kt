@@ -23,6 +23,7 @@ import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.kotlin.extensions.set
@@ -58,6 +59,7 @@ object NexusPlugin : JavaPlugin() {
             user = configuration.database.user,
             password = configuration.database.password
         )
+        runMigrations()
         profiles = ExposedProfilesService(database)
         PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }
@@ -101,7 +103,20 @@ object NexusPlugin : JavaPlugin() {
         listeners.forEach { it.unregister() }
     }
 
-    private fun enableFeatures() {
+    private fun runMigrations() {
+        val conf = configuration.database
+        val pluginClassLoader = this::class.java.classLoader
+        val flyway = Flyway.configure(pluginClassLoader)
+            .dataSource(conf.url, conf.user, conf.password)
+            .locations("classpath:db/migration")
+            .baselineOnMigrate(true)
+            .load()
+
+        logger.info("Running database migrations...")
+        flyway.migrate()
+    }
+
+    fun enableFeatures() {
         val modules = configuration.features
 
         features.filter {
@@ -113,7 +128,7 @@ object NexusPlugin : JavaPlugin() {
                 is SeasonsFeature -> modules.seasons.enable
                 is TeleportRequestsFeature -> modules.teleportRequests.enable
                 is WaypointsFeature -> modules.waypoints.enable
-                else -> false
+                else -> error("Unknown feature: ${it.name} ($${it::class.qualifiedName})")
             }
         }.forEach {
             try {
