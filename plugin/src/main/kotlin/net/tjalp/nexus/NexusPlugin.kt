@@ -9,6 +9,7 @@ import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
+import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.feature.waypoints.WaypointsFeature
@@ -46,6 +47,7 @@ object NexusPlugin : JavaPlugin() {
             GameRulesFeature,
             GamesFeature,
             PhysicalSpectatorFeature,
+            PunishmentsFeature,
             SeasonsFeature,
             TeleportRequestsFeature,
 //            WaypointsFeature
@@ -129,6 +131,7 @@ object NexusPlugin : JavaPlugin() {
                 is GameRulesFeature -> modules.gamerules.enable
                 is GamesFeature -> modules.games.enable
                 is PhysicalSpectatorFeature -> modules.physicalSpectator.enable
+                is PunishmentsFeature -> modules.punishments.enable
                 is SeasonsFeature -> modules.seasons.enable
                 is TeleportRequestsFeature -> modules.teleportRequests.enable
                 is WaypointsFeature -> modules.waypoints.enable
