@@ -4,7 +4,9 @@ package net.tjalp.nexus
 
 import net.tjalp.nexus.profile.attachment.EffortShopTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
+import net.tjalp.nexus.profile.attachment.PunishmentsTable
 import net.tjalp.nexus.profile.model.ProfilesTable
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.core.ExperimentalDatabaseMigrationApi
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -18,6 +20,14 @@ val h2db = Database.connect(
 )
 
 fun main() {
+    val flyway = Flyway.configure()
+        .dataSource(h2db.url, "root", "")
+        .locations("classpath:db/migration")
+        .baselineOnMigrate(true)
+        .load()
+
+    flyway.migrate()
+
     transaction(h2db) {
         generateMigrationScript()
     }
@@ -29,7 +39,8 @@ fun generateMigrationScript() {
         ProfilesTable,
         GeneralTable,
         EffortShopTable,
+        PunishmentsTable,
         scriptDirectory = "src/main/resources/db/migration",
-        scriptName = "V1__initial_setup"
+        scriptName = "V2__add_punishments"
     )
 }

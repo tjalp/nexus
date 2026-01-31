@@ -21,13 +21,13 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.util.*
 import kotlin.time.ExperimentalTime
 
-object PunishmentTable : IntIdTable("punishments") {
+object PunishmentsTable : IntIdTable("punishments") {
     val caseId = varchar("case_id", 32).uniqueIndex()
     val punishedProfileId = reference("punished_profile_id", ProfilesTable.id, onDelete = ReferenceOption.NO_ACTION)
-    val type = varchar("type", 32)
+    val type = varchar("punishment_type", 32)
     val reason = text("reason")
-    val severity = varchar("severity", 32)
-    val timestamp = timestamp("timestamp")
+    val severity = varchar("punishment_severity", 32)
+    val timestamp = timestamp("punishment_timestamp")
     val issuerProfileId = reference("issuer_profile_id", ProfilesTable.id, onDelete = ReferenceOption.NO_ACTION)
 }
 
@@ -37,7 +37,7 @@ data class PunishmentAttachment(
 ) {
 
     fun addPunishment(punishment: Punishment) {
-        PunishmentTable.insert {
+        PunishmentsTable.insert {
             it[caseId] = punishment.caseId
             it[punishedProfileId] = profileId
             it[type] = punishment.type.name
@@ -49,8 +49,8 @@ data class PunishmentAttachment(
     }
 
     fun removePunishment(caseId: String) {
-        PunishmentTable.deleteWhere {
-            PunishmentTable.caseId eq caseId and (PunishmentTable.punishedProfileId eq profileId)
+        PunishmentsTable.deleteWhere {
+            PunishmentsTable.caseId eq caseId and (PunishmentsTable.punishedProfileId eq profileId)
         }
     }
 }
@@ -60,7 +60,7 @@ object PunishmentAttachmentProvider : AttachmentProvider<PunishmentAttachment> {
     override val key: AttachmentKey<PunishmentAttachment> = AttachmentKeys.PUNISHMENT
 
     override suspend fun load(profile: ProfileSnapshot): PunishmentAttachment = suspendTransaction {
-        val punishments = PunishmentTable.selectAll().where(PunishmentTable.punishedProfileId eq profile.id)
+        val punishments = PunishmentsTable.selectAll().where(PunishmentsTable.punishedProfileId eq profile.id)
             .map { it.toPunishment() }
 
         return@suspendTransaction PunishmentAttachment(
@@ -71,10 +71,10 @@ object PunishmentAttachmentProvider : AttachmentProvider<PunishmentAttachment> {
 }
 
 fun ResultRow.toPunishment(): Punishment = Punishment(
-    type = PunishmentType.valueOf(this[PunishmentTable.type]),
-    reason = this[PunishmentTable.reason],
-    severity = PunishmentSeverity.valueOf(this[PunishmentTable.severity]),
-    timestamp = this[PunishmentTable.timestamp],
-    issuedBy = this[PunishmentTable.issuerProfileId].value.toString(),
-    caseId = this[PunishmentTable.caseId],
+    type = PunishmentType.valueOf(this[PunishmentsTable.type]),
+    reason = this[PunishmentsTable.reason],
+    severity = PunishmentSeverity.valueOf(this[PunishmentsTable.severity]),
+    timestamp = this[PunishmentsTable.timestamp],
+    issuedBy = this[PunishmentsTable.issuerProfileId].value.toString(),
+    caseId = this[PunishmentsTable.caseId],
 )
