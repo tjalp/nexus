@@ -8,6 +8,7 @@ import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
+import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.feature.waypoints.WaypointsFeature
@@ -44,6 +45,7 @@ object NexusPlugin : JavaPlugin() {
 //            EffortShopFeature,
             GameRulesFeature,
             GamesFeature,
+            PhysicalSpectatorFeature,
             SeasonsFeature,
             TeleportRequestsFeature,
 //            WaypointsFeature
@@ -73,6 +75,7 @@ object NexusPlugin : JavaPlugin() {
 
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
+            commands.registrar().register(BodyCommand.create(), "Body management commands")
             commands.registrar().register(DisguiseCommand.create(this), "Disguise management commands")
             commands.registrar().register(GameCommand.create(), "Game management commands")
             commands.registrar()
@@ -125,6 +128,7 @@ object NexusPlugin : JavaPlugin() {
                 is DisguiseFeature -> modules.disguises.enable
                 is GameRulesFeature -> modules.gamerules.enable
                 is GamesFeature -> modules.games.enable
+                is PhysicalSpectatorFeature -> modules.physicalSpectator.enable
                 is SeasonsFeature -> modules.seasons.enable
                 is TeleportRequestsFeature -> modules.teleportRequests.enable
                 is WaypointsFeature -> modules.waypoints.enable

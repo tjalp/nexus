@@ -79,7 +79,7 @@ object TeleportRequestCommand {
         val target = resolver.resolve(context.source).first()
         val executor = context.source.executor as Player
 
-//        if (target == executor) throw ERROR_SEND_TO_SELF.create()
+        if (target == executor) throw ERROR_SEND_TO_SELF.create()
         if (PlayerTeleportRequest.requests().any { it.source == executor && it.target == target }) {
             throw ERROR_DUPLICATE.create(target)
         }

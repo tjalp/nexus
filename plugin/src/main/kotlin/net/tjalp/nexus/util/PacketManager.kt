@@ -75,9 +75,37 @@ object PacketManager {
         // PlayerLoginEvent gave NPE on connection.connection
         var player: Player? = null
 
+//        private val mutedPackets = setOf(
+//            ClientboundSystemChatPacket::class,
+//            ClientboundRotateHeadPacket::class,
+//            ClientboundMoveEntityPacket::class,
+//            ServerboundMovePlayerPacket::class,
+//            ServerboundClientTickEndPacket::class,
+//            ClientboundSetEntityMotionPacket::class,
+//            ClientboundEntityEventPacket::class,
+//            ClientboundEntityPositionSyncPacket::class,
+//            ServerboundKeepAlivePacket::class,
+//            ClientboundKeepAlivePacket::class,
+//            ClientboundSetTimePacket::class,
+//            ClientboundBlockUpdatePacket::class,
+//            ClientboundBundlePacket::class
+//        )
+
         private fun intercept(msg: Packet<*>): InterceptResponse {
             var cancel = false
             var packet = msg
+
+//            NexusPlugin.scheduler.launch {
+//                if (msg::class in mutedPackets || msg::class.allSuperclasses.any { it in mutedPackets }) return@launch
+//
+//                val json = try {
+//                    Gson().toJson(msg)
+//                } catch (e: Exception) {
+//                    "unknown (failed to serialize)"
+//                }
+//
+//                Bukkit.broadcastMessage("Intercepted packet: ${msg.javaClass.simpleName}. Data: $json")
+//            }
 
             for (listener in listeners[msg::class]) {
                 listener as PacketListener<Packet<*>>

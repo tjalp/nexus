@@ -1,6 +1,7 @@
 package net.tjalp.nexus.util
 
 import net.minecraft.core.BlockPos
+import net.minecraft.network.protocol.Packet
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import org.bukkit.Location
@@ -80,3 +81,12 @@ fun World.asNmsWorld() = (this as org.bukkit.craftbukkit.CraftWorld).handle
  * @return The NMS ServerPlayer corresponding to this Player
  */
 fun Player.asServerPlayer() = (this as CraftPlayer).handle
+
+/**
+ * Sends the given packet to this player.
+ *
+ * @param packet The packet to send
+ */
+fun Player.sendPacket(packet: Packet<*>) {
+    this.asServerPlayer().connection.send(packet)
+}

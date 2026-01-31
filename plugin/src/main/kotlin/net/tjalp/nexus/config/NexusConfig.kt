@@ -42,6 +42,7 @@ data class FeaturesConfig(
     val disguises: DisguisesConfig,
     val gamerules: GameRulesConfig,
     val games: GamesConfig,
+    @Setting("physical_spectator") val physicalSpectator: PhysicalSpectatorConfig,
     val seasons: SeasonsConfig,
     @Setting("teleport_requests") val teleportRequests: TeleportRequestsConfig,
     val waypoints: WaypointsConfig
@@ -72,6 +73,11 @@ data class GameRulesConfig(
 
 @ConfigSerializable
 data class GamesConfig(
+    val enable: Boolean = true
+)
+
+@ConfigSerializable
+data class PhysicalSpectatorConfig(
     val enable: Boolean = true
 )
 
