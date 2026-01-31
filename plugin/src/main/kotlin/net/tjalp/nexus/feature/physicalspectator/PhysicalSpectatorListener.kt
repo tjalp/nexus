@@ -8,10 +8,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority.HIGH
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityPoseChangeEvent
-import org.bukkit.event.player.PlayerGameModeChangeEvent
-import org.bukkit.event.player.PlayerMoveEvent
-import org.bukkit.event.player.PlayerTeleportEvent
-import org.bukkit.event.player.PlayerToggleSneakEvent
+import org.bukkit.event.player.*
 
 class PhysicalSpectatorListener : Listener {
 
@@ -50,5 +47,10 @@ class PhysicalSpectatorListener : Listener {
 
         body.isSneaking = event.isSneaking
         body.pose = if (event.isSneaking) Pose.SNEAKING else Pose.STANDING
+    }
+
+    @EventHandler
+    fun on(event: PlayerQuitEvent) {
+        PhysicalSpectatorFeature.removePhysicalBody(event.player)
     }
 }
