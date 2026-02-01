@@ -35,6 +35,9 @@ fun main() {
 
 fun generateMigrationScript() {
     // Generate the migration script
+
+    // ** Don't forget to adjust the version and name! **
+    // ** Make sure to add new tables if you added some in the code! **
     MigrationUtils.generateMigrationScript(
         ProfilesTable,
         GeneralTable,

@@ -12,7 +12,6 @@ import net.tjalp.nexus.profile.model.toProfileSnapshot
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -34,7 +33,6 @@ class ExposedProfilesService(
         bypassCache: Boolean,
         allowCreation: Boolean
     ): ProfileSnapshot? = suspendTransaction(db) {
-        SchemaUtils.create(ProfilesTable) // ensure schema
         if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
         var profile = ProfilesTable.selectAll().where(ProfilesTable.id eq id).firstOrNull()?.toProfileSnapshot()
@@ -60,7 +58,6 @@ class ExposedProfilesService(
         cache: Boolean,
         vararg statements: () -> Unit
     ): ProfileSnapshot = suspendTransaction(db) {
-        SchemaUtils.create(ProfilesTable) // ensure schema
         ProfilesTable.upsert {
             it[id] = profile.id
             it[modifiedAt] = CurrentTimestamp

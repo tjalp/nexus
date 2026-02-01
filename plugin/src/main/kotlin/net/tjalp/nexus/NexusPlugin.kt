@@ -77,19 +77,18 @@ object NexusPlugin : JavaPlugin() {
 
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
-            commands.registrar().register(BodyCommand.create(), "Body management commands")
-            commands.registrar().register(DisguiseCommand.create(this), "Disguise management commands")
-            commands.registrar().register(GameCommand.create(), "Game management commands")
-            commands.registrar()
-                .register(LanguageCommand.create(), "Language management commands", LanguageCommand.aliases)
-            commands.registrar().register(NexusCommand.create(), "Nexus-specific commands")
-            commands.registrar().register(ProfileCommand.create(this), "Profile management commands")
-            commands.registrar().register(SeasonCommand.create(), "Season management commands")
-            commands.registrar().register(
-                TeleportRequestCommand.create(), "Teleport request commands",
-                TeleportRequestCommand.aliases
-            )
-            commands.registrar().register(WaypointCommand.create(), "Waypoint management commands")
+            commands.registrar().apply {
+                register(BodyCommand.create(), "Body management commands")
+                register(DisguiseCommand.create(this@NexusPlugin), "Disguise management commands")
+                register(GameCommand.create(), "Game management commands")
+                register(LanguageCommand.create(), "Language management commands", LanguageCommand.aliases)
+                register(NexusCommand.create(), "Nexus-specific commands")
+                register(ProfileCommand.create(this@NexusPlugin), "Profile management commands")
+                register(PunishCommand.create(), "Punishment management commands")
+                register(SeasonCommand.create(), "Season management commands")
+                register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)
+                register(WaypointCommand.create(), "Waypoint management commands")
+            }
         }
     }
 
