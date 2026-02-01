@@ -12,23 +12,23 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.migration.jdbc.MigrationUtils
 
-val h2db = Database.connect(
-    url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-    driver = "org.h2.Driver",
-    user = "root",
-    password = ""
+val db = Database.connect(
+    url = "jdbc:postgresql://localhost:5432/postgres",
+    driver = "org.postgresql.Driver",
+    user = "postgres",
+    password = "postgres"
 )
 
 fun main() {
     val flyway = Flyway.configure()
-        .dataSource(h2db.url, "root", "")
+        .dataSource(db.url, "postgres", "postgres")
         .locations("classpath:db/migration")
         .baselineOnMigrate(true)
         .load()
 
     flyway.migrate()
 
-    transaction(h2db) {
+    transaction(db) {
         generateMigrationScript()
     }
 }

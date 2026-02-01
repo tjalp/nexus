@@ -57,7 +57,11 @@ object PunishmentsFeature : Feature("punishments") {
         }.map {
             it[PunishmentsTable.punishedProfileId].value
         }.forEach { profileId ->
-            NexusPlugin.profiles.get(id = profileId, bypassCache = true)
+            NexusPlugin.profiles.get(
+                id = profileId,
+                cache = NexusPlugin.server.getPlayer(profileId) != null,
+                bypassCache = true
+            )
         }
     }
 }
