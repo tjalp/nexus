@@ -8,7 +8,7 @@ import net.tjalp.nexus.profile.attachment.PunishmentAttachmentProvider
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.deleteReturning
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import java.util.*
 import kotlin.time.Clock
@@ -35,8 +35,8 @@ object PunishmentsFeature : Feature("punishments") {
         type: PunishmentType,
         severity: PunishmentSeverity,
         reason: String,
-    ) {
-        val att = target.getAttachment(PUNISHMENT) ?: return
+    ): Punishment? {
+        val att = target.getAttachment(PUNISHMENT) ?: return null
         val punishment = Punishment(
             type = type,
             reason = reason,
@@ -47,11 +47,17 @@ object PunishmentsFeature : Feature("punishments") {
         )
 
         target.update { att.addPunishment(punishment) }
+
+        return punishment
     }
 
     suspend fun withdraw(caseId: String) = suspendTransaction(NexusPlugin.database) {
-        PunishmentsTable.deleteWhere {
+        PunishmentsTable.deleteReturning(listOf(PunishmentsTable.punishedProfileId)) {
             PunishmentsTable.caseId eq caseId
+        }.map {
+            it[PunishmentsTable.punishedProfileId].value
+        }.forEach { profileId ->
+            NexusPlugin.profiles.get(id = profileId, bypassCache = true)
         }
     }
 }

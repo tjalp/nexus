@@ -66,3 +66,10 @@ tasks.register<JavaExec>("generateMigrationScript") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass = "net.tjalp.nexus.GenerateMigrationScriptKt"
 }
+
+tasks.shadowJar {
+    mergeServiceFiles {
+        include("META-INF/services/**")
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+}

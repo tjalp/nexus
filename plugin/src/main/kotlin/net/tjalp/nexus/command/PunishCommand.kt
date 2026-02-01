@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
+import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.text.minimessage.translation.Argument
@@ -137,7 +138,7 @@ object PunishCommand {
                             Argument.string("severity", punishment.severity.name)
                             //                    Argument.string("status", if (punishment.isActive) "Active" else "Inactive")
                             //                    Argument.string("expires_at", punishment.getExpirationTime().toString()
-                        )
+                        ).clickEvent(ClickEvent.runCommand("/punish withdraw ${punishment.caseId}"))
                     )
                 }
 
@@ -192,13 +193,21 @@ object PunishCommand {
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
                 val targetProfile = NexusPlugin.profiles.get(id = uniqueId) ?: throw ERROR_NO_PROFILE.create(target)
 
-                PunishmentsFeature.punish(
+                val punishment = PunishmentsFeature.punish(
                     issuer = senderUniqueId,
                     target = targetProfile,
                     type = type,
                     severity = severity,
                     reason = reason
                 )
+
+                if (punishment == null) {
+                    context.source.sender.sendMessage(translatable(
+                        "command.punish.error.execution_failed",
+                        RED
+                    ))
+                    return@launch
+                }
 
                 context.source.sender.sendMessage(translatable(
                     "command.punish.success",
@@ -208,7 +217,8 @@ object PunishCommand {
                         text(targetProfile.getAttachment(AttachmentKeys.GENERAL)?.lastKnownName ?: target, MONOCHROME_COLOR)
                     ),
                     Argument.component("type", text(type.name, MONOCHROME_COLOR)),
-                    Argument.component("severity", text(severity.name, MONOCHROME_COLOR))
+                    Argument.component("severity", text(severity.name, MONOCHROME_COLOR)),
+                    Argument.component("case_id", text(punishment.caseId, MONOCHROME_COLOR))
                 ))
             } catch (e: CommandSyntaxException) {
                 val message = (e.componentMessage() ?: translatable("command.punish.error.unknown")).colorIfAbsent(RED)
