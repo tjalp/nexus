@@ -1,5 +1,6 @@
 package net.tjalp.nexus.profile.attachment
 
+import kotlinx.datetime.TimeZone
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.AttachmentKey
 import net.tjalp.nexus.profile.model.ProfileSnapshot
@@ -18,6 +19,7 @@ object GeneralTable : CompositeIdTable("general_attachment") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
     val lastKnownName = varchar("last_known_name", 16).nullable()
     val preferredLocale = varchar("preferred_locale", 64).default(Locale.US.toLanguageTag())
+    val timeZone = varchar("time_zone", 64).default(TimeZone.UTC.id)
 
     init {
         addIdColumn(profileId)
@@ -30,6 +32,7 @@ class GeneralAttachment(
     val id: UUID,
     lastKnownName: String?,
     preferredLocale: Locale,
+    timeZone: TimeZone
 ) {
 
     var lastKnownName: String? = lastKnownName
@@ -46,8 +49,15 @@ class GeneralAttachment(
             }
         }
 
+    var timeZone: TimeZone = timeZone
+        set(value) {
+            GeneralTable.update({ GeneralTable.profileId eq id }) {
+                it[GeneralTable.timeZone] = value.id
+            }
+        }
+
     override fun toString(): String {
-        return "GeneralAttachment(id=$id, lastKnownName=$lastKnownName, preferredLocale=$preferredLocale)"
+        return "GeneralAttachment(id=$id, lastKnownName=$lastKnownName, preferredLocale=$preferredLocale, timeZone=$timeZone)"
     }
 }
 
@@ -75,4 +85,5 @@ fun ResultRow.toGeneralAttachment(): GeneralAttachment = GeneralAttachment(
     id = this[GeneralTable.profileId].value,
     lastKnownName = this[GeneralTable.lastKnownName],
     preferredLocale = this[GeneralTable.preferredLocale].let { Locale.forLanguageTag(it) } ?: Locale.US,
+    timeZone = this[GeneralTable.timeZone].let { TimeZone.of(it) }
 )

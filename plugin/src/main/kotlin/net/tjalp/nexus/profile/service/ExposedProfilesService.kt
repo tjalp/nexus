@@ -46,6 +46,9 @@ class ExposedProfilesService(
 
         profile?.also {
             AttachmentRegistry.load(it)
+
+            _updates.tryEmit(ProfileEvent.Updated(it.id, profileCache[it.id], it))
+
             if (cache) profileCache[id] = it
         }
     }

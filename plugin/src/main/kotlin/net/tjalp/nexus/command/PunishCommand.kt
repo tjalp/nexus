@@ -9,6 +9,8 @@ import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.CommandSyntaxException
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
+import com.mojang.brigadier.suggestion.Suggestions
+import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.*
@@ -20,17 +22,19 @@ import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.event.ClickEvent
-import net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY
-import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.minimessage.translation.Argument
-import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
+import net.tjalp.nexus.Constants.PUNISHMENTS_MONOCHROME_COLOR
+import net.tjalp.nexus.Constants.PUNISHMENTS_PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.punishments.PunishmentReason
 import net.tjalp.nexus.feature.punishments.PunishmentSeverity
 import net.tjalp.nexus.feature.punishments.PunishmentType
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.profile.attachment.AttachmentKeys
+import java.util.concurrent.CompletableFuture
 import kotlin.jvm.optionals.getOrNull
 import kotlin.time.ExperimentalTime
 
@@ -82,6 +86,7 @@ object PunishCommand {
             for (severity in PunishmentSeverity.entries) {
                 val severityLiteral = literal(severity.name.lowercase())
                     .then(argument("reason", greedyString())
+                        .suggests { _, builder -> suggestReasons(builder) }
                         .executes { context ->
                             handlePunish(
                                 context,
@@ -101,7 +106,7 @@ object PunishCommand {
     }
 
     private fun handleLog(context: CommandContext<CommandSourceStack>, target: String): Int {
-        NexusPlugin.scheduler.launch {
+        PunishmentsFeature.scheduler.launch {
             try {
                 val uniqueId = withContext(Dispatchers.IO) { NexusPlugin.server.getPlayerUniqueId(target) }
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
@@ -111,41 +116,46 @@ object PunishCommand {
                 val generalAtt = targetProfile.getAttachment(AttachmentKeys.GENERAL)
                 val punishments = att.punishments
                 val logComponent = text()
-                    .append(text("▶ ", DARK_GRAY))
                     .append(
                         translatable(
                             "command.punish.log.header",
-                            PRIMARY_COLOR,
+                            PUNISHMENTS_PRIMARY_COLOR,
                             Argument.component(
                                 "target",
-                                text(generalAtt?.lastKnownName ?: target, MONOCHROME_COLOR)
+                                text(generalAtt?.lastKnownName ?: target, PUNISHMENTS_MONOCHROME_COLOR)
                             ),
                             Argument.numeric("count", punishments.size)
                         )
                     )
 
                 for (punishment in punishments) {
-                    logComponent.appendNewline().append(
-                        translatable(
-                            "command.punish.log.entry",
-                            COMPLEMENTARY_COLOR,
-                            Argument.string("case_id", punishment.caseId),
-                            Argument.string("type", punishment.type.name),
-                            Argument.string("issued_by", punishment.issuedBy),
-                            Argument.string("reason", punishment.reason),
-                            Argument.string("issued_at", punishment.timestamp.toString()),
-                            Argument.string("duration", punishment.severity.duration.toString()),
-                            Argument.string("severity", punishment.severity.name)
-                            //                    Argument.string("status", if (punishment.isActive) "Active" else "Inactive")
-                            //                    Argument.string("expires_at", punishment.getExpirationTime().toString()
-                        ).clickEvent(ClickEvent.runCommand("/punish withdraw ${punishment.caseId}"))
+                    val args = arrayOf(
+                        Argument.component("case_id", text(punishment.caseId, PUNISHMENTS_MONOCHROME_COLOR)),
+                        Argument.string("type", punishment.type.name),
+                        Argument.string("issued_by", punishment.issuedBy),
+                        Argument.string("reason", punishment.reason),
+                        Argument.string("issued_at", punishment.timestamp.toString()),
+                        Argument.string("duration", punishment.severity.duration.toString()),
+                        Argument.string("severity", punishment.severity.name),
+                        Argument.component(
+                            "status",
+                            if (punishment.isActive) {
+                                translatable("command.punish.log.entry.status.active", GREEN)
+                            } else translatable("command.punish.log.entry.status.inactive", RED)
+                        ),
+                        Argument.string("expires_at", punishment.expiresAt.toString())
                     )
+                    logComponent.appendNewline()
+                        .append(text("▶ ", DARK_GRAY))
+                        .append(translatable("command.punish.log.entry", PUNISHMENTS_PRIMARY_COLOR, *args)
+                            .clickEvent(ClickEvent.runCommand("/punish withdraw ${punishment.caseId}")))
                 }
 
                 if (punishments.isEmpty()) {
                     logComponent
                         .appendNewline()
-                        .append(translatable("command.punish.log.entry.none", RED))
+                        .append(text("▶ ", DARK_GRAY))
+                        .append(translatable("command.punish.log.entry.none", PRIMARY_COLOR))
                 }
 
                 context.source.sender.sendMessage(logComponent)
@@ -160,7 +170,7 @@ object PunishCommand {
     }
 
     private fun handleWithdraw(context: CommandContext<CommandSourceStack>, caseId: String): Int {
-        NexusPlugin.scheduler.launch {
+        PunishmentsFeature.scheduler.launch {
             try {
                 PunishmentsFeature.withdraw(caseId = caseId)
 
@@ -178,6 +188,16 @@ object PunishCommand {
         return Command.SINGLE_SUCCESS
     }
 
+    private fun suggestReasons(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
+        PunishmentReason.entries
+            .map { it.key }
+            .filter { it.startsWith(builder.remaining, ignoreCase = true) }
+            .sorted()
+            .forEach { builder.suggest(it) }
+
+        return builder.buildFuture()
+    }
+
     private fun handlePunish(
         context: CommandContext<CommandSourceStack>,
         target: String,
@@ -185,7 +205,7 @@ object PunishCommand {
         severity: PunishmentSeverity,
         reason: String
     ): Int {
-        NexusPlugin.scheduler.launch {
+        PunishmentsFeature.scheduler.launch {
             try {
                 val senderUniqueId = context.source.sender.get(Identity.UUID).getOrNull()
                     ?: throw ERROR_SOURCE_UUID_UNKNOWN.create()

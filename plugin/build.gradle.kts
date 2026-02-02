@@ -28,6 +28,7 @@ dependencies {
     implementation(libs.bundles.database)
     implementation(libs.configurateKotlinExtras)
     implementation(libs.commonsCollections)
+    implementation(libs.icu4j)
 
     compileOnly(libs.libsDisguises)
 

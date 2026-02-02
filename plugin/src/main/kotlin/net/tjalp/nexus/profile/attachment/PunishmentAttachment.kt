@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.datetime.duration
 import org.jetbrains.exposed.v1.datetime.timestamp
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -27,6 +28,7 @@ object PunishmentsTable : IntIdTable("punishments") {
     val type = varchar("punishment_type", 32)
     val reason = text("reason")
     val severity = varchar("punishment_severity", 32)
+    val duration = duration("duration")
     val timestamp = timestamp("punishment_timestamp")
     val issuerProfileId = reference("issuer_profile_id", ProfilesTable.id, onDelete = ReferenceOption.NO_ACTION)
 }
@@ -42,6 +44,7 @@ data class PunishmentAttachment(
             it[punishedProfileId] = profileId
             it[type] = punishment.type.name
             it[reason] = punishment.reason
+            it[duration] = punishment.duration
             it[severity] = punishment.severity.name
             it[timestamp] = punishment.timestamp
             it[issuerProfileId] = UUID.fromString(punishment.issuedBy)
@@ -73,6 +76,7 @@ object PunishmentAttachmentProvider : AttachmentProvider<PunishmentAttachment> {
 fun ResultRow.toPunishment(): Punishment = Punishment(
     type = PunishmentType.valueOf(this[PunishmentsTable.type]),
     reason = this[PunishmentsTable.reason],
+    duration = this[PunishmentsTable.duration],
     severity = PunishmentSeverity.valueOf(this[PunishmentsTable.severity]),
     timestamp = this[PunishmentsTable.timestamp],
     issuedBy = this[PunishmentsTable.issuerProfileId].value.toString(),

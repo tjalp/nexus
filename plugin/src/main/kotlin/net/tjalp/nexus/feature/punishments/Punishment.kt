@@ -1,5 +1,7 @@
 package net.tjalp.nexus.feature.punishments
 
+import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -8,6 +10,7 @@ import kotlin.time.Instant
  *
  * @param type The type of punishment
  * @param severity The severity of the punishment
+ * @param duration The duration of the punishment
  * @param reason The reason for the punishment
  * @param timestamp The timestamp when the punishment was issued
  * @param issuedBy The issuer of the punishment
@@ -17,11 +20,27 @@ import kotlin.time.Instant
 data class Punishment(
     val type: PunishmentType,
     val severity: PunishmentSeverity,
+    val duration: Duration,
     val reason: String,
     val timestamp: Instant,
     val issuedBy: String,
     val caseId: String,
 ) {
+
+    /**
+     * Whether the punishment is still active
+     */
+    val isActive: Boolean
+        get() {
+            val now = Clock.System.now()
+            val expiryTime = timestamp + duration
+            return now < expiryTime
+        }
+
+    /**
+     * The expiration time of the punishment
+     */
+    val expiresAt: Instant get() = timestamp + duration
 
     companion object {
 
