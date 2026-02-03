@@ -1,9 +1,5 @@
 package net.tjalp.nexus.feature.punishments
 
-import io.papermc.paper.dialog.Dialog
-import io.papermc.paper.registry.data.dialog.DialogBase
-import io.papermc.paper.registry.data.dialog.body.DialogBody
-import io.papermc.paper.registry.data.dialog.type.DialogType
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import net.kyori.adventure.key.Key.key
@@ -23,6 +19,7 @@ import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.PunishmentAttachmentProvider
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
 import net.tjalp.nexus.profile.model.ProfileSnapshot
+import net.tjalp.nexus.util.asDialogNotice
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.jetbrains.exposed.v1.core.eq
@@ -61,14 +58,20 @@ object PunishmentsFeature : Feature("punishments") {
                     }
                 }
 
+                if (newPunishments.isNotEmpty()) {
+                    player.playSound(sound {
+                        it.type(key("minecraft:entity.pillager.hurt"))
+                        it.source(Sound.Source.MASTER)
+                    }, Sound.Emitter.self())
+                }
+
                 for (punishment in newPunishments) {
                     when (punishment.type) {
                         PunishmentType.WARNING -> {
-                            player.sendMessage(buildWarnMessage(punishment))
-                            player.playSound(sound {
-                                it.type(key("minecraft:entity.pillager.hurt"))
-                                it.source(Sound.Source.MASTER)
-                            }, Sound.Emitter.self())
+                            val warnComponent = PunishComponents.warning(punishment)
+
+                            player.sendMessage(textOfChildren(newline(), warnComponent, newline()))
+                            player.showDialog(warnComponent.asDialogNotice(locale = player.locale()))
                         }
 
                         PunishmentType.KICK,
@@ -81,21 +84,8 @@ object PunishmentsFeature : Feature("punishments") {
 
                         PunishmentType.MUTE -> {
                             val kickComponent = PunishComponents.mute(punishment, timeZone, player.locale())
-                            val translated = GlobalTranslator.render(kickComponent, player.locale())
 
-                            player.showDialog(Dialog.create { builder ->
-                                builder.empty()
-                                    .base(
-                                        DialogBase.builder(empty())
-                                            .body(
-                                                listOf(
-                                                    DialogBody.plainMessage(translated)
-                                                )
-                                            )
-                                            .build()
-                                    )
-                                    .type(DialogType.notice())
-                            })
+                            player.showDialog(kickComponent.asDialogNotice(locale = player.locale()))
                         }
                     }
                 }

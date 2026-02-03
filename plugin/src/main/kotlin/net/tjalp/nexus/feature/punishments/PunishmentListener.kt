@@ -3,19 +3,15 @@ package net.tjalp.nexus.feature.punishments
 import io.papermc.paper.connection.PlayerConfigurationConnection
 import io.papermc.paper.connection.PlayerGameConnection
 import io.papermc.paper.connection.PlayerLoginConnection
-import io.papermc.paper.dialog.Dialog
 import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent
 import io.papermc.paper.event.player.AsyncChatEvent
-import io.papermc.paper.registry.data.dialog.DialogBase
-import io.papermc.paper.registry.data.dialog.body.DialogBody
-import io.papermc.paper.registry.data.dialog.type.DialogType
 import kotlinx.datetime.TimeZone
 import net.kyori.adventure.identity.Identity
-import net.kyori.adventure.text.Component.empty
 import net.kyori.adventure.translation.GlobalTranslator
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.PUNISHMENT
+import net.tjalp.nexus.util.asDialogNotice
 import net.tjalp.nexus.util.profile
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -79,21 +75,8 @@ class PunishmentListener : Listener {
 
         val timeZone = profile.getAttachment(GENERAL)?.timeZone ?: TimeZone.UTC
         val muteComponent = PunishComponents.mute(activeMute, timeZone, player.locale())
-        val translated = GlobalTranslator.render(muteComponent, player.locale())
 
-        player.showDialog(Dialog.create { builder ->
-            builder.empty()
-                .base(
-                    DialogBase.builder(empty())
-                        .body(
-                            listOf(
-                                DialogBody.plainMessage(translated)
-                            )
-                        )
-                        .build()
-                )
-                .type(DialogType.notice())
-        })
+        player.showDialog(muteComponent.asDialogNotice(locale = player.locale()))
 
         event.isCancelled = true
     }

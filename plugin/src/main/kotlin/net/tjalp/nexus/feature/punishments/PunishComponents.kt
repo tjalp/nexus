@@ -130,6 +130,27 @@ object PunishComponents {
     }
 
     /**
+     * Create a warning component
+     *
+     * @param punishment The punishment to create the component for
+     * @return Warning component
+     */
+    fun warning(punishment: Punishment): Component {
+        val reason = formatReason(punishment)
+        val header = translatable(
+            "punishment.warning.header",
+            PUNISHMENTS_PRIMARY_COLOR,
+            Argument.component("reason", reason.colorIfAbsent(PUNISHMENTS_MONOCHROME_COLOR))
+        )
+
+        return textOfChildren(
+            header,
+            newline(),
+            newline(), APPEAL,
+        )
+    }
+
+    /**
      * Format the reason of a punishment
      *
      * @param punishment The punishment to format the reason for

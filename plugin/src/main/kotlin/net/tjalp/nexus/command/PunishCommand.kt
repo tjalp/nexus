@@ -19,6 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.identity.Identity
+import net.kyori.adventure.key.Key.key
+import net.kyori.adventure.sound.Sound
+import net.kyori.adventure.sound.Sound.sound
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.event.ClickEvent
@@ -228,6 +231,11 @@ object PunishCommand {
                     ))
                     return@launch
                 }
+
+                context.source.sender.playSound(sound {
+                    it.type(key("minecraft:entity.pillager.death"))
+                    it.source(Sound.Source.MASTER)
+                }, Sound.Emitter.self())
 
                 context.source.sender.sendMessage(translatable(
                     "command.punish.success",
