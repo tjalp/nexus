@@ -6,6 +6,7 @@ import io.papermc.paper.dialog.Dialog
 import io.papermc.paper.registry.data.dialog.DialogBase
 import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.type.DialogType
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.empty
 import net.kyori.adventure.text.ComponentLike
 import net.kyori.adventure.translation.GlobalTranslator
@@ -25,11 +26,9 @@ fun ComponentLike.asDialogNotice(
     translate: Boolean = true,
     locale: Locale? = null
 ): Dialog {
-    val component = if (translate) {
-        require(locale != null) { "Locale must be provided when translate is true" }
+    if (translate) require(locale != null) { "Locale must be provided when translate is true" }
 
-        GlobalTranslator.render(this.asComponent(), locale)
-    } else this.asComponent()
+    val component = if (translate) this.translate(locale!!) else this.asComponent()
 
     return Dialog.create { builder ->
         builder.empty()
@@ -44,4 +43,14 @@ fun ComponentLike.asDialogNotice(
             )
             .type(DialogType.notice())
     }
+}
+
+/**
+ * Translates this [ComponentLike] to the specified [Locale] using the [GlobalTranslator].
+ *
+ * @param locale The [Locale] to translate to, or null to not translate
+ * @return The translated [Component]
+ */
+fun ComponentLike.translate(locale: Locale?): Component {
+    return locale?.let { GlobalTranslator.render(this.asComponent(), it) } ?: this.asComponent()
 }

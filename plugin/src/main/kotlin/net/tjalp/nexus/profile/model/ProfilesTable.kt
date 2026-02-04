@@ -2,7 +2,6 @@ package net.tjalp.nexus.profile.model
 
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.AttachmentKey
-import org.bukkit.Bukkit
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
@@ -87,7 +86,7 @@ data class ProfileSnapshot(
      * @return The updated [ProfileSnapshot].
      */
     suspend fun update(vararg statements: () -> Unit) = NexusPlugin.profiles
-        .upsert(this, cache = Bukkit.getPlayer(this.id) != null, statements = statements)
+        .upsert(this, statements = statements)
 
     /**
      * Updates a specific attachment of the profile using the provided statement.

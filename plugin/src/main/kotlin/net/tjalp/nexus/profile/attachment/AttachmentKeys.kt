@@ -7,4 +7,5 @@ object AttachmentKeys {
     val GENERAL: AttachmentKey<GeneralAttachment> = Attachments.key("general")
     val EFFORT_SHOP: AttachmentKey<EffortShopAttachment> = Attachments.key("effort_shop")
     val PUNISHMENT: AttachmentKey<PunishmentAttachment> = Attachments.key("punishments")
+    val NOTICES: AttachmentKey<NoticesAttachment> = Attachments.key("notices")
 }

@@ -7,12 +7,12 @@ import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent
 import io.papermc.paper.event.player.AsyncChatEvent
 import kotlinx.datetime.TimeZone
 import net.kyori.adventure.identity.Identity
-import net.kyori.adventure.translation.GlobalTranslator
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.PUNISHMENT
 import net.tjalp.nexus.util.asDialogNotice
 import net.tjalp.nexus.util.profile
+import net.tjalp.nexus.util.translate
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import java.util.*
@@ -55,9 +55,8 @@ class PunishmentListener : Listener {
         if (activeBan == null) return
 
         val banComponent = PunishComponents.ban(activeBan, timeZone, playerLocale)
-        val translated = GlobalTranslator.render(banComponent, playerLocale)
 
-        event.kickMessage(translated)
+        event.kickMessage(banComponent.translate(playerLocale))
     }
 
     @EventHandler

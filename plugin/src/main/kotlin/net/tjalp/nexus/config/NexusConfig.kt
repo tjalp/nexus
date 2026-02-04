@@ -42,6 +42,7 @@ data class FeaturesConfig(
     val disguises: DisguisesConfig,
     val gamerules: GameRulesConfig,
     val games: GamesConfig,
+    val notices: NoticesConfig,
     @Setting("physical_spectator") val physicalSpectator: PhysicalSpectatorConfig,
     val punishments: PunishmentsConfig,
     val seasons: SeasonsConfig,
@@ -74,6 +75,11 @@ data class GameRulesConfig(
 
 @ConfigSerializable
 data class GamesConfig(
+    val enable: Boolean = true
+)
+
+@ConfigSerializable
+data class NoticesConfig(
     val enable: Boolean = true
 )
 

@@ -8,6 +8,7 @@ import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
+import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
@@ -46,6 +47,7 @@ object NexusPlugin : JavaPlugin() {
 //            EffortShopFeature,
             GameRulesFeature,
             GamesFeature,
+            NoticesFeature,
             PhysicalSpectatorFeature,
             PunishmentsFeature,
             SeasonsFeature,
@@ -129,6 +131,7 @@ object NexusPlugin : JavaPlugin() {
                 is DisguiseFeature -> modules.disguises.enable
                 is GameRulesFeature -> modules.gamerules.enable
                 is GamesFeature -> modules.games.enable
+                is NoticesFeature -> modules.notices.enable
                 is PhysicalSpectatorFeature -> modules.physicalSpectator.enable
                 is PunishmentsFeature -> modules.punishments.enable
                 is SeasonsFeature -> modules.seasons.enable

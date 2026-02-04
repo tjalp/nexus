@@ -5,12 +5,8 @@ import kotlinx.datetime.TimeZone
 import net.kyori.adventure.key.Key.key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.Sound.sound
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.*
-import net.kyori.adventure.text.minimessage.translation.Argument
-import net.kyori.adventure.translation.GlobalTranslator
-import net.tjalp.nexus.Constants.PUNISHMENTS_MONOCHROME_COLOR
-import net.tjalp.nexus.Constants.PUNISHMENTS_PRIMARY_COLOR
+import net.kyori.adventure.text.Component.newline
+import net.kyori.adventure.text.Component.textOfChildren
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
@@ -21,6 +17,7 @@ import net.tjalp.nexus.profile.attachment.PunishmentsTable
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.util.asDialogNotice
 import net.tjalp.nexus.util.register
+import net.tjalp.nexus.util.translate
 import net.tjalp.nexus.util.unregister
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteReturning
@@ -77,9 +74,8 @@ object PunishmentsFeature : Feature("punishments") {
                         PunishmentType.KICK,
                         PunishmentType.BAN -> {
                             val kickComponent = PunishComponents.kick(punishment)
-                            val translated = GlobalTranslator.render(kickComponent, player.locale())
 
-                            player.kick(translated)
+                            player.kick(kickComponent.translate(player.locale()))
                         }
 
                         PunishmentType.MUTE -> {
@@ -133,26 +129,8 @@ object PunishmentsFeature : Feature("punishments") {
         }.forEach { profileId ->
             NexusPlugin.profiles.get(
                 id = profileId,
-                cache = NexusPlugin.server.getPlayer(profileId) != null,
                 bypassCache = true
             )
         }
-    }
-
-    private fun buildWarnMessage(punishment: Punishment): Component {
-        val reason = PunishmentReason.entries.firstOrNull {
-            it.key.equals(punishment.reason, ignoreCase = true)
-        }?.reason ?: text(punishment.reason)
-        val header = translatable(
-            "punishment.warning.received.header",
-            PUNISHMENTS_PRIMARY_COLOR,
-            Argument.component("reason", reason.colorIfAbsent(PUNISHMENTS_MONOCHROME_COLOR))
-        )
-
-        return text()
-            .appendNewline()
-            .append(header)
-            .appendNewline()
-            .build()
     }
 }

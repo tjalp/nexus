@@ -1,0 +1,69 @@
+package net.tjalp.nexus.profile.attachment
+
+import net.tjalp.nexus.profile.AttachmentKey
+import net.tjalp.nexus.profile.model.ProfileSnapshot
+import net.tjalp.nexus.profile.model.ProfilesTable
+import org.jetbrains.exposed.v1.core.ReferenceOption
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
+import java.util.*
+
+object NoticesTable : CompositeIdTable("notices_attachments") {
+    val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
+    val acceptedRulesVersion = integer("accepted_rules_version").default(0)
+
+    init {
+        addIdColumn(profileId)
+    }
+
+    override val primaryKey = PrimaryKey(profileId)
+}
+
+class NoticesAttachment(
+    val id: UUID,
+    acceptedRulesVersion: Int
+) {
+
+    var acceptedRulesVersion: Int = acceptedRulesVersion
+        set(value) {
+            NoticesTable.update({ NoticesTable.profileId eq id }) {
+                it[NoticesTable.acceptedRulesVersion] = value
+            }
+        }
+
+    fun hasAcceptedRules(version: Int): Boolean = acceptedRulesVersion >= version
+
+    override fun toString(): String {
+        return "NoticesAttachment(id=$id, acceptedRulesVersion=$acceptedRulesVersion)"
+    }
+}
+
+object NoticesAttachmentProvider : AttachmentProvider<NoticesAttachment> {
+    override val key: AttachmentKey<NoticesAttachment> = AttachmentKeys.NOTICES
+
+    override suspend fun load(profile: ProfileSnapshot): NoticesAttachment? = suspendTransaction {
+        val attachment = NoticesTable.selectAll().where(NoticesTable.profileId eq profile.id)
+            .firstOrNull()?.toNoticesAttachment()
+
+        if (attachment == null) {
+            NoticesTable.upsert {
+                it[profileId] = profile.id
+            }
+
+            return@suspendTransaction NoticesTable.selectAll().where(NoticesTable.profileId eq profile.id)
+                .firstOrNull()?.toNoticesAttachment()
+        }
+
+        attachment
+    }
+}
+
+fun ResultRow.toNoticesAttachment(): NoticesAttachment = NoticesAttachment(
+    id = this[NoticesTable.profileId].value,
+    acceptedRulesVersion = this[NoticesTable.acceptedRulesVersion]
+)

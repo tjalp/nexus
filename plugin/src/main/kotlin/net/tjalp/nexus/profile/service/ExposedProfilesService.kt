@@ -49,7 +49,7 @@ class ExposedProfilesService(
 
             _updates.tryEmit(ProfileEvent.Updated(it.id, profileCache[it.id], it))
 
-            if (cache) profileCache[id] = it
+            if (cache || profileCache.contains(id)) profileCache[id] = it
         }
     }
 
@@ -74,7 +74,7 @@ class ExposedProfilesService(
 
         _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
 
-        if (cache) profileCache[profile.id] = profile
+        if (cache || profileCache.contains(profile.id)) profileCache[profile.id] = profile
 
         profile
     }

@@ -4,6 +4,7 @@ package net.tjalp.nexus
 
 import net.tjalp.nexus.profile.attachment.EffortShopTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
+import net.tjalp.nexus.profile.attachment.NoticesTable
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.flywaydb.core.Flyway
@@ -43,7 +44,8 @@ fun generateMigrationScript() {
         GeneralTable,
         EffortShopTable,
         PunishmentsTable,
+        NoticesTable,
         scriptDirectory = "src/main/resources/db/migration",
-        scriptName = "V2__add_punishments"
+        scriptName = "V3__add_notices_feature"
     )
 }
