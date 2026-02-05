@@ -46,6 +46,6 @@ fun generateMigrationScript() {
         PunishmentsTable,
         NoticesTable,
         scriptDirectory = "src/main/resources/db/migration",
-        scriptName = "V3__add_notices_feature"
+        scriptName = "V4__add_time_zone_to_general_attachment"
     )
 }

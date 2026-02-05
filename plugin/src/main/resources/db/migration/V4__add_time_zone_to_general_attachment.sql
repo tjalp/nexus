@@ -1,0 +1,2 @@
+ALTER TABLE general_attachment
+    ALTER COLUMN time_zone TYPE VARCHAR(64), ALTER COLUMN time_zone DROP NOT NULL, ALTER COLUMN time_zone DROP DEFAULT;

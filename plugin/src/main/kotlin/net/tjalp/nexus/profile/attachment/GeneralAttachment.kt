@@ -19,7 +19,7 @@ object GeneralTable : CompositeIdTable("general_attachment") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
     val lastKnownName = varchar("last_known_name", 16).nullable()
     val preferredLocale = varchar("preferred_locale", 64).default(Locale.US.toLanguageTag())
-    val timeZone = varchar("time_zone", 64).default(TimeZone.UTC.id)
+    val timeZone = varchar("time_zone", 64).nullable()
 
     init {
         addIdColumn(profileId)
@@ -32,7 +32,7 @@ class GeneralAttachment(
     val id: UUID,
     lastKnownName: String?,
     preferredLocale: Locale,
-    timeZone: TimeZone
+    timeZone: TimeZone?
 ) {
 
     var lastKnownName: String? = lastKnownName
@@ -49,10 +49,10 @@ class GeneralAttachment(
             }
         }
 
-    var timeZone: TimeZone = timeZone
+    var timeZone: TimeZone? = timeZone
         set(value) {
             GeneralTable.update({ GeneralTable.profileId eq id }) {
-                it[GeneralTable.timeZone] = value.id
+                it[GeneralTable.timeZone] = value?.id
             }
         }
 
@@ -85,5 +85,5 @@ fun ResultRow.toGeneralAttachment(): GeneralAttachment = GeneralAttachment(
     id = this[GeneralTable.profileId].value,
     lastKnownName = this[GeneralTable.lastKnownName],
     preferredLocale = this[GeneralTable.preferredLocale].let { Locale.forLanguageTag(it) } ?: Locale.US,
-    timeZone = this[GeneralTable.timeZone].let { TimeZone.of(it) }
+    timeZone = this[GeneralTable.timeZone]?.let { TimeZone.of(it) }
 )
