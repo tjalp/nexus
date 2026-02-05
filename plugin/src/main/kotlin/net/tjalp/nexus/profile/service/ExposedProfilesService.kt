@@ -12,6 +12,7 @@ import net.tjalp.nexus.profile.model.toProfileSnapshot
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -77,6 +78,10 @@ class ExposedProfilesService(
         if (cache || profileCache.contains(profile.id)) profileCache[profile.id] = profile
 
         profile
+    }
+
+    override suspend fun delete(id: UUID): Boolean = suspendTransaction(db) {
+        return@suspendTransaction ProfilesTable.deleteWhere { ProfilesTable.id eq id } > 0
     }
 
     override fun uncache(id: UUID): ProfileSnapshot? = profileCache.remove(id)

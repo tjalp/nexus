@@ -37,6 +37,7 @@ import net.tjalp.nexus.feature.punishments.PunishmentSeverity
 import net.tjalp.nexus.feature.punishments.PunishmentType
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.profile.attachment.AttachmentKeys
+import org.bukkit.command.ConsoleCommandSender
 import java.util.concurrent.CompletableFuture
 import kotlin.jvm.optionals.getOrNull
 import kotlin.time.ExperimentalTime
@@ -210,14 +211,19 @@ object PunishCommand {
     ): Int {
         PunishmentsFeature.scheduler.launch {
             try {
-                val senderUniqueId = context.source.sender.get(Identity.UUID).getOrNull()
-                    ?: throw ERROR_SOURCE_UUID_UNKNOWN.create()
+                var senderId = context.source.sender.get(Identity.UUID).getOrNull()?.toString()
+                    ?: context.source.sender.get(Identity.NAME).getOrNull()
+
+                if (senderId == null && context.source.sender !is ConsoleCommandSender) {
+                    throw ERROR_SOURCE_UUID_UNKNOWN.create()
+                } else senderId = "System"
+
                 val uniqueId = withContext(Dispatchers.IO) { NexusPlugin.server.getPlayerUniqueId(target) }
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
                 val targetProfile = NexusPlugin.profiles.get(id = uniqueId) ?: throw ERROR_NO_PROFILE.create(target)
 
                 val punishment = PunishmentsFeature.punish(
-                    issuer = senderUniqueId,
+                    issuer = senderId,
                     target = targetProfile,
                     type = type,
                     severity = severity,

@@ -24,13 +24,13 @@ import kotlin.time.ExperimentalTime
 
 object PunishmentsTable : IntIdTable("punishments") {
     val caseId = varchar("case_id", 32).uniqueIndex()
-    val punishedProfileId = reference("punished_profile_id", ProfilesTable.id, onDelete = ReferenceOption.NO_ACTION)
+    val punishedProfileId = reference("punished_profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
     val type = varchar("punishment_type", 32)
     val reason = text("reason")
     val severity = varchar("punishment_severity", 32)
     val duration = duration("duration")
     val timestamp = timestamp("punishment_timestamp")
-    val issuerProfileId = reference("issuer_profile_id", ProfilesTable.id, onDelete = ReferenceOption.NO_ACTION)
+    val issuedBy = varchar("issued_by", 36)
 }
 
 data class PunishmentAttachment(
@@ -47,7 +47,7 @@ data class PunishmentAttachment(
             it[duration] = punishment.duration
             it[severity] = punishment.severity.name
             it[timestamp] = punishment.timestamp
-            it[issuerProfileId] = UUID.fromString(punishment.issuedBy)
+            it[issuedBy] = punishment.issuedBy
         }
     }
 
@@ -79,6 +79,6 @@ fun ResultRow.toPunishment(): Punishment = Punishment(
     duration = this[PunishmentsTable.duration],
     severity = PunishmentSeverity.valueOf(this[PunishmentsTable.severity]),
     timestamp = this[PunishmentsTable.timestamp],
-    issuedBy = this[PunishmentsTable.issuerProfileId].value.toString(),
+    issuedBy = this[PunishmentsTable.issuedBy],
     caseId = this[PunishmentsTable.caseId],
 )

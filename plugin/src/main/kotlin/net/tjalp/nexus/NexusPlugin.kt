@@ -85,7 +85,7 @@ object NexusPlugin : JavaPlugin() {
                 register(GameCommand.create(), "Game management commands")
                 register(LanguageCommand.create(), "Language management commands", LanguageCommand.aliases)
                 register(NexusCommand.create(), "Nexus-specific commands")
-                register(ProfileCommand.create(this@NexusPlugin), "Profile management commands")
+                register(ProfileCommand.create(), "Profile management commands")
                 register(PunishCommand.create(), "Punishment management commands")
                 register(SeasonCommand.create(), "Season management commands")
                 register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)

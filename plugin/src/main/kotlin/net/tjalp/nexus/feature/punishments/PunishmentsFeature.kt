@@ -22,7 +22,6 @@ import net.tjalp.nexus.util.unregister
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteReturning
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import java.util.*
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -99,7 +98,7 @@ object PunishmentsFeature : Feature("punishments") {
 
     @OptIn(ExperimentalTime::class)
     suspend fun punish(
-        issuer: UUID,
+        issuer: String,
         target: ProfileSnapshot,
         type: PunishmentType,
         severity: PunishmentSeverity,
@@ -112,7 +111,7 @@ object PunishmentsFeature : Feature("punishments") {
             reason = reason,
             severity = severity,
             timestamp = Clock.System.now(),
-            issuedBy = issuer.toString(),
+            issuedBy = issuer,
             caseId = Punishment.generateCaseId(type)
         )
 

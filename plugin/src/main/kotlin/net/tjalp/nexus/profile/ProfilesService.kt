@@ -53,6 +53,14 @@ interface ProfilesService {
     ): ProfileSnapshot
 
     /**
+     * Deletes a profile from the database, if it exists.
+     *
+     * @param id The unique identifier of the profile to delete.
+     * @return True if the profile was deleted, false if it did not exist.
+     */
+    suspend fun delete(id: UUID): Boolean
+
+    /**
      * Removes a profile from the cache.
      *
      * @param id The unique identifier of the profile to uncache.
