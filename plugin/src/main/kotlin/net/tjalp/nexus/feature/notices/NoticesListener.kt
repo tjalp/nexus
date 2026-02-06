@@ -8,9 +8,8 @@ import io.papermc.paper.registry.data.dialog.action.DialogAction
 import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.event.ClickCallback
@@ -75,12 +74,7 @@ class NoticesListener : Listener {
         })
 
         runBlocking {
-            val accepted = try {
-                withTimeout(5.minutes) { acceptedDeferred.await() }
-            } catch (e: TimeoutCancellationException) {
-                acceptedDeferred.complete(false)
-                false
-            }
+            val accepted = withTimeoutOrNull(5.minutes) { acceptedDeferred.await() } ?: false
 
             if (accepted) {
                 profile.update { att.acceptedRulesVersion = 1 }
