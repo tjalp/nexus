@@ -86,6 +86,7 @@ object NexusPlugin : JavaPlugin() {
                 register(ProfileCommand.create(), "Profile management commands")
                 register(PunishCommand.create(), "Punishment management commands")
                 register(RecommendationsCommand.create(), "Show recommendations dialog")
+                register(RulesCommand.create(), "Show rules dialog")
                 register(SeasonCommand.create(), "Season management commands")
                 register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)
                 register(TimeZoneCommand.create(), "Time zone management commands")

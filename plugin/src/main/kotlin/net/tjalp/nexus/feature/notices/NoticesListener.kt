@@ -1,21 +1,11 @@
 package net.tjalp.nexus.feature.notices
 
-import io.papermc.paper.dialog.Dialog
 import io.papermc.paper.event.connection.configuration.AsyncPlayerConnectionConfigureEvent
-import io.papermc.paper.registry.data.dialog.ActionButton
-import io.papermc.paper.registry.data.dialog.DialogBase
-import io.papermc.paper.registry.data.dialog.action.DialogAction
-import io.papermc.paper.registry.data.dialog.body.DialogBody
-import io.papermc.paper.registry.data.dialog.type.DialogType
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.text.Component.translatable
-import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.format.NamedTextColor.RED
-import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.NOTICES
@@ -23,7 +13,6 @@ import net.tjalp.nexus.util.translate
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import kotlin.jvm.optionals.getOrNull
-import kotlin.time.Duration.Companion.minutes
 
 @Suppress("UnstableApiUsage")
 class NoticesListener : Listener {
@@ -38,43 +27,11 @@ class NoticesListener : Listener {
         val locale = audience.get(Identity.LOCALE).getOrNull() ?: profile.getAttachment(GENERAL)?.preferredLocale
 
         runBlocking {
-            if (!att.hasAcceptedRules(1)) {
-                val acceptedDeferred = CompletableDeferred<Boolean>()
+            val rulesConfig = NexusPlugin.configuration.features.notices.rules
+            val rulesVersion = rulesConfig.rulesVersion
 
-                audience.showDialog(Dialog.create { builder ->
-                    builder.empty()
-                        .base(
-                            DialogBase.builder(translatable("dialog.rules.title").translate(locale))
-                                .canCloseWithEscape(false)
-                                .body(
-                                    listOf(
-                                        DialogBody.plainMessage(
-                                            translatable(
-                                                "dialog.rules.description",
-                                                PRIMARY_COLOR
-                                            ).translate(locale)
-                                        )
-                                    )
-                                )
-                                .build()
-                        )
-                        .type(
-                            DialogType.confirmation(
-                                ActionButton.builder(translatable("gui.acknowledge"))
-                                    .action(DialogAction.customClick({ _, _ ->
-                                        acceptedDeferred.complete(true)
-                                    }, ClickCallback.Options.builder().build()))
-                                    .build(),
-                                ActionButton.builder(translatable("menu.disconnect"))
-                                    .action(DialogAction.customClick({ _, _ ->
-                                        acceptedDeferred.complete(false)
-                                    }, ClickCallback.Options.builder().build()))
-                                    .build()
-                            )
-                        )
-                })
-
-                val accepted = withTimeoutOrNull(5.minutes) { acceptedDeferred.await() } ?: false
+            if (rulesConfig.enable && !att.hasAcceptedRules(rulesVersion)) {
+                val accepted = NoticesFeature.showAndAwaitRules(audience)
 
                 if (!accepted) {
                     audience.closeDialog()
@@ -85,7 +42,7 @@ class NoticesListener : Listener {
                     return@runBlocking
                 }
 
-                launch { profile.update { att.acceptedRulesVersion = 1 } }
+                launch { profile.update { att.acceptedRulesVersion = rulesVersion } }
             }
 
             val recommendationsConfig = NexusPlugin.configuration.features.notices.recommendations

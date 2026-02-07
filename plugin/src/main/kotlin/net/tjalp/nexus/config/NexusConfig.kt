@@ -101,6 +101,7 @@ data class GamesConfig(
 data class NoticesConfig(
     val enable: Boolean = true,
     val recommendations: RecommendationsConfig,
+    val rules: RulesConfig
 )
 
 @ConfigSerializable
@@ -130,6 +131,32 @@ data class ModRecommendation(
     val name: String,
     val description: String,
     val link: String
+)
+
+@ConfigSerializable
+data class RulesConfig(
+    val enable: Boolean = true,
+    val rulesVersion: Int = 1,
+    val rules: List<Rule> = listOf(
+        Rule(
+            title = "Be respectful",
+            description = "Treat others with respect and kindness. Harassment, discrimination, and hate speech will not be tolerated."
+        ),
+        Rule(
+            title = "No griefing",
+            description = "Do not destroy or alter other players' builds without permission. Griefing ruins the experience for everyone."
+        ),
+        Rule(
+            title = "No cheating",
+            description = "Cheating, including using hacks or exploits, is strictly prohibited. Play fair and have fun!"
+        )
+    )
+)
+
+@ConfigSerializable
+data class Rule(
+    val title: String,
+    val description: String
 )
 
 @ConfigSerializable

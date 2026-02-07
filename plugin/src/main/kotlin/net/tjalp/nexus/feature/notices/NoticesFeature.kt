@@ -54,4 +54,27 @@ object NoticesFeature : Feature("notices") {
             }
         }
     }
+
+    /**
+     * Shows the rules dialog to the given audience, and returns whether they accepted it or not.
+     *
+     * @param audience The audience to show the dialog to.
+     * @return Whether the audience accepted the rules or not.
+     */
+    suspend fun showAndAwaitRules(audience: Audience): Boolean {
+        val acceptedDeferred = CompletableDeferred<Boolean>()
+        val locale = audience.get(Identity.LOCALE).getOrNull() ?: Locale.US
+
+        audience.showDialog(RulesDialog.create(locale) { accepted ->
+            acceptedDeferred.complete(accepted)
+        })
+
+        try {
+            return withTimeoutOrNull(5.minutes) { acceptedDeferred.await() } ?: false
+        } finally {
+            if (acceptedDeferred.isCancelled) {
+                audience.closeDialog()
+            }
+        }
+    }
 }
