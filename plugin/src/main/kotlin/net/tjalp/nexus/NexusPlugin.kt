@@ -28,8 +28,6 @@ import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.spongepowered.configurate.kotlin.extensions.get
-import org.spongepowered.configurate.kotlin.extensions.set
 
 object NexusPlugin : JavaPlugin() {
 
@@ -87,6 +85,7 @@ object NexusPlugin : JavaPlugin() {
                 register(NexusCommand.create(), "Nexus-specific commands")
                 register(ProfileCommand.create(), "Profile management commands")
                 register(PunishCommand.create(), "Punishment management commands")
+                register(RecommendationsCommand.create(), "Show recommendations dialog")
                 register(SeasonCommand.create(), "Season management commands")
                 register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)
                 register(TimeZoneCommand.create(), "Time zone management commands")
@@ -95,14 +94,8 @@ object NexusPlugin : JavaPlugin() {
         }
     }
 
-    /**
-     * Reloads the configuration from disk.
-     */
     fun reloadConfiguration() {
-        val rootNode = NexusConfig.LOADER.load()
-        configuration = rootNode?.get() ?: error("Failed to load configuration")
-        rootNode.set(NexusConfig::class, configuration)
-        NexusConfig.LOADER.save(rootNode)
+        configuration = NexusConfig.reload(dataPath)
     }
 
     override fun onDisable() {

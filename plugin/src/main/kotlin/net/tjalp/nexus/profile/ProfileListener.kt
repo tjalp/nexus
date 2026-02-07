@@ -156,7 +156,8 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
                                             "default_zone",
                                             text(TimeZone.currentSystemDefault().id, MONOCHROME_COLOR)
                                         )
-                                    ).color(PRIMARY_COLOR).translate(locale)
+                                    ).color(PRIMARY_COLOR).translate(locale),
+                                    300
                                 )
                             )
                         )

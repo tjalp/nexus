@@ -8,6 +8,7 @@ import io.papermc.paper.registry.data.dialog.action.DialogAction
 import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import net.kyori.adventure.identity.Identity
@@ -36,56 +37,66 @@ class NoticesListener : Listener {
         val att = profile.getAttachment(NOTICES) ?: return
         val locale = audience.get(Identity.LOCALE).getOrNull() ?: profile.getAttachment(GENERAL)?.preferredLocale
 
-        if (att.hasAcceptedRules(1)) return
+        runBlocking {
+            if (!att.hasAcceptedRules(1)) {
+                val acceptedDeferred = CompletableDeferred<Boolean>()
 
-        val acceptedDeferred = CompletableDeferred<Boolean>()
-
-        audience.showDialog(Dialog.create { builder ->
-            builder.empty()
-                .base(
-                    DialogBase.builder(translatable("dialog.rules.title").translate(locale))
-                        .canCloseWithEscape(false)
-                        .body(
-                            listOf(
-                                DialogBody.plainMessage(
-                                    translatable(
-                                        "dialog.rules.description",
-                                        PRIMARY_COLOR
-                                    ).translate(locale)
+                audience.showDialog(Dialog.create { builder ->
+                    builder.empty()
+                        .base(
+                            DialogBase.builder(translatable("dialog.rules.title").translate(locale))
+                                .canCloseWithEscape(false)
+                                .body(
+                                    listOf(
+                                        DialogBody.plainMessage(
+                                            translatable(
+                                                "dialog.rules.description",
+                                                PRIMARY_COLOR
+                                            ).translate(locale)
+                                        )
+                                    )
                                 )
+                                .build()
+                        )
+                        .type(
+                            DialogType.confirmation(
+                                ActionButton.builder(translatable("gui.acknowledge"))
+                                    .action(DialogAction.customClick({ _, _ ->
+                                        acceptedDeferred.complete(true)
+                                    }, ClickCallback.Options.builder().build()))
+                                    .build(),
+                                ActionButton.builder(translatable("menu.disconnect"))
+                                    .action(DialogAction.customClick({ _, _ ->
+                                        acceptedDeferred.complete(false)
+                                    }, ClickCallback.Options.builder().build()))
+                                    .build()
                             )
                         )
-                        .build()
-                )
-                .type(
-                    DialogType.confirmation(
-                        ActionButton.builder(translatable("gui.acknowledge"))
-                            .action(DialogAction.customClick({ _, _ ->
-                                acceptedDeferred.complete(true)
-                            }, ClickCallback.Options.builder().build()))
-                            .build(),
-                        ActionButton.builder(translatable("menu.disconnect"))
-                            .action(DialogAction.customClick({ _, _ ->
-                                acceptedDeferred.complete(false)
-                            }, ClickCallback.Options.builder().build()))
-                            .build()
+                })
+
+                val accepted = withTimeoutOrNull(5.minutes) { acceptedDeferred.await() } ?: false
+
+                if (!accepted) {
+                    audience.closeDialog()
+                    event.connection.disconnect(
+                        translatable("disconnect.rules_not_accepted", RED)
+                            .translate(locale)
                     )
-                )
-        })
+                    return@runBlocking
+                }
 
-        runBlocking {
-            val accepted = withTimeoutOrNull(5.minutes) { acceptedDeferred.await() } ?: false
-
-            if (accepted) {
-                profile.update { att.acceptedRulesVersion = 1 }
-                return@runBlocking
+                launch { profile.update { att.acceptedRulesVersion = 1 } }
             }
 
-            audience.closeDialog()
-            event.connection.disconnect(
-                translatable("disconnect.rules_not_accepted", RED)
-                    .translate(locale)
-            )
+            val recommendationsConfig = NexusPlugin.configuration.features.notices.recommendations
+
+            if (recommendationsConfig.enable && recommendationsConfig.showOnJoin && !att.hasSeenRecommendations) {
+                val seen = NoticesFeature.showAndAwaitRecommendations(audience)
+
+                if (seen) {
+                    launch { profile.update { att.hasSeenRecommendations = true } }
+                }
+            }
         }
     }
 }

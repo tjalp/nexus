@@ -16,6 +16,7 @@ import java.util.*
 object NoticesTable : CompositeIdTable("notices_attachments") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
     val acceptedRulesVersion = integer("accepted_rules_version").default(0)
+    val seenRecommendations = bool("seen_recommendations").default(false)
 
     init {
         addIdColumn(profileId)
@@ -26,7 +27,8 @@ object NoticesTable : CompositeIdTable("notices_attachments") {
 
 class NoticesAttachment(
     val id: UUID,
-    acceptedRulesVersion: Int
+    acceptedRulesVersion: Int,
+    hasSeenRecommendations: Boolean
 ) {
 
     var acceptedRulesVersion: Int = acceptedRulesVersion
@@ -38,8 +40,15 @@ class NoticesAttachment(
 
     fun hasAcceptedRules(version: Int): Boolean = acceptedRulesVersion >= version
 
+    var hasSeenRecommendations: Boolean = hasSeenRecommendations
+        set(value) {
+            NoticesTable.update({ NoticesTable.profileId eq id }) {
+                it[NoticesTable.seenRecommendations] = value
+            }
+        }
+
     override fun toString(): String {
-        return "NoticesAttachment(id=$id, acceptedRulesVersion=$acceptedRulesVersion)"
+        return "NoticesAttachment(id=$id, acceptedRulesVersion=$acceptedRulesVersion, hasSeenRecommendations=$hasSeenRecommendations)"
     }
 }
 
@@ -65,5 +74,6 @@ object NoticesAttachmentProvider : AttachmentProvider<NoticesAttachment> {
 
 fun ResultRow.toNoticesAttachment(): NoticesAttachment = NoticesAttachment(
     id = this[NoticesTable.profileId].value,
-    acceptedRulesVersion = this[NoticesTable.acceptedRulesVersion]
+    acceptedRulesVersion = this[NoticesTable.acceptedRulesVersion],
+    hasSeenRecommendations = this[NoticesTable.seenRecommendations]
 )

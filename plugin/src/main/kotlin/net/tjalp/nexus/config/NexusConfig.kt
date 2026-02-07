@@ -1,11 +1,13 @@
 package net.tjalp.nexus.config
 
-import net.tjalp.nexus.NexusPlugin
+import org.spongepowered.configurate.kotlin.extensions.get
+import org.spongepowered.configurate.kotlin.extensions.set
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 import org.spongepowered.configurate.objectmapping.meta.Setting
 import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
+import java.nio.file.Path
 
 @ConfigSerializable
 data class NexusConfig(
@@ -15,8 +17,8 @@ data class NexusConfig(
 
     companion object {
 
-        val LOADER: YamlConfigurationLoader = YamlConfigurationLoader.builder()
-            .path(NexusPlugin.dataPath.resolve("config.yml"))
+        fun loader(dataPath: Path): YamlConfigurationLoader = YamlConfigurationLoader.builder()
+            .path(dataPath.resolve("config.yml"))
             .nodeStyle(NodeStyle.BLOCK)
             .indent(2)
             .defaultOptions { options ->
@@ -25,6 +27,23 @@ data class NexusConfig(
                 }
             }
             .build()
+
+        /**
+         * Reloads the configuration from disk.
+         *
+         * @param dataPath The path to the plugin's data folder.
+         * @return The reloaded configuration.
+         */
+        fun reload(dataPath: Path): NexusConfig {
+            val loader = loader(dataPath)
+            val rootNode = loader.load()
+            val configuration = rootNode.get<NexusConfig>() ?: error("Failed to load configuration")
+
+            rootNode.set(NexusConfig::class, configuration)
+            loader.save(rootNode)
+
+            return configuration
+        }
     }
 }
 
@@ -80,7 +99,37 @@ data class GamesConfig(
 
 @ConfigSerializable
 data class NoticesConfig(
-    val enable: Boolean = true
+    val enable: Boolean = true,
+    val recommendations: RecommendationsConfig,
+)
+
+@ConfigSerializable
+data class RecommendationsConfig(
+    val enable: Boolean = true,
+    val showOnJoin: Boolean = true,
+    val settings: List<SettingRecommendation> = emptyList(),
+    val mods: List<ModRecommendation> = listOf(
+        ModRecommendation(
+            name = "Example",
+            description = "Example description",
+            link = "https://example.com"
+        )
+    )
+)
+
+@ConfigSerializable
+data class SettingRecommendation(
+    val name: String,
+    val description: String,
+    val value: String,
+    val settingPath: String
+)
+
+@ConfigSerializable
+data class ModRecommendation(
+    val name: String,
+    val description: String,
+    val link: String
 )
 
 @ConfigSerializable
