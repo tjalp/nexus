@@ -1,15 +1,18 @@
 package net.tjalp.nexus.feature.physicalspectator
 
 import io.papermc.paper.datacomponent.item.ResolvableProfile
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.translatable
+import net.kyori.adventure.text.minimessage.translation.Argument
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
 import net.minecraft.world.level.GameType
+import net.tjalp.nexus.Constants.MONOCHROME_COLOR
+import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.PHYSICAL_SPECTATOR
-import net.tjalp.nexus.util.PacketAction
-import net.tjalp.nexus.util.PacketManager
-import net.tjalp.nexus.util.register
-import net.tjalp.nexus.util.unregister
+import net.tjalp.nexus.util.*
+import org.bukkit.GameMode
 import org.bukkit.entity.Mannequin
 import org.bukkit.entity.Player
 import org.bukkit.event.Listener
@@ -48,14 +51,37 @@ class PhysicalSpectatorFeature : Feature(PHYSICAL_SPECTATOR) {
                 )
             }
 
-            return@addPacketListener PacketAction.Replace(ClientboundPlayerInfoUpdatePacket(
-                actions,
-                newEntries
-            ))
+            return@addPacketListener PacketAction.Replace(
+                ClientboundPlayerInfoUpdatePacket(
+                    actions,
+                    newEntries
+                )
+            )
+        }
+
+        scheduler.repeat(interval = 15) {
+            NexusPlugin.server.onlinePlayers.forEach { player ->
+                if (player.gameMode != GameMode.SPECTATOR) return@forEach
+
+                val (key, command) = if (hasPhysicalBody(player)) {
+                    Pair("action.body.hint.remove", "/body remove")
+                } else Pair("action.body.hint.get", "/body get")
+
+                translatable(key, PRIMARY_COLOR, Argument.component("command", text(command, MONOCHROME_COLOR)))
+                    .sendActionBarTo(player)
+            }
         }
     }
 
     override fun onDisposed() {
+        for (player in NexusPlugin.server.onlinePlayers) {
+            val hasBody = hasPhysicalBody(player)
+
+            removePhysicalBody(player)
+
+            if (hasBody) player.playerProfile = player.playerProfile
+        }
+
         listener?.unregister()
         packetListener?.dispose()
     }

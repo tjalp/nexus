@@ -6,6 +6,7 @@ import io.papermc.paper.dialog.Dialog
 import io.papermc.paper.registry.data.dialog.DialogBase
 import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.type.DialogType
+import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.empty
 import net.kyori.adventure.text.ComponentLike
@@ -53,4 +54,22 @@ fun ComponentLike.asDialogNotice(
  */
 fun ComponentLike.translate(locale: Locale?): Component {
     return locale?.let { GlobalTranslator.render(this.asComponent(), it) } ?: this.asComponent()
+}
+
+/**
+ * Sends this [ComponentLike] to the specified [Audience].
+ *
+ * @param audience The [Audience] to send this component to
+ */
+fun ComponentLike.sendTo(audience: Audience) {
+    audience.sendMessage(this)
+}
+
+/**
+ * Sends this [ComponentLike] as an action bar message to the specified [Audience].
+ *
+ * @param audience The [Audience] to send this component to
+ */
+fun ComponentLike.sendActionBarTo(audience: Audience) {
+    audience.sendActionBar(this)
 }

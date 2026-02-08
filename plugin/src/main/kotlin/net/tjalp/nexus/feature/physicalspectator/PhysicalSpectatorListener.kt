@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.physicalspectator
 
+import com.destroystokyo.paper.event.player.PlayerStartSpectatingEntityEvent
 import io.papermc.paper.event.player.PlayerArmSwingEvent
 import org.bukkit.GameMode
 import org.bukkit.entity.Player
@@ -54,5 +55,15 @@ class PhysicalSpectatorListener(
     @EventHandler
     fun on(event: PlayerQuitEvent) {
         feature.removePhysicalBody(event.player)
+    }
+
+    @EventHandler
+    fun on(event: PlayerStartSpectatingEntityEvent) {
+        val player = event.player
+        val hasBody = feature.hasPhysicalBody(player)
+
+        feature.removePhysicalBody(event.player)
+
+        if (hasBody) event.player.playerProfile = event.player.playerProfile
     }
 }

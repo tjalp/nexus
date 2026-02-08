@@ -1,9 +1,11 @@
 package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.literal
+import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import net.kyori.adventure.text.Component.translatable
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket
@@ -12,9 +14,13 @@ import net.minecraft.world.entity.player.Abilities
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.asServerPlayer
 import net.tjalp.nexus.util.sendPacket
+import org.bukkit.GameMode
 import org.bukkit.entity.Player
 
 object BodyCommand {
+
+    private val ERROR_NOT_SPECTATOR = SimpleCommandExceptionType(MessageComponentSerializer.message()
+        .serialize(translatable("command.body.get.not_spectator")))
 
     private val feature
         get() = NexusPlugin.physicalSpectator ?: error("PhysicalSpectatorFeature is not enabled")
@@ -25,6 +31,9 @@ object BodyCommand {
             .then(literal("get")
                 .executes { context ->
                     val player = context.source.executor as Player
+
+                    if (player.gameMode != GameMode.SPECTATOR) throw ERROR_NOT_SPECTATOR.create()
+
                     val abilities = Abilities()
                         .also { it.apply(player.asServerPlayer().abilities.pack()) }
                         .apply {
