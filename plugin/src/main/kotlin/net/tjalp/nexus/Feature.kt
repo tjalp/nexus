@@ -1,15 +1,16 @@
 package net.tjalp.nexus
 
 import net.tjalp.nexus.scheduler.Scheduler
+import org.spongepowered.configurate.reactive.Disposable
 
 /**
  * Represents a feature that can be enabled or disabled within the Nexus plugin.
  *
- * @param name The unique name of the feature.
+ * @param key The unique name of the feature.
  */
 abstract class Feature(
-    val name: String
-) {
+    val id: String
+) : Disposable {
 
     /**
      * Indicates whether the feature is currently enabled.
@@ -24,18 +25,27 @@ abstract class Feature(
     /**
      * Enables the feature within the given plugin.
      */
-    open fun enable() {
+    fun enable() {
         isEnabled = true
+        scheduler = NexusPlugin.scheduler.fork("feature/$id")
 
-        scheduler = NexusPlugin.scheduler.fork("feature/$name")
+        this.onEnable()
     }
 
     /**
-     * Disables the feature within the given plugin.
+     * Called when the feature is enabled, allowing for setup of resources.
      */
-    open fun disable() {
-        scheduler.dispose()
+    open fun onEnable() {}
 
+    /**
+     * Called when the feature is disposed, allowing for cleanup of resources.
+     */
+    open fun onDisposed() {}
+
+    override fun dispose() {
+        this.onDisposed()
+
+        scheduler.dispose()
         isEnabled = false
     }
 }

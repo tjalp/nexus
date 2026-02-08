@@ -14,8 +14,8 @@ import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSele
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.translation.Argument
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.teleportrequests.PlayerTeleportRequest
-import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import org.bukkit.entity.Player
 
 object TeleportRequestCommand {
@@ -56,7 +56,7 @@ object TeleportRequestCommand {
 
     fun create(): LiteralCommandNode<CommandSourceStack> {
         return literal("teleportrequest")
-            .requires { TeleportRequestsFeature.isEnabled && it.executor is Player && it.sender.hasPermission("nexus.command.teleportrequest") }
+            .requires { NexusPlugin.teleportRequests != null && it.executor is Player && it.sender.hasPermission("nexus.command.teleportrequest") }
             .then(literal("send")
                 .then(argument("target", ArgumentTypes.player())
                     .executes(::executeSend)))

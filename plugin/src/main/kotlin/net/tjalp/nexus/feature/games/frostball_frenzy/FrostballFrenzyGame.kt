@@ -11,12 +11,9 @@ import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.event.ClickCallback
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
-import net.tjalp.nexus.feature.games.Game
-import net.tjalp.nexus.feature.games.GamePhase
-import net.tjalp.nexus.feature.games.GameSettings
-import net.tjalp.nexus.feature.games.GameType
+import net.tjalp.nexus.feature.games.*
 
-class FrostballFrenzyGame : Game(type = GameType.FROSTBALL_FRENZY) {
+class FrostballFrenzyGame(feature: GamesFeature) : Game(feature = feature, type = GameType.FROSTBALL_FRENZY) {
 
     override val settings: Settings = Settings()
 

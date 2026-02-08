@@ -9,6 +9,7 @@ import net.kyori.adventure.text.Component.newline
 import net.kyori.adventure.text.Component.textOfChildren
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.FeatureKeys.PUNISHMENTS
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.PUNISHMENT
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
@@ -25,14 +26,11 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
-object PunishmentsFeature : Feature("punishments") {
+class PunishmentsFeature : Feature(PUNISHMENTS) {
 
     private var listener: PunishmentListener? = null
 
-    @Suppress("UnstableApiUsage")
-    override fun enable() {
-        super.enable()
-
+    override fun onEnable() {
         AttachmentRegistry.register(PunishmentAttachmentProvider)
         listener = PunishmentListener().also { it.register() }
 
@@ -88,12 +86,9 @@ object PunishmentsFeature : Feature("punishments") {
         }
     }
 
-    override fun disable() {
+    override fun onDisposed() {
         listener?.unregister()
-        listener = null
         AttachmentRegistry.unregister(PunishmentAttachmentProvider)
-
-        super.disable()
     }
 
     @OptIn(ExperimentalTime::class)

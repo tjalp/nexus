@@ -2,6 +2,7 @@ package net.tjalp.nexus.feature.waypoints
 
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.FeatureKeys.WAYPOINTS
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.NamespacedKey
@@ -15,12 +16,7 @@ import org.bukkit.persistence.PersistentDataType
 /**
  * Feature that manages waypoints in the world.
  */
-object WaypointsFeature : Feature("waypoints"), Listener {
-
-    /**
-     * The NamespacedKey used to store waypoints in the world's persistent data container.
-     */
-    val WAYPOINTS_KEY = NamespacedKey(NexusPlugin, "waypoints")
+class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     /**
      * All available waypoints across all (loaded) worlds.
@@ -33,16 +29,12 @@ object WaypointsFeature : Feature("waypoints"), Listener {
     val loadedWaypoints: Collection<Waypoint>
         get() = _loadedWaypoints.toSet()
 
-    override fun enable() {
-        super.enable()
-
+    override fun onEnable() {
         this.register()
     }
 
-    override fun disable() {
+    override fun onDisposed() {
         this.unregister()
-
-        super.disable()
     }
 
     /**
@@ -133,5 +125,13 @@ object WaypointsFeature : Feature("waypoints"), Listener {
                 _loadedWaypoints.remove(waypoint)
             }
         }
+    }
+
+    companion object {
+
+        /**
+         * The NamespacedKey used to store waypoints in the world's persistent data container.
+         */
+        val WAYPOINTS_KEY = NamespacedKey(NexusPlugin, "waypoints")
     }
 }

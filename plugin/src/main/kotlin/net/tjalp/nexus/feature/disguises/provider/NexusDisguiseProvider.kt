@@ -31,13 +31,15 @@ import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.vehicle.VehicleDamageEvent
 import org.bukkit.event.vehicle.VehicleDestroyEvent
 
-class NexusDisguiseProvider : DisguiseProvider {
+class NexusDisguiseProvider(
+    val feature: DisguiseFeature
+) : DisguiseProvider {
 
     private val disguises = HashMap<Entity, Entity>()
     private val listener = NexusDisguiseListener().also { it.register() }
 
     init {
-        DisguiseFeature.scheduler.repeat(interval = 15) {
+        feature.scheduler.repeat(interval = 15) {
             disguises.forEach { (entity, disguise) -> sendStatus(entity, disguise.type) }
             delay(15.ticks)
         }

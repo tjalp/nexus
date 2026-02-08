@@ -10,40 +10,42 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityPoseChangeEvent
 import org.bukkit.event.player.*
 
-class PhysicalSpectatorListener : Listener {
+class PhysicalSpectatorListener(
+    private val feature: PhysicalSpectatorFeature
+) : Listener {
 
     @EventHandler
     fun on(event: PlayerGameModeChangeEvent) {
         if (event.newGameMode == GameMode.SPECTATOR) return
 
-        PhysicalSpectatorFeature.removePhysicalBody(event.player)
+        feature.removePhysicalBody(event.player)
     }
 
     @EventHandler(priority = HIGH, ignoreCancelled = true)
     fun on(event: PlayerMoveEvent) {
-        PhysicalSpectatorFeature.getPhysicalBody(event.player)?.teleport(event.to)
+        feature.getPhysicalBody(event.player)?.teleport(event.to)
     }
 
     @EventHandler(priority = HIGH, ignoreCancelled = true)
     fun on(event: PlayerTeleportEvent) {
-        PhysicalSpectatorFeature.getPhysicalBody(event.player)?.teleport(event.to)
+        feature.getPhysicalBody(event.player)?.teleport(event.to)
     }
 
     @EventHandler(priority = HIGH, ignoreCancelled = true)
     fun on(event: PlayerArmSwingEvent) {
-        PhysicalSpectatorFeature.getPhysicalBody(event.player)?.swingHand(event.hand)
+        feature.getPhysicalBody(event.player)?.swingHand(event.hand)
     }
 
     @EventHandler(priority = HIGH, ignoreCancelled = true)
     fun on(event: EntityPoseChangeEvent) {
         val player = event.entity as? Player ?: return
 
-        PhysicalSpectatorFeature.getPhysicalBody(player)?.pose = event.pose
+        feature.getPhysicalBody(player)?.pose = event.pose
     }
 
     @EventHandler(priority = HIGH, ignoreCancelled = true)
     fun on(event: PlayerToggleSneakEvent) {
-        val body = PhysicalSpectatorFeature.getPhysicalBody(event.player) ?: return
+        val body = feature.getPhysicalBody(event.player) ?: return
 
         body.isSneaking = event.isSneaking
         body.pose = if (event.isSneaking) Pose.SNEAKING else Pose.STANDING
@@ -51,6 +53,6 @@ class PhysicalSpectatorListener : Listener {
 
     @EventHandler
     fun on(event: PlayerQuitEvent) {
-        PhysicalSpectatorFeature.removePhysicalBody(event.player)
+        feature.removePhysicalBody(event.player)
     }
 }

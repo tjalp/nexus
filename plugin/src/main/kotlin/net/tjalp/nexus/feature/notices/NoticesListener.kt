@@ -15,7 +15,7 @@ import org.bukkit.event.Listener
 import kotlin.jvm.optionals.getOrNull
 
 @Suppress("UnstableApiUsage")
-class NoticesListener : Listener {
+class NoticesListener(val notices: NoticesFeature) : Listener {
 
     @EventHandler(ignoreCancelled = true)
     fun on(event: AsyncPlayerConnectionConfigureEvent) {
@@ -31,7 +31,7 @@ class NoticesListener : Listener {
             val rulesVersion = rulesConfig.rulesVersion
 
             if (rulesConfig.enable && !att.hasAcceptedRules(rulesVersion)) {
-                val accepted = NoticesFeature.showAndAwaitRules(audience)
+                val accepted = notices.showAndAwaitRules(audience)
 
                 if (!accepted) {
                     audience.closeDialog()
@@ -48,7 +48,7 @@ class NoticesListener : Listener {
             val recommendationsConfig = NexusPlugin.configuration.features.notices.recommendations
 
             if (recommendationsConfig.enable && recommendationsConfig.showOnJoin && !att.hasSeenRecommendations) {
-                val seen = NoticesFeature.showAndAwaitRecommendations(audience)
+                val seen = notices.showAndAwaitRecommendations(audience)
 
                 if (seen) {
                     launch { profile.update { att.hasSeenRecommendations = true } }

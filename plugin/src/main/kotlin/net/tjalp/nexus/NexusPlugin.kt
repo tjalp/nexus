@@ -2,8 +2,10 @@ package net.tjalp.nexus
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import kotlinx.coroutines.runBlocking
+import net.tjalp.nexus.NexusPlugin.configuration
 import net.tjalp.nexus.command.*
 import net.tjalp.nexus.config.NexusConfig
+import net.tjalp.nexus.feature.FeatureManager
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
@@ -35,23 +37,24 @@ object NexusPlugin : JavaPlugin() {
     lateinit var database: Database; private set
     lateinit var scheduler: Scheduler; private set
     lateinit var configuration: NexusConfig; private set
+    lateinit var features: FeatureManager; private set
 
     private val listeners = mutableListOf<Listener>()
 
-    val features: List<Feature>
-        get() = listOf(
-            ChatFeature,
-            DisguiseFeature,
-//            EffortShopFeature,
-            GameRulesFeature,
-            GamesFeature,
-            NoticesFeature,
-            PhysicalSpectatorFeature,
-            PunishmentsFeature,
-            SeasonsFeature,
-            TeleportRequestsFeature,
-//            WaypointsFeature
-        )
+    // ** Features **
+
+    val chat: ChatFeature? get() = features.getFeature()
+    val disguises: DisguiseFeature? get() = features.getFeature()
+    val gameRules: GameRulesFeature? get() = features.getFeature()
+    val games: GamesFeature? get() = features.getFeature()
+    val notices: NoticesFeature? get() = features.getFeature()
+    val physicalSpectator: PhysicalSpectatorFeature? get() = features.getFeature()
+    val punishments: PunishmentsFeature? get() = features.getFeature()
+    val seasons: SeasonsFeature? get() = features.getFeature()
+    val teleportRequests: TeleportRequestsFeature? get() = features.getFeature()
+    val waypoints: WaypointsFeature? get() = features.getFeature()
+
+    // ** End Features **
 
     override fun onEnable() {
         reloadConfiguration()
@@ -73,7 +76,7 @@ object NexusPlugin : JavaPlugin() {
 
         Lang.init() // initialize localization system
 
-        enableFeatures()
+        features = FeatureManager().also { it.enableFeatures() }
 
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
@@ -95,15 +98,21 @@ object NexusPlugin : JavaPlugin() {
         }
     }
 
+    /**
+     * Reloads the plugin configuration from disk. This will update the [configuration] property.
+     */
     fun reloadConfiguration() {
         configuration = NexusConfig.reload(dataPath)
     }
 
     override fun onDisable() {
-        features.filter { it.isEnabled }.forEach { it.disable() }
+        features.disposeAll()
         listeners.forEach { it.unregister() }
     }
 
+    /**
+     * Runs database migrations using Flyway. Migrations should be located in the `resources/db/migration` directory.
+     */
     private fun runMigrations() {
         val conf = configuration.database
         val pluginClassLoader = this::class.java.classLoader
@@ -115,32 +124,5 @@ object NexusPlugin : JavaPlugin() {
 
         logger.info("Running database migrations...")
         flyway.migrate()
-    }
-
-    fun enableFeatures() {
-        val modules = configuration.features
-
-        features.filter {
-            when (it) {
-                is ChatFeature -> modules.chat.enable
-                is DisguiseFeature -> modules.disguises.enable
-                is GameRulesFeature -> modules.gamerules.enable
-                is GamesFeature -> modules.games.enable
-                is NoticesFeature -> modules.notices.enable
-                is PhysicalSpectatorFeature -> modules.physicalSpectator.enable
-                is PunishmentsFeature -> modules.punishments.enable
-                is SeasonsFeature -> modules.seasons.enable
-                is TeleportRequestsFeature -> modules.teleportRequests.enable
-                is WaypointsFeature -> modules.waypoints.enable
-                else -> error("Unknown feature: ${it.name} ($${it::class.qualifiedName})")
-            }
-        }.forEach {
-            try {
-                it.enable()
-            } catch (e: Throwable) {
-                logger.severe("Failed to enable feature '${it.name}': ${e.message}")
-                e.printStackTrace()
-            }
-        }
     }
 }

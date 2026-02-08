@@ -9,16 +9,19 @@ import net.minecraft.network.protocol.game.ClientboundGameEventPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
 import net.minecraft.world.entity.player.Abilities
-import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.util.asServerPlayer
 import net.tjalp.nexus.util.sendPacket
 import org.bukkit.entity.Player
 
 object BodyCommand {
 
+    private val feature
+        get() = NexusPlugin.physicalSpectator ?: error("PhysicalSpectatorFeature is not enabled")
+
     fun create(): LiteralCommandNode<CommandSourceStack> {
         return literal("body")
-            .requires { PhysicalSpectatorFeature.isEnabled && it.sender.hasPermission("nexus.command.body") && it.executor is Player }
+            .requires { NexusPlugin.physicalSpectator != null && it.sender.hasPermission("nexus.command.body") && it.executor is Player }
             .then(literal("get")
                 .executes { context ->
                     val player = context.source.executor as Player
@@ -40,8 +43,8 @@ object BodyCommand {
                         player.asServerPlayer()
                     )
 
-                    PhysicalSpectatorFeature.removePhysicalBody(player)
-                    PhysicalSpectatorFeature.addPhysicalBody(player)
+                    feature.removePhysicalBody(player)
+                    feature.addPhysicalBody(player)
                     player.sendPacket(abilitiesPacket)
                     player.sendPacket(updatePlayerInfoPacket)
                     player.sendPacket(gameModePacket)
@@ -55,7 +58,7 @@ object BodyCommand {
                 .executes { context ->
                     val player = context.source.executor as Player
 
-                    PhysicalSpectatorFeature.removePhysicalBody(player)
+                    feature.removePhysicalBody(player)
                     player.playerProfile = player.playerProfile
 
                     context.source.sender.sendMessage(translatable("command.body.remove.success"))

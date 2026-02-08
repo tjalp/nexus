@@ -1,25 +1,22 @@
 package net.tjalp.nexus.feature.disguises
 
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.feature.FeatureKeys.DISGUISES
 import net.tjalp.nexus.feature.disguises.provider.LibsDisguisesDisguiseProvider
 import net.tjalp.nexus.feature.disguises.provider.NexusDisguiseProvider
 import org.bukkit.Bukkit
 
-object DisguiseFeature : Feature("disguises") {
+class DisguiseFeature : Feature(DISGUISES) {
 
     var provider: DisguiseProvider? = null; private set
 
-    override fun enable() {
-        super.enable()
-
+    override fun onEnable() {
         provider = if (Bukkit.getPluginManager()
                 .isPluginEnabled("LibsDisguises")
-        ) LibsDisguisesDisguiseProvider() else NexusDisguiseProvider()
+        ) LibsDisguisesDisguiseProvider() else NexusDisguiseProvider(this)
     }
 
-    override fun disable() {
+    override fun onDisposed() {
         provider?.dispose()
-
-        super.disable()
     }
 }

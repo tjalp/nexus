@@ -9,22 +9,18 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType
 import net.kyori.adventure.text.Component
-import net.tjalp.nexus.Feature
-import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.FeatureDefinition
 import net.tjalp.nexus.feature.FeatureRegistry
 import java.util.concurrent.CompletableFuture
 
-object FeatureArgument : CustomArgumentType.Converted<Feature, String> {
+object FeatureDefinitionArgument : CustomArgumentType.Converted<FeatureDefinition, String> {
 
     private val ERROR_INVALID_FEATURE: DynamicCommandExceptionType = DynamicCommandExceptionType { feature: Any? ->
         MessageComponentSerializer.message().serialize(Component.text("Unknown feature: $feature"))
     }
 
-    override fun convert(nativeType: String): Feature {
-        val definition = FeatureRegistry.definitions.find { it.id.equals(nativeType, ignoreCase = true) }
-            ?: throw ERROR_INVALID_FEATURE.create(nativeType)
-
-        return NexusPlugin.features.getFeature(definition.featureClass)
+    override fun convert(nativeType: String): FeatureDefinition {
+        return FeatureRegistry.definitions.find { it.id.equals(nativeType, ignoreCase = true) }
             ?: throw ERROR_INVALID_FEATURE.create(nativeType)
     }
 

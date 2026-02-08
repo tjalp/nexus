@@ -11,9 +11,3 @@ CREATE TABLE IF NOT EXISTS general_attachment
     preferred_locale VARCHAR(64) DEFAULT 'en-US' NOT NULL,
     CONSTRAINT fk_general_attachment_profile_id__id FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
-CREATE TABLE IF NOT EXISTS effort_shop_attachment
-(
-    profile_id     UUID PRIMARY KEY,
-    effort_balance INT DEFAULT 0 NOT NULL,
-    CONSTRAINT fk_effort_shop_attachment_profile_id__id FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE ON UPDATE RESTRICT
-);

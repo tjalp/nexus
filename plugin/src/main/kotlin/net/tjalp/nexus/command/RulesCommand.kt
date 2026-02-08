@@ -7,7 +7,6 @@ import io.papermc.paper.command.brigadier.Commands.literal
 import kotlinx.coroutines.launch
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.config.RulesConfig
-import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.notices.RulesDialog
 import net.tjalp.nexus.profile.attachment.AttachmentKeys.NOTICES
 import net.tjalp.nexus.util.profile
@@ -20,17 +19,18 @@ object RulesCommand {
 
     fun create(): LiteralCommandNode<CommandSourceStack> {
         return literal("rules")
-            .requires { NoticesFeature.isEnabled && it.sender.hasPermission("nexus.command.rules") && it.executor is Player }
+            .requires { NexusPlugin.notices != null && it.sender.hasPermission("nexus.command.rules") && it.executor is Player }
             .executes { context ->
                 val executor = context.source.executor!! as Player
                 val profile = executor.profile()
                 val locale = executor.locale()
                 val rulesVersion = config.rulesVersion
+                val notices = NexusPlugin.notices ?: error("Notices feature not enabled")
 
                 executor.showDialog(RulesDialog.create(locale) { accepted ->
                     if (!accepted) return@create
 
-                    NoticesFeature.scheduler.launch {
+                    notices.scheduler.launch {
                         profile.update(NOTICES) {
                             it.acceptedRulesVersion = rulesVersion
                         }

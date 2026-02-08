@@ -12,9 +12,9 @@ import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.translation.Argument
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.WaypointArgument
 import net.tjalp.nexus.feature.waypoints.Waypoint
-import net.tjalp.nexus.feature.waypoints.WaypointsFeature
 import org.bukkit.Color
 
 object WaypointCommand {
@@ -26,9 +26,12 @@ object WaypointCommand {
         ))
     }
 
+    private val waypoints
+        get() = NexusPlugin.waypoints ?: error("Waypoints feature is not enabled")
+
     fun create(): LiteralCommandNode<CommandSourceStack> {
         return literal("waypoint")
-            .requires { WaypointsFeature.isEnabled && it.sender.hasPermission("nexus.command.waypoint") }
+            .requires { NexusPlugin.waypoints != null && it.sender.hasPermission("nexus.command.waypoint") }
             .then(literal("create")
                 .then(argument("id", StringArgumentType.string())
                     .executes { context -> createWaypoint(context, context.getArgument("id", String::class.java)) }))
@@ -43,11 +46,11 @@ object WaypointCommand {
         val world = location.world
         val waypoint = Waypoint(id, location, Color.WHITE, Key.key("default"))
 
-        if (WaypointsFeature.availableWaypoints.find { it.id == id } != null) {
+        if (waypoints.availableWaypoints.find { it.id == id } != null) {
             throw ERROR_DUPLICATE_WAYPOINT.create(id)
         }
 
-        WaypointsFeature.saveWaypoint(world, waypoint)
+        waypoints.saveWaypoint(world, waypoint)
         waypoint.spawn(world)
 
         context.source.sender.sendMessage(
@@ -58,7 +61,7 @@ object WaypointCommand {
     }
 
     private fun removeWaypoint(context: CommandContext<CommandSourceStack>, waypoint: Waypoint): Int {
-        WaypointsFeature.removeWaypoint(waypoint.location.world ?: context.source.location.world, waypoint)
+        waypoints.removeWaypoint(waypoint.location.world ?: context.source.location.world, waypoint)
 
         context.source.sender.sendMessage(
             translatable("command.waypoint.remove.success", Argument.string("id", waypoint.id))

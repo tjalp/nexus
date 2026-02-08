@@ -35,7 +35,6 @@ import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.punishments.PunishmentReason
 import net.tjalp.nexus.feature.punishments.PunishmentSeverity
 import net.tjalp.nexus.feature.punishments.PunishmentType
-import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.profile.attachment.AttachmentKeys
 import org.bukkit.command.ConsoleCommandSender
 import java.util.concurrent.CompletableFuture
@@ -71,11 +70,14 @@ object PunishCommand {
         )
     )
 
+    private val punishments
+        get() = NexusPlugin.punishments ?: error("Punishments feature is not enabled")
+
     fun create(): LiteralCommandNode<CommandSourceStack> {
         val base = literal("punish")
             .requires(restricted { source ->
                 source.sender.hasPermission("nexus.command.punish")
-                        && PunishmentsFeature.isEnabled
+                        && NexusPlugin.punishments != null
             })
             .then(literal("log")
                 .then(argument("target", string())
@@ -110,7 +112,7 @@ object PunishCommand {
     }
 
     private fun handleLog(context: CommandContext<CommandSourceStack>, target: String): Int {
-        PunishmentsFeature.scheduler.launch {
+        punishments.scheduler.launch {
             try {
                 val uniqueId = withContext(Dispatchers.IO) { NexusPlugin.server.getPlayerUniqueId(target) }
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
@@ -174,9 +176,9 @@ object PunishCommand {
     }
 
     private fun handleWithdraw(context: CommandContext<CommandSourceStack>, caseId: String): Int {
-        PunishmentsFeature.scheduler.launch {
+        punishments.scheduler.launch {
             try {
-                PunishmentsFeature.withdraw(caseId = caseId)
+                punishments.withdraw(caseId = caseId)
 
                 context.source.sender.sendMessage(translatable(
                     "command.punish.withdraw.success",
@@ -209,7 +211,7 @@ object PunishCommand {
         severity: PunishmentSeverity,
         reason: String
     ): Int {
-        PunishmentsFeature.scheduler.launch {
+        punishments.scheduler.launch {
             try {
                 var senderId = context.source.sender.get(Identity.UUID).getOrNull()?.toString()
                     ?: context.source.sender.get(Identity.NAME).getOrNull()
@@ -222,7 +224,7 @@ object PunishCommand {
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
                 val targetProfile = NexusPlugin.profiles.get(id = uniqueId) ?: throw ERROR_NO_PROFILE.create(target)
 
-                val punishment = PunishmentsFeature.punish(
+                val punishment = punishments.punish(
                     issuer = senderId,
                     target = targetProfile,
                     type = type,

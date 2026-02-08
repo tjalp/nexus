@@ -1,9 +1,10 @@
 package net.tjalp.nexus.feature.games
 
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.feature.FeatureKeys.GAMES
 import net.tjalp.nexus.feature.games.frostball_frenzy.FrostballFrenzyGame
 
-object GamesFeature : Feature("games") {
+class GamesFeature : Feature(GAMES) {
 
     private val _activeGames = mutableListOf<Game>()
 
@@ -21,7 +22,7 @@ object GamesFeature : Feature("games") {
      */
     fun createGame(type: GameType): Game {
         val game = when (type) {
-            GameType.FROSTBALL_FRENZY -> FrostballFrenzyGame()
+            GameType.FROSTBALL_FRENZY -> FrostballFrenzyGame(this)
         }
 
         _activeGames.add(game)
@@ -39,8 +40,7 @@ object GamesFeature : Feature("games") {
         game.dispose()
     }
 
-    override fun disable() {
+    override fun onDisposed() {
         _activeGames.toList().forEach { endGame(it) }
-        super.disable()
     }
 }

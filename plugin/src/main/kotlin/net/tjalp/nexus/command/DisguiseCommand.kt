@@ -9,14 +9,13 @@ import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import io.papermc.paper.command.brigadier.argument.resolvers.selector.EntitySelectorArgumentResolver
 import io.papermc.paper.registry.RegistryKey
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import org.bukkit.entity.EntityType
 
 object DisguiseCommand {
 
     fun create(nexus: NexusPlugin): LiteralCommandNode<CommandSourceStack> {
         return literal("disguise")
-            .requires { DisguiseFeature.isEnabled && it.sender.hasPermission("nexus.command.disguise") }
+            .requires { NexusPlugin.disguises != null && it.sender.hasPermission("nexus.command.disguise") }
             .then(literal("set")
                 .then(argument("targets", ArgumentTypes.entities())
                     .then(argument("entity", ArgumentTypes.resource(RegistryKey.ENTITY_TYPE))
@@ -26,7 +25,7 @@ object DisguiseCommand {
                             val entityType = context.getArgument("entity", EntityType::class.java)
 
                             for (target in targets) {
-                                DisguiseFeature.provider?.disguise(target, entityType)
+                                NexusPlugin.disguises?.provider?.disguise(target, entityType)
                             }
 
                             context.source.sender.sendMessage("Disguised ${targets.size} entity(ies) as ${entityType.name}")
@@ -40,7 +39,7 @@ object DisguiseCommand {
                         val targets = targetResolver.resolve(context.source)
 
                         for (target in targets) {
-                            DisguiseFeature.provider?.undisguise(target)
+                            NexusPlugin.disguises?.provider?.undisguise(target)
                         }
 
                         context.source.sender.sendMessage("Removed disguises from ${targets.size} entity(ies)")
@@ -55,7 +54,7 @@ object DisguiseCommand {
                             context.source.sender.sendMessage("No entity found")
                             return@executes Command.SINGLE_SUCCESS
                         }
-                        val disguise = DisguiseFeature.provider?.getDisguise(target)
+                        val disguise = NexusPlugin.disguises?.provider?.getDisguise(target)
 
                         if (disguise != null) {
                             context.source.sender.sendMessage("Entity is disguised as ${disguise.name}")

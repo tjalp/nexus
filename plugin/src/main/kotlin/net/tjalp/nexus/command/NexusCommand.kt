@@ -2,10 +2,13 @@ package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
 import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
+import io.papermc.paper.command.brigadier.Commands.argument
 import io.papermc.paper.command.brigadier.Commands.literal
+import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import kotlinx.coroutines.isActive
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
@@ -13,40 +16,65 @@ import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.command.argument.FeatureDefinitionArgument
+import net.tjalp.nexus.feature.FeatureDefinition
 import net.tjalp.nexus.lang.Lang
 import net.tjalp.nexus.scheduler.Scheduler
 
 object NexusCommand {
 
+    private val ERROR_FEATURE_ALREADY_IN_STATE = SimpleCommandExceptionType(
+        MessageComponentSerializer.message().serialize(
+            translatable("nexus.command.feature.error.already_in_state")
+        )
+    )
+
     fun create(): LiteralCommandNode<CommandSourceStack> {
         val featureNode = literal("feature")
 
-        NexusPlugin.features.forEach { feature ->
-            featureNode
-                .then(literal(feature.name.lowercase())
-                    .then(literal("enable")
-                        .executes { context ->
-                            feature.enable()
-                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
-                            context.source.sender.sendMessage(text("Enabled feature '${feature.name}'"))
-                            return@executes Command.SINGLE_SUCCESS
-                        })
-                    .then(literal("disable")
-                        .executes { context ->
-                            if (feature.isEnabled) feature.disable()
-                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
-                            context.source.sender.sendMessage(text("Disabled feature '${feature.name}'"))
-                            return@executes Command.SINGLE_SUCCESS
-                        })
-                    .then(literal("reload")
-                        .executes { context ->
-                            if (feature.isEnabled) feature.disable()
-                            feature.enable()
-                            context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
-                            context.source.sender.sendMessage(text("Reloaded feature '${feature.name}'"))
-                            return@executes Command.SINGLE_SUCCESS
-                        }))
-        }
+        featureNode
+            .then(argument("feature", FeatureDefinitionArgument)
+                .then(literal("enable")
+                    .executes { context ->
+                        val definition = context.getArgument("feature", FeatureDefinition::class.java)
+                        val feature = NexusPlugin.features.getFeature(definition.featureClass)
+
+                        if (feature?.isEnabled == true) throw ERROR_FEATURE_ALREADY_IN_STATE.create()
+
+                        NexusPlugin.features.enableFeature(definition)
+
+                        context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
+                        context.source.sender.sendMessage(text("Enabled feature '${definition.id}'"))
+
+                        return@executes Command.SINGLE_SUCCESS
+                    })
+                .then(literal("disable")
+                    .executes { context ->
+                        val definition = context.getArgument("feature", FeatureDefinition::class.java)
+                        val feature = NexusPlugin.features.getFeature(definition.featureClass)
+                            ?: throw ERROR_FEATURE_ALREADY_IN_STATE.create()
+
+                        feature.dispose()
+
+                        context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
+                        context.source.sender.sendMessage(text("Disabled feature '${feature.id}'"))
+
+                        return@executes Command.SINGLE_SUCCESS
+                    })
+                .then(literal("reload")
+                    .executes { context ->
+                        val definition = context.getArgument("feature", FeatureDefinition::class.java)
+                        val feature = NexusPlugin.features.getFeature(definition.featureClass)
+
+                        feature?.dispose()
+
+                        NexusPlugin.features.enableFeature(definition)
+
+                        context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
+                        context.source.sender.sendMessage(text("Reloaded feature '${definition.id}'"))
+
+                        return@executes Command.SINGLE_SUCCESS
+                    }))
 
         return literal("nexus")
             .requires(Commands.restricted { source -> source.sender.hasPermission("nexus.command.nexus") })
@@ -54,10 +82,8 @@ object NexusCommand {
                 .executes { context ->
                     NexusPlugin.reloadConfiguration()
                     Lang.reload()
-                    NexusPlugin.features.forEach {
-                        if (it.isEnabled) it.disable()
-                    }
-                    NexusPlugin.enableFeatures()
+                    NexusPlugin.features.disposeAll()
+                    NexusPlugin.features.enableFeatures()
                     context.source.sender.server.onlinePlayers.forEach { it.updateCommands() }
                     context.source.sender.sendMessage("Reloaded config and features")
                     return@executes Command.SINGLE_SUCCESS
@@ -120,6 +146,4 @@ object NexusCommand {
 
         return Command.SINGLE_SUCCESS
     }
-
-
 }

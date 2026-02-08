@@ -2,7 +2,6 @@
 
 package net.tjalp.nexus
 
-import net.tjalp.nexus.profile.attachment.EffortShopTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.attachment.NoticesTable
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
@@ -42,7 +41,6 @@ fun generateMigrationScript() {
     MigrationUtils.generateMigrationScript(
         ProfilesTable,
         GeneralTable,
-        EffortShopTable,
         PunishmentsTable,
         NoticesTable,
         scriptDirectory = "src/main/resources/db/migration",

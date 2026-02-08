@@ -20,13 +20,13 @@ class PlayerTeleportRequest(
     val target: Player
 ) : TeleportRequest {
 
-    private val scheduler; get() = TeleportRequestsFeature.scheduler
+    private val scheduler; get() = NexusPlugin.teleportRequests?.scheduler
     private var expireJob: Job? = null
 
     override fun request() {
         requests += this
 
-        expireJob = this.scheduler.launch {
+        expireJob = this.scheduler?.launch {
             delay(NexusPlugin.configuration.features.teleportRequests.requestTimeoutSeconds.seconds)
 
             requests -= this@PlayerTeleportRequest

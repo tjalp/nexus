@@ -5,6 +5,7 @@ import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket
 import net.minecraft.world.level.GameType
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.FeatureKeys.PHYSICAL_SPECTATOR
 import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.register
@@ -15,16 +16,14 @@ import org.bukkit.event.Listener
 import org.spongepowered.configurate.reactive.Disposable
 import java.util.*
 
-object PhysicalSpectatorFeature : Feature("physical_spectator") {
+class PhysicalSpectatorFeature : Feature(PHYSICAL_SPECTATOR) {
 
     private var listener: Listener? = null
     private var packetListener: Disposable? = null
     private val physicalBodies = mutableMapOf<UUID, Mannequin>()
 
-    override fun enable() {
-        super.enable()
-
-        listener = PhysicalSpectatorListener().also { it.register() }
+    override fun onEnable() {
+        listener = PhysicalSpectatorListener(this).also { it.register() }
         packetListener = PacketManager.addPacketListener(
             ClientboundPlayerInfoUpdatePacket::class
         ) { packet, player ->
@@ -56,12 +55,9 @@ object PhysicalSpectatorFeature : Feature("physical_spectator") {
         }
     }
 
-    override fun disable() {
+    override fun onDisposed() {
         listener?.unregister()
-        listener = null
         packetListener?.dispose()
-
-        super.disable()
     }
 
     @Suppress("UnstableApiUsage")

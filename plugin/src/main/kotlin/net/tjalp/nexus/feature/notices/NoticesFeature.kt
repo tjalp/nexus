@@ -5,6 +5,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.identity.Identity
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.feature.FeatureKeys.NOTICES
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.NoticesAttachmentProvider
 import net.tjalp.nexus.util.register
@@ -13,23 +14,18 @@ import java.util.*
 import kotlin.jvm.optionals.getOrNull
 import kotlin.time.Duration.Companion.minutes
 
-object NoticesFeature : Feature("notices") {
+class NoticesFeature : Feature(NOTICES) {
 
-    private var listener: NoticesListener? = null
+    private lateinit var listener: NoticesListener
 
-    override fun enable() {
-        super.enable()
-
+    override fun onEnable() {
         AttachmentRegistry.register(NoticesAttachmentProvider)
-        listener = NoticesListener().also { it.register() }
+        listener = NoticesListener(this).also { it.register() }
     }
 
-    override fun disable() {
-        listener?.unregister()
-        listener = null
+    override fun onDisposed() {
+        listener.unregister()
         AttachmentRegistry.unregister(NoticesAttachmentProvider)
-
-        super.disable()
     }
 
     /**

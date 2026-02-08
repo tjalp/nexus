@@ -11,6 +11,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.world.level.biome.Biome
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.FeatureKeys.SEASONS
 import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.asNmsBiome
@@ -22,10 +23,9 @@ import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.jvm.optionals.getOrNull
 
-object SeasonsFeature : Feature("seasons") {
+class SeasonsFeature : Feature(SEASONS) {
 
     private var packetListener: Disposable? = null
-    private val SEASON_KEY = NamespacedKey(NexusPlugin, "season")
 
     var currentSeason: Season = Season.DEFAULT
         set(value) {
@@ -40,9 +40,7 @@ object SeasonsFeature : Feature("seasons") {
             field = value
         }
 
-    override fun enable() {
-        super.enable()
-
+    override fun onEnable() {
         packetListener = PacketManager.addPacketListener(ClientboundRegistryDataPacket::class, ::onRegistryDataPacket)
 
         val seasonName = NexusPlugin.server.worlds.firstOrNull()?.persistentDataContainer?.get(SEASON_KEY,
@@ -80,10 +78,8 @@ object SeasonsFeature : Feature("seasons") {
         }
     }
 
-    override fun disable() {
+    override fun onDisposed() {
         packetListener?.dispose()
-
-        super.disable()
     }
 
     private fun onRegistryDataPacket(packet: ClientboundRegistryDataPacket, player: Player?): PacketAction {
@@ -123,5 +119,10 @@ object SeasonsFeature : Feature("seasons") {
         )
 
         return PacketAction.Replace(newPacket)
+    }
+
+    companion object {
+
+        private val SEASON_KEY = NamespacedKey(NexusPlugin, "season")
     }
 }

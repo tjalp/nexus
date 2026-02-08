@@ -27,6 +27,7 @@ import java.util.*
  * @param type The type of the game.
  */
 abstract class Game(
+    private val feature: GamesFeature,
     val id: String = List(6) {
         ('a'..'z') + ('A'..'Z') + ('0'..'9')
     }.flatten().shuffled().take(6).joinToString(""),
@@ -36,7 +37,7 @@ abstract class Game(
     /**
      * Scheduler dedicated to this game instance.
      */
-    val scheduler = GamesFeature.scheduler.fork("game/$id")
+    val scheduler = feature.scheduler.fork("game/$id")
 
     /**
      * The current active phase of the game, if any.
@@ -107,7 +108,7 @@ abstract class Game(
      *
      * @see GamesFeature.endGame
      */
-    fun end() = GamesFeature.endGame(this)
+    fun end() = feature.endGame(this)
 
     /**
      * Allows an entity to join the game, if it is not already in another game and the current phase allows it.
@@ -186,7 +187,7 @@ abstract class Game(
  * Retrieves the current game an entity is participating in, if any.
  */
 val Entity.currentGame: Game?
-    get() = GamesFeature.activeGames.firstOrNull { it.participants.contains(this) }
+    get() = NexusPlugin.games?.activeGames?.firstOrNull { it.participants.contains(this) }
 
 /**
  * Formats the game prefix for messages, including the game type.

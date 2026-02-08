@@ -19,7 +19,10 @@ import net.kyori.adventure.text.event.HoverEvent.showText
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.GameArgument
-import net.tjalp.nexus.feature.games.*
+import net.tjalp.nexus.feature.games.Game
+import net.tjalp.nexus.feature.games.GameType
+import net.tjalp.nexus.feature.games.JoinResult
+import net.tjalp.nexus.feature.games.currentGame
 import net.tjalp.nexus.feature.games.phase.FinishablePhase
 import net.tjalp.nexus.feature.games.phase.TimerPhase
 import kotlin.time.Duration.Companion.seconds
@@ -41,6 +44,9 @@ object GameCommand {
             .serialize(text("Current phase of game with ID $gameId does not have a timer", RED))
     }
 
+    private val games
+        get() = NexusPlugin.games ?: error("Games feature is not enabled")
+
     fun create(): LiteralCommandNode<CommandSourceStack> {
         val createNode = literal("create")
 
@@ -48,7 +54,7 @@ object GameCommand {
             createNode
                 .then(literal(type.name.lowercase())
                     .executes { context ->
-                        val game = GamesFeature.createGame(type)
+                        val game = games.createGame(type)
 
                         context.source.sender.sendMessage(textOfChildren(
                             text("Created a new "),
@@ -61,7 +67,7 @@ object GameCommand {
         }
 
         return literal("game")
-            .requires { GamesFeature.isEnabled && it.sender.hasPermission("nexus.command.game") }
+            .requires { NexusPlugin.games != null && it.sender.hasPermission("nexus.command.game") }
             .then(createNode)
             .then(literal("next")
                 .then(argument("id", GameArgument)
@@ -80,7 +86,7 @@ object GameCommand {
                     .executes { context ->
                         val game = context.getArgument("id", Game::class.java)
 
-                        GamesFeature.endGame(game)
+                        games.endGame(game)
                         context.source.sender.sendMessage(text("Ended game with ID ${game.id}"))
 
                         return@executes Command.SINGLE_SUCCESS

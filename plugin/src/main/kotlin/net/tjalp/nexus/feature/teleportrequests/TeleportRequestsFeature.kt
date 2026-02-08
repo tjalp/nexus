@@ -1,12 +1,11 @@
 package net.tjalp.nexus.feature.teleportrequests
 
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.feature.FeatureKeys.TELEPORT_REQUESTS
 
-object TeleportRequestsFeature : Feature("teleport_requests") {
+class TeleportRequestsFeature : Feature(TELEPORT_REQUESTS) {
 
-    override fun disable() {
+    override fun onDisposed() {
         PlayerTeleportRequest.requests().forEach { it.dispose() }
-
-        super.disable()
     }
 }
