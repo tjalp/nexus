@@ -115,7 +115,7 @@ data class ProfileSnapshot(
     }
 
     override fun toString(): String {
-        return "ProfileEntity(id=${id}, createdAt=$createdAt, modifiedAt=$modifiedAt, attachments=$attachments)"
+        return "ProfileSnapshot(id=${id}, createdAt=$createdAt, modifiedAt=$modifiedAt, attachments=$attachments)"
     }
 }
 

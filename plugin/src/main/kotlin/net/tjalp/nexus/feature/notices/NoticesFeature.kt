@@ -65,7 +65,7 @@ object NoticesFeature : Feature("notices") {
         val acceptedDeferred = CompletableDeferred<Boolean>()
         val locale = audience.get(Identity.LOCALE).getOrNull() ?: Locale.US
 
-        audience.showDialog(RulesDialog.create(locale) { accepted ->
+        audience.showDialog(RulesDialog.create(showDisconnectButton = true, locale = locale) { accepted ->
             acceptedDeferred.complete(accepted)
         })
 

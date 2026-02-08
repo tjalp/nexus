@@ -31,11 +31,12 @@ object RulesDialog {
 
     val KEY = DialogKeys.create(key("nexus", "rules"))
 
-    fun create(locale: Locale, callback: (Boolean) -> Unit = {}): Dialog = Dialog.create { builder ->
-        builder.empty()
-            .base(base(locale = locale))
-            .type(type(callback))
-    }
+    fun create(locale: Locale, showDisconnectButton: Boolean = false, callback: (Boolean) -> Unit = {}): Dialog =
+        Dialog.create { builder ->
+            builder.empty()
+                .base(base(locale = locale))
+                .type(type(showDisconnectButton = showDisconnectButton, callback = callback))
+        }
 
     fun base(
         config: RulesConfig = NexusPlugin.configuration.features.notices.rules,
@@ -73,13 +74,17 @@ object RulesDialog {
             .build()
     }
 
-    fun type(callback: (Boolean) -> Unit = {}): DialogType {
+    fun type(showDisconnectButton: Boolean = false, callback: (Boolean) -> Unit = {}): DialogType {
+        val acknowledgeButton = ActionButton.builder(translatable("gui.acknowledge"))
+            .action(DialogAction.customClick({ _, _ ->
+                callback(true)
+            }, ClickCallback.Options.builder().build()))
+            .build()
+
+        if (!showDisconnectButton) return DialogType.notice(acknowledgeButton)
+
         return DialogType.confirmation(
-            ActionButton.builder(translatable("gui.acknowledge"))
-                .action(DialogAction.customClick({ _, _ ->
-                    callback(true)
-                }, ClickCallback.Options.builder().build()))
-                .build(),
+            acknowledgeButton,
             ActionButton.builder(translatable("menu.disconnect"))
                 .action(DialogAction.customClick({ _, _ ->
                     callback(false)

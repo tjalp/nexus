@@ -42,10 +42,10 @@ class Scheduler(
      * @throws IllegalStateException if the scheduler is inactive.
      */
     fun delay(ticks: Long, block: suspend () -> Unit): BukkitTask {
-        if (!isActive) throw IllegalStateException("Cannot schedule task on inactive scheduler '$id' (path: $path)")
+        require(isActive) { "Cannot schedule task on inactive scheduler '$id' (path: $path)" }
 
         val task = bukkitScheduler.runTaskLater(NexusPlugin, Runnable {
-            launch(Dispatchers.Unconfined) { block() }
+            launch { block() }
         }, ticks)
 
         tasks += task
@@ -63,10 +63,10 @@ class Scheduler(
      * @throws IllegalStateException if the scheduler is inactive.
      */
     fun repeat(initialDelay: Long = 0, interval: Long, block: suspend () -> Unit): BukkitTask {
-        if (!isActive) throw IllegalStateException("Cannot schedule task on inactive scheduler '$id' (path: $path)")
+        require(isActive) { "Cannot schedule task on inactive scheduler '$id' (path: $path)" }
 
         val task = bukkitScheduler.runTaskTimer(NexusPlugin, Runnable {
-            launch(Dispatchers.Unconfined) { block() }
+            launch { block() }
         }, initialDelay, interval)
 
         tasks += task
@@ -82,7 +82,7 @@ class Scheduler(
      * @throws IllegalStateException if the current scheduler is inactive.
      */
     fun fork(childId: String): Scheduler {
-        if (!isActive) throw IllegalStateException("Cannot fork from inactive scheduler '$id' (path: $path)")
+        require(isActive) { "Cannot fork from inactive scheduler '$id' (path: $path)" }
 
         return Scheduler(id = childId, parent = this).also { children += it }
     }
