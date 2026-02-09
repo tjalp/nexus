@@ -40,7 +40,7 @@ open class GamePhase(
         isForceFinished = true
     }
 
-    internal fun resetTimer() {
+    internal fun resetState() {
         remainingTicks = durationTicks
         isForceFinished = false
     }

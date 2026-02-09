@@ -191,7 +191,7 @@ class Game(
         phaseElapsedTicks = 0L
 
         val nextPhase = phases[nextIndex]
-        nextPhase.resetTimer()
+        nextPhase.resetState()
         validateParticipants(nextPhase)
         nextPhase.onEnter(this)
         beginPhaseLoop()
@@ -204,9 +204,9 @@ class Game(
     }
 
     fun voteToRestart(player: Player): RestartVoteResult {
-        if (!isFinished) return RestartVoteResult(false, false, restartVotes.size, calculateRequiredVotes())
+        if (!isFinished) return rejectedVoteResult()
         if (!participantsById.containsKey(player.uniqueId)) {
-            return RestartVoteResult(false, false, restartVotes.size, calculateRequiredVotes())
+            return rejectedVoteResult()
         }
 
         val added = restartVotes.add(player.uniqueId)
@@ -264,7 +264,7 @@ class Game(
         isFinished = false
         restartVotes.clear()
         currentPhaseIndex = -1
-        phases.forEach { it.resetTimer() }
+        phases.forEach { it.resetState() }
         participantsById.values.forEach { it.state = GameParticipantState.ALIVE }
         start()
     }
@@ -326,7 +326,12 @@ class Game(
         }
     }
 
+    private fun rejectedVoteResult(): RestartVoteResult {
+        return RestartVoteResult(false, false, restartVotes.size, calculateRequiredVotes())
+    }
+
     private companion object {
+        // 20 ticks = 1 second, used for phase timing cadence.
         const val TICK_INTERVAL = 20L
     }
 }
