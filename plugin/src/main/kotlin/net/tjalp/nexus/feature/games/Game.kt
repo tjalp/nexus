@@ -229,15 +229,18 @@ class Game(
 
         if (worldSpec.isTemporary && worldInitialized) {
             val worldName = resolveWorldName()
-            val safeToDelete = worldSpec is GameWorldSpec.Temporary &&
-                worldName.startsWith("game-")
             val world = Bukkit.getWorld(worldName)
-            if (world != null && safeToDelete && world.worldFolder.name.startsWith("game-")) {
-                val unloaded = Bukkit.unloadWorld(world, false)
-                if (unloaded) {
-                    deleteWorldFolder(world.worldFolder.toPath())
-                } else {
-                    NexusPlugin.logger.warning("Failed to unload temporary world '$worldName'; skipping delete.")
+            if (world != null) {
+                val safeToDelete = worldSpec is GameWorldSpec.Temporary &&
+                    worldName.startsWith(TEMP_WORLD_PREFIX) &&
+                    world.worldFolder.name.startsWith(TEMP_WORLD_PREFIX)
+                if (safeToDelete) {
+                    val unloaded = Bukkit.unloadWorld(world, false)
+                    if (unloaded) {
+                        deleteWorldFolder(world.worldFolder.toPath())
+                    } else {
+                        NexusPlugin.logger.warning("Failed to unload temporary world '$worldName'; skipping delete.")
+                    }
                 }
             }
         }
@@ -339,6 +342,7 @@ class Game(
     private companion object {
         // 20 ticks = 1 second, used for phase timing cadence.
         const val TICK_INTERVAL = 20L
+        const val TEMP_WORLD_PREFIX = "game-"
     }
 }
 
