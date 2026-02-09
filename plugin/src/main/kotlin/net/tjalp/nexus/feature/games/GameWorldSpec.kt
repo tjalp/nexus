@@ -43,7 +43,7 @@ sealed class GameWorldSpec {
         override val isTemporary: Boolean = true
 
         override fun resolveWorld(gameId: String): World {
-            val resolvedName = worldName ?: gameId
+            val resolvedName = normalizeTemporaryName(worldName ?: gameId)
             val creator = WorldCreator(resolvedName).environment(environment)
             seed?.let { creator.seed(it) }
 
@@ -53,6 +53,12 @@ sealed class GameWorldSpec {
     }
 
     companion object {
+        const val TEMP_WORLD_PREFIX = "game-"
+
+        internal fun normalizeTemporaryName(name: String): String {
+            return if (name.startsWith(TEMP_WORLD_PREFIX)) name else "$TEMP_WORLD_PREFIX$name"
+        }
+
         fun mainWorld(): GameWorldSpec = Existing("world", environment = World.Environment.NORMAL)
 
         fun nether(): GameWorldSpec = Existing("world_nether", environment = World.Environment.NETHER)

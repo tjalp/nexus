@@ -232,8 +232,8 @@ class Game(
             val world = Bukkit.getWorld(worldName)
             if (world != null) {
                 val safeToDelete = worldSpec is GameWorldSpec.Temporary &&
-                    worldName.startsWith(TEMP_WORLD_PREFIX) &&
-                    world.worldFolder.name.startsWith(TEMP_WORLD_PREFIX)
+                    worldName.startsWith(GameWorldSpec.TEMP_WORLD_PREFIX) &&
+                    world.worldFolder.name.startsWith(GameWorldSpec.TEMP_WORLD_PREFIX)
                 if (safeToDelete) {
                     val unloaded = Bukkit.unloadWorld(world, false)
                     if (unloaded) {
@@ -254,7 +254,7 @@ class Game(
 
     private fun resolveWorldName(): String = when (worldSpec) {
         is GameWorldSpec.Existing -> worldSpec.worldName
-        is GameWorldSpec.Temporary -> worldSpec.worldName ?: id
+        is GameWorldSpec.Temporary -> GameWorldSpec.normalizeTemporaryName(worldSpec.worldName ?: id)
     }
 
     private fun finishGame() {
@@ -342,7 +342,6 @@ class Game(
     private companion object {
         // 20 ticks = 1 second, used for phase timing cadence.
         const val TICK_INTERVAL = 20L
-        const val TEMP_WORLD_PREFIX = "game-"
     }
 }
 

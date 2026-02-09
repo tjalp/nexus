@@ -20,6 +20,9 @@ open class GamePhase(
 ) : FinishablePhase, TimerPhase {
 
     override var remainingTicks: Long? = durationTicks
+        set(value) {
+            field = value?.coerceAtLeast(0)
+        }
 
     private var isForceFinished = false
 
