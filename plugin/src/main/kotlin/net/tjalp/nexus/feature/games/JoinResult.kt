@@ -1,23 +1,20 @@
 package net.tjalp.nexus.feature.games
 
-/**
- * Reasons for failure when attempting to join a game.
- */
-enum class JoinFailureReason {
-    OUT_OF_BOUNDS,
-    WRONG_PHASE,
-    GAME_FULL,
-    ALREADY_IN_GAME,
-    REQUIRES_EMPTY_INVENTORY,
-    REQUIRES_EMPTY_SLOT,
-    WRONG_ENTITY_TYPE,
-    UNKNOWN
+import net.kyori.adventure.text.Component
+
+sealed class JoinResult {
+    data class Success(val participant: GameParticipant) : JoinResult()
+
+    data class Failure(
+        val reason: JoinFailureReason,
+        val message: Component? = null
+    ) : JoinResult()
 }
 
-/**
- * Result of an attempt to join a game.
- */
-sealed class JoinResult {
-    data object Success : JoinResult()
-    data class Failure(val reason: JoinFailureReason, val message: String? = null) : JoinResult()
+enum class JoinFailureReason {
+    ALREADY_IN_GAME,
+    GAME_FULL,
+    GAME_FINISHED,
+    PHASE_DISALLOWS_JOIN,
+    REQUIREMENTS_NOT_MET
 }

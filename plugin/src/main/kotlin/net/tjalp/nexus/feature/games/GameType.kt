@@ -1,21 +1,83 @@
 package net.tjalp.nexus.feature.games
 
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.translatable
-import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText
-import net.tjalp.nexus.util.translate
-import java.util.*
+import net.kyori.adventure.text.Component.text
 
-/**
- * Types of games available in the Nexus system.
- *
- * @param friendlyName A user-friendly name for the game type.
- */
-enum class GameType(val friendlyName: Component, val formattedName: (Locale) -> Component = { friendlyName }) {
-    FROSTBALL_FRENZY(translatable("game.frostball_frenzy.name"), { locale ->
-        val plain = plainText().serialize(translatable("game.frostball_frenzy.name").translate(locale))
+enum class GameType(
+    val id: String,
+    val displayName: Component,
+    val worldSpec: GameWorldSpec,
+    private val settingsFactory: () -> GameSettings,
+    private val requirementsFactory: () -> List<GameJoinRequirement>,
+    private val phasesFactory: () -> List<GamePhase>
+) {
+    SANDBOX(
+        id = "sandbox",
+        displayName = text("Sandbox"),
+        worldSpec = GameWorldSpec.mainWorld(),
+        settingsFactory = {
+            GameSettings.of(
+                GameSetting(
+                    key = GameSettingKeys.MIN_PLAYERS,
+                    displayName = text("Minimum players"),
+                    value = 2,
+                    isMutable = true
+                ),
+                GameSetting(
+                    key = GameSettingKeys.MAX_PLAYERS,
+                    displayName = text("Maximum players"),
+                    value = 16,
+                    isMutable = true
+                ),
+                GameSetting(
+                    key = GameSettingKeys.RESTART_VOTE_THRESHOLD,
+                    displayName = text("Restart vote threshold"),
+                    value = 0.6,
+                    isMutable = true
+                )
+            )
+        },
+        requirementsFactory = {
+            listOf(
+                InventoryEmptyRequirement(enabled = false, isMutable = true),
+                BoundsRequirement(bounds = null, enabled = false, isMutable = true)
+            )
+        },
+        phasesFactory = {
+            listOf(
+                GamePhase(
+                    id = "waiting",
+                    displayName = text("Waiting for players"),
+                    allowJoin = true,
+                    completionCondition = { game ->
+                        game.participants.size >= game.minPlayers
+                    }
+                ),
+                GamePhase(
+                    id = "play",
+                    displayName = text("Gameplay"),
+                    allowJoin = false,
+                    durationTicks = 20L * 180
+                ),
+                GamePhase(
+                    id = "results",
+                    displayName = text("Results"),
+                    allowJoin = true,
+                    durationTicks = 20L * 30
+                )
+            )
+        }
+    );
 
-        miniMessage().deserialize("<gradient:#D4F1F8:#71A6D1>$plain")
-    }),
+    fun createGame(feature: GamesFeature, id: String): Game {
+        return Game(
+            id = id,
+            type = this,
+            feature = feature,
+            settings = settingsFactory().copyForGame(),
+            joinRequirements = requirementsFactory().map { it.copyRequirement() },
+            phases = phasesFactory(),
+            worldSpec = worldSpec
+        )
+    }
 }

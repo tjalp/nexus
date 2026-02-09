@@ -1,208 +1,331 @@
 package net.tjalp.nexus.feature.games
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import net.kyori.adventure.audience.Audience
-import net.kyori.adventure.audience.ForwardingAudience
+import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
-import net.kyori.adventure.text.Component.textOfChildren
-import net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
-import net.kyori.adventure.text.format.TextDecoration.BOLD
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.util.asEntity
-import net.tjalp.nexus.util.register
-import net.tjalp.nexus.util.unregister
+import net.tjalp.nexus.scheduler.Scheduler
+import org.bukkit.Bukkit
+import org.bukkit.Location
 import org.bukkit.entity.Entity
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
-import org.spongepowered.configurate.reactive.Disposable
-import java.util.*
+import org.bukkit.scheduler.BukkitTask
+import org.bukkit.util.BoundingBox
+import java.nio.file.Files
+import java.util.Comparator
+import java.util.UUID
+import kotlin.math.ceil
 
-/**
- * Represents a game instance with unique ID, type, phases, and participants.
- *
- * @param id Unique identifier for the game instance.
- * @param type The type of the game.
- */
-abstract class Game(
+enum class GameParticipantState {
+    ALIVE,
+    DEAD,
+    SPECTATOR,
+    EXTERNAL_SPECTATOR
+}
+
+data class GameParticipant(
+    val entity: Entity,
+    var state: GameParticipantState = GameParticipantState.ALIVE,
+    var team: GameTeam? = null
+)
+
+data class GameTeam(
+    val id: String,
+    val displayName: Component,
+    val maxSize: Int? = null
+) {
+    val members: MutableSet<UUID> = mutableSetOf()
+
+    fun canJoin(): Boolean = maxSize == null || members.size < maxSize
+}
+
+data class GameBounds(
+    val worldName: String,
+    val bounds: BoundingBox
+) {
+    fun contains(location: Location): Boolean {
+        val world = location.world ?: return false
+        if (world.name != worldName) return false
+        return bounds.contains(location.x, location.y, location.z)
+    }
+}
+
+class Game(
+    val id: String,
+    val type: GameType,
     private val feature: GamesFeature,
-    val id: String = List(6) {
-        ('a'..'z') + ('A'..'Z') + ('0'..'9')
-    }.flatten().shuffled().take(6).joinToString(""),
-    val type: GameType
-) : Disposable, ForwardingAudience {
+    val settings: GameSettings,
+    joinRequirements: List<GameJoinRequirement>,
+    private val phases: List<GamePhase>,
+    private val worldSpec: GameWorldSpec
+) {
 
-    /**
-     * Scheduler dedicated to this game instance.
-     */
-    val scheduler = feature.scheduler.fork("game/$id")
+    private val participantsById = mutableMapOf<UUID, GameParticipant>()
+    private val teamsById = mutableMapOf<String, GameTeam>()
+    private val joinRequirements = joinRequirements.associateBy { it.id }.toMutableMap()
+    private val aiDefaults = mutableMapOf<UUID, Boolean>()
+    private val restartVotes = mutableSetOf<UUID>()
 
-    /**
-     * The current active phase of the game, if any.
-     */
-    var currentPhase: GamePhase? = null; private set
+    private var currentPhaseIndex = -1
+    private var phaseElapsedTicks = 0L
+    private var phaseTask: BukkitTask? = null
+    private var isFinished = false
+    private var worldInitialized = false
 
-    private val _participants = mutableSetOf<UUID>()
+    val scheduler: Scheduler = feature.scheduler.fork("game/$id")
 
-    /**
-     * The set of entities currently participating in the game.
-     */
-    val participants: Set<Entity> get() = _participants.mapNotNull { it.asEntity() }.toSet()
+    var bounds: GameBounds? = null
 
-    /**
-     * The next phase to transition to when advancing the game.
-     */
-    abstract val nextPhase: GamePhase
+    val participants: List<GameParticipant>
+        get() = participantsById.values.toList()
 
-    /**
-     * The settings specific to this game instance.
-     */
-    abstract val settings: GameSettings
+    val currentPhase: GamePhase?
+        get() = phases.getOrNull(currentPhaseIndex)
 
-    /**
-     * The scoreboard used for this game instance.
-     */
-    val scoreboard = NexusPlugin.server.scoreboardManager.newScoreboard
+    val minPlayers: Int
+        get() = settings.get(GameSettingKeys.MIN_PLAYERS)
 
-    private val listener: GameListener = GameListener(this).apply { register() }
+    val maxPlayers: Int
+        get() = settings.get(GameSettingKeys.MAX_PLAYERS)
 
-    /**
-     * Enters the specified game phase, handling loading, disposal of the previous phase, and starting the new phase.
-     *
-     * @param phase The game phase to enter.
-     * @throws IllegalArgumentException if attempting to load the same phase as the current one.
-     * @throws RuntimeException if loading or starting the new phase fails.
-     */
-    suspend fun enterPhase(phase: GamePhase) {
-        require(phase != currentPhase) { "Cannot load the same phase twice: ${phase::class.simpleName}" }
+    private val restartVoteThreshold: Double
+        get() = settings.get(GameSettingKeys.RESTART_VOTE_THRESHOLD).coerceIn(0.0, 1.0)
 
-        val previousPhase = currentPhase
+    fun start() {
+        if (currentPhase != null || phases.isEmpty()) return
+        ensureWorldReady()
+        scheduler.launch { enterNextPhase() }
+    }
 
-        try {
-            phase.load(previousPhase)
-            participants.forEach { previousPhase?.onLeave(it) }
-            previousPhase?.dispose()
-            currentPhase = phase
-            phase.start(previousPhase)
-
-            runJoinsConcurrently(phase, participants)
-        } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to load game phase ${phase::class.simpleName} for game $id of type ${type.name}",
-                e
-            )
+    fun join(entity: Entity): JoinResult {
+        if (isFinished) {
+            return JoinResult.Failure(JoinFailureReason.GAME_FINISHED, text("This game has already finished.", RED))
         }
-    }
 
-    /**
-     * Advances the game to the next phase as defined by [nextPhase].
-     */
-    suspend fun enterNextPhase() {
-        enterPhase(nextPhase)
-    }
+        if (!feature.registerParticipant(entity, this)) {
+            return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, text("Entity is already in another game.", RED))
+        }
 
-    /**
-     * Ends the game, removing it from active games and disposing of its resources.
-     *
-     * @see GamesFeature.endGame
-     */
-    fun end() = feature.endGame(this)
+        if (participantsById.size >= maxPlayers) {
+            feature.unregisterParticipant(entity)
+            return JoinResult.Failure(JoinFailureReason.GAME_FULL, text("This game is full.", RED))
+        }
 
-    /**
-     * Allows an entity to join the game, if it is not already in another game and the current phase allows it.
-     *
-     * @param entity The entity attempting to join.
-     * @return The result of the join attempt.
-     */
-    open suspend fun join(entity: Entity): JoinResult {
         val phase = currentPhase
-
-        if (entity.currentGame != null) {
-            return JoinResult.Failure(JoinFailureReason.ALREADY_IN_GAME, "Entity is already in a game")
+        if (phase != null && !phase.allowJoin) {
+            feature.unregisterParticipant(entity)
+            return JoinResult.Failure(JoinFailureReason.PHASE_DISALLOWS_JOIN, text("This phase does not allow joining.", RED))
         }
 
-        val result = phase?.canJoin(entity) ?: JoinResult.Success
+        val requirementFailure = firstRequirementFailure(entity, phase)
+        if (requirementFailure != null) {
+            feature.unregisterParticipant(entity)
+            return JoinResult.Failure(JoinFailureReason.REQUIREMENTS_NOT_MET, requirementFailure.message)
+        }
 
-        if (result !is JoinResult.Success) return result
-
-        _participants.add(entity.uniqueId)
-
-        if (entity is Player) entity.scoreboard = scoreboard
-
-        phase?.onJoin(entity)
-
-        return JoinResult.Success
+        val participant = GameParticipant(entity)
+        participantsById[entity.uniqueId] = participant
+        return JoinResult.Success(participant)
     }
 
-    private suspend fun runJoinsConcurrently(phase: GamePhase, entities: Set<Entity>) = coroutineScope {
-        entities.map { entity ->
-            async {
-                val result = phase.canJoin(entity)
+    fun leave(entity: Entity) {
+        val participant = participantsById.remove(entity.uniqueId) ?: return
+        feature.unregisterParticipant(entity)
 
-                if (result is JoinResult.Failure) {
-                    // leave on failure to join and send message
-                    leave(entity)
-
-                    entity.sendMessage(
-                        text("You were kicked out of the game, because: ${result.message ?: "Unknown reason (${result.reason})"}", RED)
-                    )
-
-                    return@async result
-                }
-
-                phase.onJoin(entity)
-
-                return@async result
-            }
-        }.awaitAll()
+        participant.team?.members?.remove(entity.uniqueId)
+        if (entity is LivingEntity) resetAi(entity)
     }
 
-    /**
-     * Handles a player leaving the game, notifying the current phase.
-     *
-     * @param entity The player leaving the game.
-     */
-    open fun leave(entity: Entity) {
-        if (_participants.none { it == entity.uniqueId }) return
-
-        _participants.remove(entity.uniqueId)
-        currentPhase?.onLeave(entity)
-
-        if (entity is Player) entity.scoreboard = NexusPlugin.server.scoreboardManager.mainScoreboard
+    fun addTeam(team: GameTeam) {
+        teamsById[team.id] = team
     }
 
-    override fun dispose() {
-        participants.forEach { leave(it) }
-        currentPhase?.dispose()
-        listener.unregister()
+    fun setRequirementEnabled(id: String, enabled: Boolean): Boolean {
+        val requirement = joinRequirements[id] ?: return false
+        if (!requirement.isMutable) return false
+        if (requirement is ToggleableJoinRequirement) {
+            requirement.enabled = enabled
+            return true
+        }
+        return false
+    }
+
+    fun assignToTeam(entity: Entity, teamId: String): Boolean {
+        val participant = participantsById[entity.uniqueId] ?: return false
+        val team = teamsById[teamId] ?: return false
+        if (!team.canJoin()) return false
+
+        participant.team?.members?.remove(entity.uniqueId)
+        participant.team = team
+        team.members.add(entity.uniqueId)
+        return true
+    }
+
+    fun updateParticipantState(entity: Entity, state: GameParticipantState): Boolean {
+        val participant = participantsById[entity.uniqueId] ?: return false
+        participant.state = state
+        return true
+    }
+
+    fun applyCustomAi(entity: LivingEntity, action: (LivingEntity) -> Unit) {
+        aiDefaults.putIfAbsent(entity.uniqueId, entity.hasAI())
+        action(entity)
+    }
+
+    suspend fun enterNextPhase() {
+        if (isFinished) return
+
+        currentPhase?.onExit(this)
+
+        val nextIndex = currentPhaseIndex + 1
+        if (nextIndex >= phases.size) {
+            finishGame()
+            return
+        }
+
+        currentPhaseIndex = nextIndex
+        phaseElapsedTicks = 0L
+
+        val nextPhase = phases[nextIndex]
+        nextPhase.resetTimer()
+        validateParticipants(nextPhase)
+        nextPhase.onEnter(this)
+        beginPhaseLoop()
+    }
+
+    suspend fun finishCurrentPhase() {
+        val phase = currentPhase ?: return
+        phase.finish()
+        enterNextPhase()
+    }
+
+    fun voteToRestart(player: Player): RestartVoteResult {
+        if (!isFinished) return RestartVoteResult(false, false, restartVotes.size, requiredVotes())
+        if (!participantsById.containsKey(player.uniqueId)) {
+            return RestartVoteResult(false, false, restartVotes.size, requiredVotes())
+        }
+
+        val added = restartVotes.add(player.uniqueId)
+        val votesNeeded = requiredVotes()
+        val shouldRestart = restartVotes.size >= votesNeeded
+
+        if (shouldRestart) restartGame()
+
+        return RestartVoteResult(added, shouldRestart, restartVotes.size, votesNeeded)
+    }
+
+    fun dispose() {
+        phaseTask?.cancel()
+        phaseTask = null
+
+        participantsById.values.toList().forEach { leave(it.entity) }
         scheduler.dispose()
+
+        if (worldSpec.isTemporary && worldInitialized) {
+            val world = Bukkit.getWorld(worldName())
+            if (world != null) {
+                Bukkit.unloadWorld(world, false)
+                deleteWorldFolder(world.worldFolder.toPath())
+            }
+        }
     }
 
-    override fun audiences(): Iterable<Audience> = participants
+    private fun ensureWorldReady() {
+        if (worldInitialized) return
+        worldSpec.resolveWorld(id)
+        worldInitialized = true
+    }
+
+    private fun worldName(): String = when (worldSpec) {
+        is GameWorldSpec.Existing -> worldSpec.worldName
+        is GameWorldSpec.Temporary -> worldSpec.worldName ?: "game-$id"
+    }
+
+    private fun finishGame() {
+        isFinished = true
+        phaseTask?.cancel()
+        phaseTask = null
+        restartVotes.clear()
+        currentPhaseIndex = phases.size
+        participantsById.values.forEach { participant ->
+            val entity = participant.entity
+            if (entity is LivingEntity) resetAi(entity)
+        }
+    }
+
+    private fun restartGame() {
+        isFinished = false
+        restartVotes.clear()
+        currentPhaseIndex = -1
+        phases.forEach { it.resetTimer() }
+        participantsById.values.forEach { it.state = GameParticipantState.ALIVE }
+        start()
+    }
+
+    private fun beginPhaseLoop() {
+        if (phaseTask != null) return
+
+        phaseTask = scheduler.repeat(interval = 20) {
+            val phase = currentPhase ?: return@repeat
+            phaseElapsedTicks += 20
+            phase.updateTimer(20)
+            phase.onTick(this@Game, phaseElapsedTicks)
+
+            if (phase.shouldAdvance(this@Game, phaseElapsedTicks)) {
+                enterNextPhase()
+            }
+        }
+    }
+
+    private fun validateParticipants(phase: GamePhase) {
+        val participantsSnapshot = participantsById.values.toList()
+        for (participant in participantsSnapshot) {
+            val failure = firstRequirementFailure(participant.entity, phase)
+            if (failure != null) {
+                if (participant.entity is Player) {
+                    participant.entity.sendMessage(failure.message ?: text("Failed join requirement.", RED))
+                }
+                leave(participant.entity)
+            }
+        }
+    }
+
+    private fun firstRequirementFailure(entity: Entity, phase: GamePhase?): RequirementResult? {
+        val allRequirements = joinRequirements.values + (phase?.joinRequirements ?: emptyList())
+        return allRequirements.firstNotNullOfOrNull { requirement ->
+            val result = requirement.isSatisfied(entity, this)
+            if (!result.allowed) result else null
+        }
+    }
+
+    private fun resetAi(entity: LivingEntity) {
+        val defaultAi = aiDefaults.remove(entity.uniqueId) ?: return
+        entity.setAI(defaultAi)
+    }
+
+    private fun requiredVotes(): Int {
+        if (participantsById.isEmpty()) return 0
+        return ceil(participantsById.size * restartVoteThreshold).toInt().coerceAtLeast(1)
+    }
+
+    private fun deleteWorldFolder(path: java.nio.file.Path) {
+        if (!Files.exists(path)) return
+        runCatching {
+            Files.walk(path)
+                .sorted(Comparator.reverseOrder())
+                .forEach { Files.deleteIfExists(it) }
+        }
+    }
 }
 
-/**
- * Retrieves the current game an entity is participating in, if any.
- */
+data class RestartVoteResult(
+    val accepted: Boolean,
+    val restarted: Boolean,
+    val currentVotes: Int,
+    val requiredVotes: Int
+)
+
 val Entity.currentGame: Game?
-    get() = NexusPlugin.games?.activeGames?.firstOrNull { it.participants.contains(this) }
-
-/**
- * Formats the game prefix for messages, including the game type.
- */
-val Game.prefix: Component
-    get() = textOfChildren(
-        type.friendlyName.decoration(BOLD, true),
-        text(" → ", DARK_GRAY)
-    )
-
-fun Game.prefix(locale: Locale): Component {
-    val formattedName = type.formattedName.invoke(locale)
-
-    return textOfChildren(
-        formattedName.decoration(BOLD, true),
-        text(" → ", DARK_GRAY)
-    )
-}
+    get() = NexusPlugin.games?.getGameFor(this)

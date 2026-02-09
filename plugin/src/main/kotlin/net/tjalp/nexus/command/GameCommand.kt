@@ -14,17 +14,15 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component.*
+import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.JoinConfiguration.commas
 import net.kyori.adventure.text.event.HoverEvent.showText
+import net.kyori.adventure.text.format.NamedTextColor.GREEN
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.GameArgument
-import net.tjalp.nexus.feature.games.Game
-import net.tjalp.nexus.feature.games.GameType
-import net.tjalp.nexus.feature.games.JoinResult
-import net.tjalp.nexus.feature.games.currentGame
-import net.tjalp.nexus.feature.games.phase.FinishablePhase
-import net.tjalp.nexus.feature.games.phase.TimerPhase
+import net.tjalp.nexus.feature.games.*
+import org.bukkit.entity.Player
 import kotlin.time.Duration.Companion.seconds
 
 object GameCommand {
@@ -32,11 +30,6 @@ object GameCommand {
     private val ERROR_NO_ACTIVE_PHASE = DynamicCommandExceptionType { gameId: Any? ->
         MessageComponentSerializer.message()
             .serialize(text("Game with ID $gameId does not have an active phase", RED))
-    }
-
-    private val ERROR_PHASE_NOT_FINISHABLE = DynamicCommandExceptionType { gameId: Any? ->
-        MessageComponentSerializer.message()
-            .serialize(text("Current phase of game with ID $gameId is not finishable", RED))
     }
 
     private val ERROR_PHASE_HAS_NO_TIMER = DynamicCommandExceptionType { gameId: Any? ->
@@ -51,19 +44,18 @@ object GameCommand {
         val createNode = literal("create")
 
         for (type in GameType.entries) {
-            createNode
-                .then(literal(type.name.lowercase())
-                    .executes { context ->
-                        val game = games.createGame(type)
+            createNode.then(literal(type.id)
+                .executes { context ->
+                    val game = games.createGame(type)
 
-                        context.source.sender.sendMessage(textOfChildren(
-                            text("Created a new "),
-                            type.friendlyName,
-                            text(" game with ID ${game.id}")
-                        ))
+                    context.source.sender.sendMessage(textOfChildren(
+                        text("Created a new "),
+                        type.displayName,
+                        text(" game with ID ${game.id}")
+                    ))
 
-                        return@executes Command.SINGLE_SUCCESS
-                    })
+                    return@executes Command.SINGLE_SUCCESS
+                })
         }
 
         return literal("game")
@@ -105,9 +97,12 @@ object GameCommand {
                                         when (val result = game.join(entity)) {
                                             is JoinResult.Success -> true
                                             is JoinResult.Failure -> {
-                                                val msg = result.message ?: "Unknown reason (${result.reason})"
+                                                val message = result.message ?: text("Unknown reason (${result.reason})", RED)
                                                 context.source.sender.sendMessage(
-                                                    text("Failed to join entity ${entity.name} to game ${game.id}: $msg", RED)
+                                                    textOfChildren(
+                                                        text("Failed to join entity ${entity.name} to game ${game.id}: ", RED),
+                                                        message
+                                                    )
                                                 )
                                                 false
                                             }
@@ -128,10 +123,9 @@ object GameCommand {
                         val resolver = context.getArgument("targets", EntitySelectorArgumentResolver::class.java)
                         val entities = resolver.resolve(context.source)
 
-                        entities.forEach { player ->
-                            val game = player.currentGame ?: return@forEach
-
-                            game.leave(player)
+                        entities.forEach { entity ->
+                            val game = entity.currentGame ?: return@forEach
+                            game.leave(entity)
                         }
 
                         context.source.sender.sendMessage(
@@ -148,14 +142,9 @@ object GameCommand {
                             val remaining = context.getArgument("remaining", Long::class.java)
                             val phase = game.currentPhase ?: throw ERROR_NO_ACTIVE_PHASE.create(game.id)
 
-                            if (phase !is TimerPhase) throw ERROR_PHASE_HAS_NO_TIMER.create(game.id)
+                            if (phase.remainingTicks == null) throw ERROR_PHASE_HAS_NO_TIMER.create(game.id)
 
-                            val wasRunning = phase.timer.isRunning
-
-                            phase.timer.pause()
-                            phase.timer.remaining = remaining
-
-                            if (wasRunning) phase.timer.start()
+                            phase.remainingTicks = remaining * 20
 
                             context.source.sender.sendMessage(
                                 text("Set timer for game with ID ${game.id} to ${remaining.seconds} remaining")
@@ -167,17 +156,20 @@ object GameCommand {
                 .then(argument("id", GameArgument)
                     .executes { context ->
                         val game = context.getArgument("id", Game::class.java)
-                        val participants = join(commas(true), game.participants.map { it.name() })
+                        val participants = join(
+                            commas(true),
+                            game.participants.map { text(it.entity.name) }
+                        )
 
-                        val phaseInfo = if (game.currentPhase != null) {
-                            "Current Phase: ${game.currentPhase!!::class.simpleName}"
-                        } else "No active phase"
+                        val phaseInfo = game.currentPhase?.let { phase ->
+                            textOfChildren(text("Current Phase: "), phase.displayName)
+                        } ?: text("No active phase")
 
                         context.source.sender.sendMessage(textOfChildren(
                             text("Game ID: ${game.id}"),
-                            newline(), text("Type: ").append(game.type.friendlyName),
+                            newline(), text("Type: ").append(game.type.displayName),
                             newline(), text("Participants: ${game.participants.size}").hoverEvent(showText(participants)),
-                            newline(), text(phaseInfo)
+                            newline(), phaseInfo
                         ))
 
                         return@executes Command.SINGLE_SUCCESS
@@ -186,13 +178,10 @@ object GameCommand {
                 .then(argument("id", GameArgument)
                     .executes { context ->
                         val game = context.getArgument("id", Game::class.java)
-                        val phase = game.currentPhase ?: throw ERROR_NO_ACTIVE_PHASE.create(game.id)
-
-                        if (phase !is FinishablePhase) throw ERROR_PHASE_NOT_FINISHABLE.create(game.id)
-
+                        if (game.currentPhase == null) throw ERROR_NO_ACTIVE_PHASE.create(game.id)
                         NexusPlugin.scheduler.launch {
-                            phase.finish()
-                            context.source.sender.sendMessage(text("Finished game with ID ${game.id}"))
+                            game.finishCurrentPhase()
+                            context.source.sender.sendMessage(text("Finished game phase for game with ID ${game.id}"))
                         }
 
                         return@executes Command.SINGLE_SUCCESS
@@ -201,9 +190,44 @@ object GameCommand {
                 .then(argument("id", GameArgument)
                     .executes { context ->
                         val game = context.getArgument("id", Game::class.java)
-                        val settings = game.settings
+                        val settings = game.settings.all()
 
-                        context.source.sender.showDialog(settings.dialog())
+                        val lines = settings.map { setting ->
+                            val lock = if (setting.isMutable) empty() else text(" (locked)", RED)
+                            textOfChildren(setting.displayName, text(": ${setting.value}"), lock)
+                        }
+
+                        context.source.sender.sendMessage(
+                            join(JoinConfiguration.newlines(), lines)
+                        )
+
+                        return@executes Command.SINGLE_SUCCESS
+                    }))
+            .then(literal("vote")
+                .then(argument("id", GameArgument)
+                    .executes { context ->
+                        val game = context.getArgument("id", Game::class.java)
+                        val player = context.source.sender as? Player
+
+                        if (player == null) {
+                            context.source.sender.sendMessage(text("Only players can vote to restart games.", RED))
+                            return@executes Command.SINGLE_SUCCESS
+                        }
+
+                        val result = game.voteToRestart(player)
+                        if (!result.accepted) {
+                            context.source.sender.sendMessage(text("Your vote was not accepted.", RED))
+                            return@executes Command.SINGLE_SUCCESS
+                        }
+
+                        val messageColor = if (result.restarted) GREEN else RED
+                        val statusMessage = if (result.restarted) {
+                            "Restart vote passed. The game is restarting."
+                        } else {
+                            "Vote registered: ${result.currentVotes}/${result.requiredVotes}"
+                        }
+
+                        context.source.sender.sendMessage(text(statusMessage, messageColor))
 
                         return@executes Command.SINGLE_SUCCESS
                     }))

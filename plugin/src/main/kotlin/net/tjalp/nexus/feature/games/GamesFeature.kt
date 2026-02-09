@@ -2,45 +2,57 @@ package net.tjalp.nexus.feature.games
 
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.feature.FeatureKeys.GAMES
-import net.tjalp.nexus.feature.games.frostball_frenzy.FrostballFrenzyGame
+import net.tjalp.nexus.util.register
+import net.tjalp.nexus.util.unregister
+import org.bukkit.entity.Entity
+import org.bukkit.event.Listener
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 class GamesFeature : Feature(GAMES) {
 
-    private val _activeGames = mutableListOf<Game>()
+    private val games = mutableListOf<Game>()
+    private val participants = mutableMapOf<UUID, Game>()
+    private val idCounter = AtomicInteger(1)
 
-    /**
-     * A list of currently active games, not necessarily running.
-     */
+    private var listener: Listener? = null
+
     val activeGames: List<Game>
-        get() = _activeGames.toList()
+        get() = games.toList()
 
-    /**
-     * Creates a new game instance based on the provided [GameType].
-     *
-     * @param type The type of game to create.
-     * @return A new instance of the specified game type.
-     */
-    fun createGame(type: GameType): Game {
-        val game = when (type) {
-            GameType.FROSTBALL_FRENZY -> FrostballFrenzyGame(this)
-        }
-
-        _activeGames.add(game)
-
-        return game
-    }
-
-    /**
-     * Ends the specified [game], removing it from the list of running games and disposing of its resources.
-     *
-     * @param game The game instance to end.
-     */
-    fun endGame(game: Game) {
-        _activeGames.remove(game)
-        game.dispose()
+    override fun onEnable() {
+        listener = GameListener(this).also { it.register() }
     }
 
     override fun onDisposed() {
-        _activeGames.toList().forEach { endGame(it) }
+        games.toList().forEach { it.dispose() }
+        games.clear()
+        participants.clear()
+        listener?.unregister()
+    }
+
+    fun createGame(type: GameType): Game {
+        val id = "game-${idCounter.getAndIncrement()}"
+        val game = type.createGame(this, id)
+        games += game
+        game.start()
+        return game
+    }
+
+    fun endGame(game: Game) {
+        if (!games.remove(game)) return
+        game.dispose()
+    }
+
+    fun getGameFor(entity: Entity): Game? = participants[entity.uniqueId]
+
+    internal fun registerParticipant(entity: Entity, game: Game): Boolean {
+        if (participants.containsKey(entity.uniqueId)) return false
+        participants[entity.uniqueId] = game
+        return true
+    }
+
+    internal fun unregisterParticipant(entity: Entity) {
+        participants.remove(entity.uniqueId)
     }
 }
