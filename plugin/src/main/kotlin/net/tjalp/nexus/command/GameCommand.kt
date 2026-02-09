@@ -28,6 +28,8 @@ import kotlin.time.Duration.Companion.seconds
 
 object GameCommand {
 
+    private const val TICKS_PER_SECOND = 20L
+
     private val ERROR_NO_ACTIVE_PHASE = DynamicCommandExceptionType { gameId: Any? ->
         MessageComponentSerializer.message()
             .serialize(text("Game with ID $gameId does not have an active phase", RED))
@@ -155,7 +157,7 @@ object GameCommand {
 
                             if (phase.remainingTicks == null) throw ERROR_PHASE_HAS_NO_TIMER.create(game.id)
 
-                            phase.remainingTicks = remaining * 20
+                            phase.remainingTicks = remaining * TICKS_PER_SECOND
 
                             context.source.sender.sendMessage(
                                 text("Set timer for game with ID ${game.id} to ${remaining.seconds} remaining")

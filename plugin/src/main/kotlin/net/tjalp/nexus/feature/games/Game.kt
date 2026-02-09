@@ -227,8 +227,10 @@ class Game(
 
         if (worldSpec.isTemporary && worldInitialized) {
             val worldName = resolveWorldName()
+            val safeToDelete = worldSpec is GameWorldSpec.Temporary &&
+                (worldSpec.worldName != null || worldName.startsWith("game-"))
             val world = Bukkit.getWorld(worldName)
-            if (world != null) {
+            if (world != null && safeToDelete) {
                 Bukkit.unloadWorld(world, false)
                 deleteWorldFolder(world.worldFolder.toPath())
             }
@@ -269,10 +271,11 @@ class Game(
 
     private fun beginPhaseLoop() {
         phaseTask?.cancel()
-        phaseTask = scheduler.repeat(interval = 20) {
+        // Tick once per second to balance precision with scheduler overhead.
+        phaseTask = scheduler.repeat(interval = TICK_INTERVAL) {
             val phase = currentPhase ?: return@repeat
-            phaseElapsedTicks += 20
-            phase.updateTimer(20)
+            phaseElapsedTicks += TICK_INTERVAL
+            phase.updateTimer(TICK_INTERVAL)
             phase.onTick(this@Game, phaseElapsedTicks)
 
             if (phase.shouldAdvance(this@Game, phaseElapsedTicks)) {
@@ -318,7 +321,13 @@ class Game(
             Files.walk(path)
                 .sorted(Comparator.reverseOrder())
                 .forEach { Files.deleteIfExists(it) }
+        }.onFailure { error ->
+            NexusPlugin.logger.warning("Failed to delete temporary world folder '$path': ${error.message}")
         }
+    }
+
+    private companion object {
+        const val TICK_INTERVAL = 20L
     }
 }
 

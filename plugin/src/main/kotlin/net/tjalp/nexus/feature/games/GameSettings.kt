@@ -47,6 +47,9 @@ class GameSettings(
         return GameSettings(copied)
     }
 
+    /**
+     * Performs a shallow copy of common collection types. Nested mutable collections are not deep-copied.
+     */
     private fun copyValue(value: Any?): Any? = when (value) {
         is MutableList<*> -> value.toMutableList()
         is List<*> -> value.toList()

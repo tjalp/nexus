@@ -4,7 +4,8 @@ import net.kyori.adventure.text.Component
 
 sealed class JoinResult {
     /**
-     * Indicates that the entity successfully joined the game, along with its tracked participant state.
+     * Indicates that the entity successfully joined the game, along with its tracked participant state
+     * that should be used for per-game status and team assignments.
      */
     data class Success(val participant: GameParticipant) : JoinResult()
 
