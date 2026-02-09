@@ -20,7 +20,6 @@ open class GamePhase(
 ) : FinishablePhase, TimerPhase {
 
     override var remainingTicks: Long? = durationTicks
-        internal set
 
     private var isForceFinished = false
 

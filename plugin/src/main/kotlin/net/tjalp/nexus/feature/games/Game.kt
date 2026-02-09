@@ -135,6 +135,7 @@ class Game(
     fun leave(entity: Entity) {
         val participant = participantsById.remove(entity.uniqueId) ?: return
         feature.unregisterParticipant(entity)
+        restartVotes.remove(entity.uniqueId)
 
         participant.team?.members?.remove(entity.uniqueId)
         if (entity is LivingEntity) resetAi(entity)
@@ -211,11 +212,12 @@ class Game(
 
         val added = restartVotes.add(player.uniqueId)
         val votesNeeded = calculateRequiredVotes()
-        val shouldRestart = restartVotes.size >= votesNeeded
+        val voteCount = restartVotes.size
+        val shouldRestart = voteCount >= votesNeeded
 
         if (shouldRestart) restartGame()
 
-        return RestartVoteResult(added, shouldRestart, restartVotes.size, votesNeeded)
+        return RestartVoteResult(added, shouldRestart, voteCount, votesNeeded)
     }
 
     fun dispose() {
@@ -228,11 +230,15 @@ class Game(
         if (worldSpec.isTemporary && worldInitialized) {
             val worldName = resolveWorldName()
             val safeToDelete = worldSpec is GameWorldSpec.Temporary &&
-                (worldSpec.worldName != null || worldName.startsWith("game-"))
+                worldName.startsWith("game-")
             val world = Bukkit.getWorld(worldName)
-            if (world != null && safeToDelete) {
-                Bukkit.unloadWorld(world, false)
-                deleteWorldFolder(world.worldFolder.toPath())
+            if (world != null && safeToDelete && world.worldFolder.name.startsWith("game-")) {
+                val unloaded = Bukkit.unloadWorld(world, false)
+                if (unloaded) {
+                    deleteWorldFolder(world.worldFolder.toPath())
+                } else {
+                    NexusPlugin.logger.warning("Failed to unload temporary world '$worldName'; skipping delete.")
+                }
             }
         }
     }
@@ -245,7 +251,7 @@ class Game(
 
     private fun resolveWorldName(): String = when (worldSpec) {
         is GameWorldSpec.Existing -> worldSpec.worldName
-        is GameWorldSpec.Temporary -> worldSpec.worldName ?: "game-$id"
+        is GameWorldSpec.Temporary -> worldSpec.worldName ?: id
     }
 
     private fun finishGame() {

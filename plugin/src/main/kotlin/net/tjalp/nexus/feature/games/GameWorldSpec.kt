@@ -9,14 +9,19 @@ sealed class GameWorldSpec {
 
     abstract fun resolveWorld(gameId: String): World
 
-    data class Existing(val worldName: String) : GameWorldSpec() {
+    data class Existing(
+        val worldName: String,
+        val environment: World.Environment? = null
+    ) : GameWorldSpec() {
         override val isTemporary: Boolean = false
 
         override fun resolveWorld(gameId: String): World {
             val existingWorld = Bukkit.getWorld(worldName)
             if (existingWorld != null) return existingWorld
 
-            val createdWorld = Bukkit.createWorld(WorldCreator(worldName))
+            val creator = WorldCreator(worldName)
+            environment?.let { creator.environment(it) }
+            val createdWorld = Bukkit.createWorld(creator)
             if (createdWorld != null) return createdWorld
 
             val worldFolder = Bukkit.getWorldContainer().resolve(worldName)
@@ -38,7 +43,7 @@ sealed class GameWorldSpec {
         override val isTemporary: Boolean = true
 
         override fun resolveWorld(gameId: String): World {
-            val resolvedName = worldName ?: "game-$gameId"
+            val resolvedName = worldName ?: gameId
             val creator = WorldCreator(resolvedName).environment(environment)
             seed?.let { creator.seed(it) }
 
@@ -48,11 +53,11 @@ sealed class GameWorldSpec {
     }
 
     companion object {
-        fun mainWorld(): GameWorldSpec = Existing("world")
+        fun mainWorld(): GameWorldSpec = Existing("world", environment = World.Environment.NORMAL)
 
-        fun nether(): GameWorldSpec = Existing("world_nether")
+        fun nether(): GameWorldSpec = Existing("world_nether", environment = World.Environment.NETHER)
 
-        fun theEnd(): GameWorldSpec = Existing("world_the_end")
+        fun theEnd(): GameWorldSpec = Existing("world_the_end", environment = World.Environment.THE_END)
 
         fun temporary(
             worldName: String? = null,

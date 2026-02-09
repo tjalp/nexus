@@ -40,6 +40,11 @@ object GameCommand {
             .serialize(text("Current phase of game with ID $gameId does not have a timer", RED))
     }
 
+    private val ERROR_TIMER_TOO_LARGE = DynamicCommandExceptionType { remaining: Any? ->
+        MessageComponentSerializer.message()
+            .serialize(text("Timer value $remaining is too large.", RED))
+    }
+
     private val games
         get() = NexusPlugin.games ?: error("Games feature is not enabled")
 
@@ -156,6 +161,8 @@ object GameCommand {
                             val phase = game.currentPhase ?: throw ERROR_NO_ACTIVE_PHASE.create(game.id)
 
                             if (phase.remainingTicks == null) throw ERROR_PHASE_HAS_NO_TIMER.create(game.id)
+                            val maxSeconds = Long.MAX_VALUE / TICKS_PER_SECOND
+                            if (remaining > maxSeconds) throw ERROR_TIMER_TOO_LARGE.create(remaining)
 
                             phase.remainingTicks = remaining * TICKS_PER_SECOND
 
