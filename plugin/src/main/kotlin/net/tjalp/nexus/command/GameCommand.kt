@@ -158,7 +158,7 @@ object GameCommand {
                         val game = context.getArgument("id", Game::class.java)
                         val participants = join(
                             commas(true),
-                            game.participants.map { text(it.entity.name) }
+                            game.participants.map { it.entity.name() }
                         )
 
                         val phaseInfo = game.currentPhase?.let { phase ->

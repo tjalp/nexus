@@ -13,8 +13,20 @@ sealed class GameWorldSpec {
         override val isTemporary: Boolean = false
 
         override fun resolveWorld(gameId: String): World {
-            return Bukkit.getWorld(worldName) ?: Bukkit.createWorld(WorldCreator(worldName))
-                ?: error("Failed to load world '$worldName'")
+            val existingWorld = Bukkit.getWorld(worldName)
+            if (existingWorld != null) return existingWorld
+
+            val createdWorld = Bukkit.createWorld(WorldCreator(worldName))
+            if (createdWorld != null) return createdWorld
+
+            val worldFolder = Bukkit.getWorldContainer().resolve(worldName)
+            val message = if (worldFolder.exists()) {
+                "Failed to load existing world '$worldName'"
+            } else {
+                "Failed to create world '$worldName'"
+            }
+
+            error(message)
         }
     }
 

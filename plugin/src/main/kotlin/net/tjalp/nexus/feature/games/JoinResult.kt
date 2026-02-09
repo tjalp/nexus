@@ -3,6 +3,9 @@ package net.tjalp.nexus.feature.games
 import net.kyori.adventure.text.Component
 
 sealed class JoinResult {
+    /**
+     * Indicates that the entity successfully joined the game, along with its tracked participant state.
+     */
     data class Success(val participant: GameParticipant) : JoinResult()
 
     data class Failure(

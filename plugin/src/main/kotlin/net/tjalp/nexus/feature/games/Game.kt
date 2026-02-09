@@ -265,8 +265,7 @@ class Game(
     }
 
     private fun beginPhaseLoop() {
-        if (phaseTask != null) return
-
+        phaseTask?.cancel()
         phaseTask = scheduler.repeat(interval = 20) {
             val phase = currentPhase ?: return@repeat
             phaseElapsedTicks += 20
@@ -274,7 +273,7 @@ class Game(
             phase.onTick(this@Game, phaseElapsedTicks)
 
             if (phase.shouldAdvance(this@Game, phaseElapsedTicks)) {
-                enterNextPhase()
+                scheduler.launch { enterNextPhase() }
             }
         }
     }

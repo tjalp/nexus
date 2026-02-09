@@ -22,7 +22,7 @@ open class GamePhase(
     override var remainingTicks: Long? = durationTicks
         internal set
 
-    private var forceFinished = false
+    private var isForceFinished = false
 
     open suspend fun onEnter(game: Game) {}
 
@@ -31,18 +31,18 @@ open class GamePhase(
     open suspend fun onTick(game: Game, elapsedTicks: Long) {}
 
     fun shouldAdvance(game: Game, elapsedTicks: Long): Boolean {
-        if (forceFinished) return true
+        if (isForceFinished) return true
         if (completionCondition(game)) return true
         return remainingTicks?.let { it <= 0 } ?: false
     }
 
     override suspend fun finish() {
-        forceFinished = true
+        isForceFinished = true
     }
 
     internal fun resetTimer() {
         remainingTicks = durationTicks
-        forceFinished = false
+        isForceFinished = false
     }
 
     internal fun updateTimer(deltaTicks: Long) {
