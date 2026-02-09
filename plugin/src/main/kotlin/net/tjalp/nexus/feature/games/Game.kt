@@ -93,6 +93,8 @@ class Game(
     private val restartVoteThreshold: Double
         get() = settings.get(GameSettingKeys.RESTART_VOTE_THRESHOLD).coerceIn(0.0, 1.0)
 
+    fun hasFinished(): Boolean = isFinished
+
     fun start() {
         if (currentPhase != null || phases.isEmpty()) return
         ensureWorldReady()
@@ -202,13 +204,13 @@ class Game(
     }
 
     fun voteToRestart(player: Player): RestartVoteResult {
-        if (!isFinished) return RestartVoteResult(false, false, restartVotes.size, requiredVotes())
+        if (!isFinished) return RestartVoteResult(false, false, restartVotes.size, calculateRequiredVotes())
         if (!participantsById.containsKey(player.uniqueId)) {
-            return RestartVoteResult(false, false, restartVotes.size, requiredVotes())
+            return RestartVoteResult(false, false, restartVotes.size, calculateRequiredVotes())
         }
 
         val added = restartVotes.add(player.uniqueId)
-        val votesNeeded = requiredVotes()
+        val votesNeeded = calculateRequiredVotes()
         val shouldRestart = restartVotes.size >= votesNeeded
 
         if (shouldRestart) restartGame()
@@ -224,7 +226,8 @@ class Game(
         scheduler.dispose()
 
         if (worldSpec.isTemporary && worldInitialized) {
-            val world = Bukkit.getWorld(worldName())
+            val worldName = resolveWorldName()
+            val world = Bukkit.getWorld(worldName)
             if (world != null) {
                 Bukkit.unloadWorld(world, false)
                 deleteWorldFolder(world.worldFolder.toPath())
@@ -238,7 +241,7 @@ class Game(
         worldInitialized = true
     }
 
-    private fun worldName(): String = when (worldSpec) {
+    private fun resolveWorldName(): String = when (worldSpec) {
         is GameWorldSpec.Existing -> worldSpec.worldName
         is GameWorldSpec.Temporary -> worldSpec.worldName ?: "game-$id"
     }
@@ -304,7 +307,7 @@ class Game(
         entity.setAI(defaultAi)
     }
 
-    private fun requiredVotes(): Int {
+    private fun calculateRequiredVotes(): Int {
         if (participantsById.isEmpty()) return 0
         return ceil(participantsById.size * restartVoteThreshold).toInt().coerceAtLeast(1)
     }

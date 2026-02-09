@@ -22,8 +22,9 @@ class GameSettings(
     fun all(): List<GameSetting<*>> = settings.values.toList()
 
     fun <T> getSetting(key: GameSettingKey<T>): GameSetting<T>? {
+        val setting = settings[key.id] ?: return null
         @Suppress("UNCHECKED_CAST")
-        return settings[key.id] as? GameSetting<T>
+        return setting as? GameSetting<T>
     }
 
     fun <T> get(key: GameSettingKey<T>): T {
@@ -40,8 +41,7 @@ class GameSettings(
 
     fun copyForGame(): GameSettings {
         val copied = settings.mapValues { (_, setting) ->
-            @Suppress("UNCHECKED_CAST")
-            (setting as GameSetting<Any?>).copy(value = copyValue(setting.value))
+            setting.copy(value = copyValue(setting.value))
         }.toMutableMap()
 
         return GameSettings(copied)

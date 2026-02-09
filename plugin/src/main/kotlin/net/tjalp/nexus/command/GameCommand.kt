@@ -13,6 +13,7 @@ import io.papermc.paper.command.brigadier.argument.resolvers.selector.EntitySele
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.JoinConfiguration
 import net.kyori.adventure.text.JoinConfiguration.commas
@@ -39,6 +40,16 @@ object GameCommand {
 
     private val games
         get() = NexusPlugin.games ?: error("Games feature is not enabled")
+
+    private fun joinFailureMessage(result: JoinResult.Failure): Component {
+        return result.message ?: when (result.reason) {
+            JoinFailureReason.ALREADY_IN_GAME -> text("Entity is already in another game.", RED)
+            JoinFailureReason.GAME_FULL -> text("This game is full.", RED)
+            JoinFailureReason.GAME_FINISHED -> text("This game has already finished.", RED)
+            JoinFailureReason.PHASE_DISALLOWS_JOIN -> text("This phase does not allow joining.", RED)
+            JoinFailureReason.REQUIREMENTS_NOT_MET -> text("Join requirements were not met.", RED)
+        }
+    }
 
     fun create(): LiteralCommandNode<CommandSourceStack> {
         val createNode = literal("create")
@@ -97,7 +108,7 @@ object GameCommand {
                                         when (val result = game.join(entity)) {
                                             is JoinResult.Success -> true
                                             is JoinResult.Failure -> {
-                                                val message = result.message ?: text("Unknown reason (${result.reason})", RED)
+                                                val message = joinFailureMessage(result)
                                                 context.source.sender.sendMessage(
                                                     textOfChildren(
                                                         text("Failed to join entity ${entity.name} to game ${game.id}: ", RED),
@@ -214,9 +225,19 @@ object GameCommand {
                             return@executes Command.SINGLE_SUCCESS
                         }
 
+                        if (!game.hasFinished()) {
+                            context.source.sender.sendMessage(text("This game must finish before voting to restart.", RED))
+                            return@executes Command.SINGLE_SUCCESS
+                        }
+
+                        if (game.participants.none { it.entity.uniqueId == player.uniqueId }) {
+                            context.source.sender.sendMessage(text("You must be a participant to vote for a restart.", RED))
+                            return@executes Command.SINGLE_SUCCESS
+                        }
+
                         val result = game.voteToRestart(player)
                         if (!result.accepted) {
-                            context.source.sender.sendMessage(text("Your vote was not accepted.", RED))
+                            context.source.sender.sendMessage(text("Your restart vote was already recorded.", RED))
                             return@executes Command.SINGLE_SUCCESS
                         }
 
