@@ -39,10 +39,17 @@ class GameSettings(
         return true
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun copyForGame(): GameSettings {
         val copied = settings.mapValues { (_, setting) ->
-            setting.copy(value = copyValue(setting.value))
-        }.toMutableMap()
+            GameSetting(
+                key = setting.key as GameSettingKey<Any?>,
+                displayName = setting.displayName,
+                description = setting.description,
+                isMutable = setting.isMutable,
+                value = copyValue(setting.value)
+            )
+        }.toMutableMap() as MutableMap<String, GameSetting<*>>
 
         return GameSettings(copied)
     }
