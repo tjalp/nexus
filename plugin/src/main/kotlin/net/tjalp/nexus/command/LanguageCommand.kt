@@ -10,7 +10,8 @@ import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.LocaleArgument
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
+import net.tjalp.nexus.profile.update
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
 import java.util.*
@@ -32,7 +33,7 @@ object LanguageCommand {
                     val profile = player.profile()
 
                     NexusPlugin.scheduler.launch {
-                        profile.update(GENERAL) {
+                        profile.update<GeneralAttachment> {
                             it.preferredLocale = locale
                         }
 

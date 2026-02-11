@@ -1,12 +1,11 @@
 package net.tjalp.nexus.profile.attachment
 
-import net.tjalp.nexus.profile.AttachmentKey
-import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -53,18 +52,17 @@ class NoticesAttachment(
 }
 
 object NoticesAttachmentProvider : AttachmentProvider<NoticesAttachment> {
-    override val key: AttachmentKey<NoticesAttachment> = AttachmentKeys.NOTICES
 
-    override suspend fun load(profile: ProfileSnapshot): NoticesAttachment? = suspendTransaction {
-        val attachment = NoticesTable.selectAll().where(NoticesTable.profileId eq profile.id)
+    override suspend fun load(db: Database, id: UUID): NoticesAttachment? = suspendTransaction(db) {
+        val attachment = NoticesTable.selectAll().where(NoticesTable.profileId eq id)
             .firstOrNull()?.toNoticesAttachment()
 
         if (attachment == null) {
             NoticesTable.upsert {
-                it[profileId] = profile.id
+                it[profileId] = id
             }
 
-            return@suspendTransaction NoticesTable.selectAll().where(NoticesTable.profileId eq profile.id)
+            return@suspendTransaction NoticesTable.selectAll().where(NoticesTable.profileId eq id)
                 .firstOrNull()?.toNoticesAttachment()
         }
 

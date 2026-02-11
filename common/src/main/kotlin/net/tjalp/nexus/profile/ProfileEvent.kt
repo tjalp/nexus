@@ -1,8 +1,6 @@
 package net.tjalp.nexus.profile
 
 import net.tjalp.nexus.profile.model.ProfileSnapshot
-import net.tjalp.nexus.util.asPlayer
-import org.bukkit.entity.Player
 import java.util.*
 
 /**
@@ -21,7 +19,5 @@ sealed interface ProfileEvent {
         val id: UUID,
         val old: ProfileSnapshot?,
         val new: ProfileSnapshot
-    ) : ProfileEvent {
-        val player: Player?; get() = id.asPlayer()
-    }
+    ) : ProfileEvent
 }

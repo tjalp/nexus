@@ -15,6 +15,7 @@ import net.kyori.adventure.text.format.TextDecoration.UNDERLINED
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.Constants.PUNISHMENTS_MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PUNISHMENTS_PRIMARY_COLOR
+import net.tjalp.nexus.punishment.Punishment
 import java.util.*
 import kotlin.math.roundToInt
 import kotlin.time.Clock

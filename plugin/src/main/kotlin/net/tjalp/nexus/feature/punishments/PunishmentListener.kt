@@ -8,8 +8,9 @@ import io.papermc.paper.event.player.AsyncChatEvent
 import kotlinx.datetime.TimeZone
 import net.kyori.adventure.identity.Identity
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.PUNISHMENT
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
+import net.tjalp.nexus.profile.attachment.PunishmentAttachment
+import net.tjalp.nexus.punishment.PunishmentType
 import net.tjalp.nexus.util.asDialogNotice
 import net.tjalp.nexus.util.profile
 import net.tjalp.nexus.util.translate
@@ -42,10 +43,10 @@ class PunishmentListener : Listener {
         }
 
         val profile = NexusPlugin.profiles.getCached(id)
-        val generalAtt = profile?.getAttachment(GENERAL)
+        val generalAtt = profile?.attachmentOf<GeneralAttachment>()
         val playerLocale = locale ?: generalAtt?.preferredLocale ?: Locale.US
-        val timeZone = profile?.getAttachment(GENERAL)?.timeZone ?: TimeZone.UTC
-        val att = profile?.getAttachment(PUNISHMENT) ?: return
+        val timeZone = profile?.attachmentOf<GeneralAttachment>()?.timeZone ?: TimeZone.UTC
+        val att = profile?.attachmentOf<PunishmentAttachment>() ?: return
 
         // get the longest active ban, if any
         val activeBan = att.punishments
@@ -63,7 +64,7 @@ class PunishmentListener : Listener {
     fun on(event: AsyncChatEvent) {
         val player = event.player
         val profile = player.profile()
-        val att = profile.getAttachment(PUNISHMENT) ?: return
+        val att = profile.attachmentOf<PunishmentAttachment>() ?: return
 
         // get the longest active mute, if any
         val activeMute = att.punishments
@@ -72,7 +73,7 @@ class PunishmentListener : Listener {
 
         if (activeMute == null) return
 
-        val timeZone = profile.getAttachment(GENERAL)?.timeZone ?: TimeZone.UTC
+        val timeZone = profile.attachmentOf<GeneralAttachment>()?.timeZone ?: TimeZone.UTC
         val muteComponent = PunishComponents.mute(activeMute, timeZone, player.locale())
 
         player.showDialog(muteComponent.asDialogNotice(locale = player.locale()))

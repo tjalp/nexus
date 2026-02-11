@@ -33,9 +33,10 @@ import net.tjalp.nexus.Constants.PUNISHMENTS_MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PUNISHMENTS_PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.punishments.PunishmentReason
-import net.tjalp.nexus.feature.punishments.PunishmentSeverity
-import net.tjalp.nexus.feature.punishments.PunishmentType
-import net.tjalp.nexus.profile.attachment.AttachmentKeys
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
+import net.tjalp.nexus.profile.attachment.PunishmentAttachment
+import net.tjalp.nexus.punishment.PunishmentSeverity
+import net.tjalp.nexus.punishment.PunishmentType
 import org.bukkit.command.ConsoleCommandSender
 import java.util.concurrent.CompletableFuture
 import kotlin.jvm.optionals.getOrNull
@@ -117,9 +118,9 @@ object PunishCommand {
                 val uniqueId = withContext(Dispatchers.IO) { NexusPlugin.server.getPlayerUniqueId(target) }
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
                 val targetProfile = NexusPlugin.profiles.get(id = uniqueId) ?: throw ERROR_NO_PROFILE.create(target)
-                val att = targetProfile.getAttachment(AttachmentKeys.PUNISHMENT)
+                val att = targetProfile.attachmentOf<PunishmentAttachment>()
                     ?: throw ERROR_NO_PUNISHMENT_DATA.create(target)
-                val generalAtt = targetProfile.getAttachment(AttachmentKeys.GENERAL)
+                val generalAtt = targetProfile.attachmentOf<GeneralAttachment>()
                 val punishments = att.punishments
                 val logComponent = text()
                     .append(
@@ -250,7 +251,7 @@ object PunishCommand {
                     PRIMARY_COLOR,
                     Argument.component(
                         "target",
-                        text(targetProfile.getAttachment(AttachmentKeys.GENERAL)?.lastKnownName ?: target, MONOCHROME_COLOR)
+                        text(targetProfile.attachmentOf<GeneralAttachment>()?.lastKnownName ?: target, MONOCHROME_COLOR)
                     ),
                     Argument.component("type", text(type.name, MONOCHROME_COLOR)),
                     Argument.component("severity", text(severity.name, MONOCHROME_COLOR)),

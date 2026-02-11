@@ -1,4 +1,4 @@
-package net.tjalp.nexus.feature.punishments
+package net.tjalp.nexus.punishment
 
 import kotlin.time.Clock
 import kotlin.time.Duration

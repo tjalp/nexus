@@ -10,6 +10,7 @@ import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.empty
 import net.kyori.adventure.text.ComponentLike
+import net.kyori.adventure.title.Title
 import net.kyori.adventure.translation.GlobalTranslator
 import java.util.*
 
@@ -27,9 +28,10 @@ fun ComponentLike.asDialogNotice(
     translate: Boolean = true,
     locale: Locale? = null
 ): Dialog {
-    if (translate) require(locale != null) { "Locale must be provided when translate is true" }
-
-    val component = if (translate) this.translate(locale!!) else this.asComponent()
+    val component = if (translate) {
+        require(locale != null) { "Locale must be provided when translate is true" }
+        this.translate(locale)
+    } else this.asComponent()
 
     return Dialog.create { builder ->
         builder.empty()
@@ -72,4 +74,13 @@ fun ComponentLike.sendTo(audience: Audience) {
  */
 fun ComponentLike.sendActionBarTo(audience: Audience) {
     audience.sendActionBar(this)
+}
+
+/**
+ * Sends this [Title] to the specified [Audience].
+ *
+ * @param audience The [Audience] to send this title to
+ */
+fun Title.sendTo(audience: Audience) {
+    audience.showTitle(this)
 }

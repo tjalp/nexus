@@ -10,12 +10,13 @@ import net.kyori.adventure.text.Component.textOfChildren
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.PUNISHMENTS
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.PUNISHMENT
-import net.tjalp.nexus.profile.attachment.AttachmentRegistry
-import net.tjalp.nexus.profile.attachment.PunishmentAttachmentProvider
-import net.tjalp.nexus.profile.attachment.PunishmentsTable
+import net.tjalp.nexus.profile.attachment.*
 import net.tjalp.nexus.profile.model.ProfileSnapshot
+import net.tjalp.nexus.profile.player
+import net.tjalp.nexus.profile.update
+import net.tjalp.nexus.punishment.Punishment
+import net.tjalp.nexus.punishment.PunishmentSeverity
+import net.tjalp.nexus.punishment.PunishmentType
 import net.tjalp.nexus.util.asDialogNotice
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.translate
@@ -37,9 +38,9 @@ class PunishmentsFeature : Feature(PUNISHMENTS) {
         scheduler.launch {
             NexusPlugin.profiles.updates.collect { event ->
                 val player = event.player ?: return@collect
-                val oldAtt = event.old?.getAttachment(PUNISHMENT)
-                val newAtt = event.new.getAttachment(PUNISHMENT) ?: return@collect
-                val timeZone = event.new.getAttachment(GENERAL)?.timeZone ?: TimeZone.UTC
+                val oldAtt = event.old?.attachmentOf<PunishmentAttachment>()
+                val newAtt = event.new.attachmentOf<PunishmentAttachment>() ?: return@collect
+                val timeZone = event.new.attachmentOf<GeneralAttachment>()?.timeZone ?: TimeZone.UTC
 
                 // get all new punishments compared to the old attachment
                 val newPunishments = if (oldAtt == null) {
@@ -99,7 +100,7 @@ class PunishmentsFeature : Feature(PUNISHMENTS) {
         severity: PunishmentSeverity,
         reason: String,
     ): Punishment? {
-        val att = target.getAttachment(PUNISHMENT) ?: return null
+        val att = target.attachmentOf<PunishmentAttachment>() ?: return null
         val punishment = Punishment(
             type = type,
             duration = severity.duration,

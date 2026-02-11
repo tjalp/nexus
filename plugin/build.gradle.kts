@@ -24,8 +24,7 @@ repositories {
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 dependencies {
-    implementation(libs.bundles.kotlinxEcosystem)
-    implementation(libs.bundles.database)
+    implementation(project(":common"))
     implementation(libs.configurateKotlinExtras)
     implementation(libs.commonsCollections)
     implementation(libs.icu4j)
@@ -44,7 +43,7 @@ tasks {
     }
 
     shadowJar {
-        archiveFileName.set("nexus.jar")
+        archiveFileName.set("nexus-${version}.jar")
 
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"

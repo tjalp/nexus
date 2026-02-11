@@ -1,4 +1,4 @@
-package net.tjalp.nexus.feature.punishments
+package net.tjalp.nexus.punishment
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days

@@ -1,4 +1,4 @@
-package net.tjalp.nexus.feature.punishments
+package net.tjalp.nexus.punishment
 
 /**
  * Values representing different types of punishments

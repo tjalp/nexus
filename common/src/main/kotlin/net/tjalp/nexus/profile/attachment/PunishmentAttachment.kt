@@ -2,12 +2,10 @@
 
 package net.tjalp.nexus.profile.attachment
 
-import net.tjalp.nexus.feature.punishments.Punishment
-import net.tjalp.nexus.feature.punishments.PunishmentSeverity
-import net.tjalp.nexus.feature.punishments.PunishmentType
-import net.tjalp.nexus.profile.AttachmentKey
-import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
+import net.tjalp.nexus.punishment.Punishment
+import net.tjalp.nexus.punishment.PunishmentSeverity
+import net.tjalp.nexus.punishment.PunishmentType
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
@@ -15,6 +13,7 @@ import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.datetime.duration
 import org.jetbrains.exposed.v1.datetime.timestamp
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -60,14 +59,12 @@ data class PunishmentAttachment(
 
 object PunishmentAttachmentProvider : AttachmentProvider<PunishmentAttachment> {
 
-    override val key: AttachmentKey<PunishmentAttachment> = AttachmentKeys.PUNISHMENT
-
-    override suspend fun load(profile: ProfileSnapshot): PunishmentAttachment = suspendTransaction {
-        val punishments = PunishmentsTable.selectAll().where(PunishmentsTable.punishedProfileId eq profile.id)
+    override suspend fun load(db: Database, id: UUID): PunishmentAttachment = suspendTransaction(db) {
+        val punishments = PunishmentsTable.selectAll().where(PunishmentsTable.punishedProfileId eq id)
             .map { it.toPunishment() }
 
         return@suspendTransaction PunishmentAttachment(
-            profileId = profile.id,
+            profileId = id,
             punishments = punishments
         )
     }

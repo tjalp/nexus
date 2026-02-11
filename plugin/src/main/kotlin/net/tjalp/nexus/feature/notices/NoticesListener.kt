@@ -7,8 +7,9 @@ import net.kyori.adventure.identity.Identity
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.NOTICES
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
+import net.tjalp.nexus.profile.attachment.NoticesAttachment
+import net.tjalp.nexus.profile.update
 import net.tjalp.nexus.util.translate
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -23,8 +24,8 @@ class NoticesListener(val notices: NoticesFeature) : Listener {
         val audience = conn.audience
         val profileId = conn.profile.id ?: audience.get(Identity.UUID).getOrNull() ?: return
         val profile = runBlocking { NexusPlugin.profiles.get(profileId) } ?: return
-        val att = profile.getAttachment(NOTICES) ?: return
-        val locale = audience.get(Identity.LOCALE).getOrNull() ?: profile.getAttachment(GENERAL)?.preferredLocale
+        val att = profile.attachmentOf<NoticesAttachment>() ?: return
+        val locale = audience.get(Identity.LOCALE).getOrNull() ?: profile.attachmentOf<GeneralAttachment>()?.preferredLocale
 
         runBlocking {
             val rulesConfig = NexusPlugin.configuration.features.notices.rules

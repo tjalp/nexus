@@ -11,11 +11,8 @@ import net.tjalp.nexus.profile.model.ProfilesTable
 import net.tjalp.nexus.profile.model.toProfileSnapshot
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
-import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.deleteWhere
-import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import org.jetbrains.exposed.v1.jdbc.upsert
 import java.util.*
 import kotlin.time.ExperimentalTime
 
@@ -36,22 +33,22 @@ class ExposedProfilesService(
     ): ProfileSnapshot? = suspendTransaction(db) {
         if (!bypassCache) profileCache[id]?.let { return@suspendTransaction it }
 
-        var profile = ProfilesTable.selectAll().where(ProfilesTable.id eq id).firstOrNull()?.toProfileSnapshot()
-
-        if (profile == null && allowCreation) {
-            ProfilesTable.upsert {
+        val profileRow = if (allowCreation) {
+            ProfilesTable.upsertReturning {
                 it[ProfilesTable.id] = id
-            }
-            profile = ProfilesTable.selectAll().where(ProfilesTable.id eq id).firstOrNull()?.toProfileSnapshot()
-        }
+            }.single()
+        } else ProfilesTable.selectAll().where(ProfilesTable.id eq id).singleOrNull()
 
-        profile?.also {
-            AttachmentRegistry.load(it)
+        if (profileRow == null) return@suspendTransaction null
 
-            _updates.tryEmit(ProfileEvent.Updated(it.id, profileCache[it.id], it))
+        val attachments = AttachmentRegistry.getAttachments(db, id)
+        val profile = profileRow.toProfileSnapshot(attachments)
 
-            if (cache || profileCache.contains(id)) profileCache[id] = it
-        }
+        _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
+
+        if (cache || profileCache.contains(profile.id)) profileCache[profile.id] = profile
+
+        return@suspendTransaction profile
     }
 
     override fun getCached(id: UUID): ProfileSnapshot? = profileCache[id]
@@ -69,9 +66,9 @@ class ExposedProfilesService(
 
         statements.forEach { it() }
 
-        val profile = ProfilesTable.selectAll().where(ProfilesTable.id eq profile.id)
-            .first().toProfileSnapshot()
-            .also { AttachmentRegistry.load(it) }
+        val profileRow = ProfilesTable.selectAll().where(ProfilesTable.id eq profile.id).single()
+        val attachments = AttachmentRegistry.getAttachments(db, profile.id)
+        val profile = profileRow.toProfileSnapshot(attachments)
 
         _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
 

@@ -1,14 +1,12 @@
 package net.tjalp.nexus.profile.attachment
 
 import kotlinx.datetime.TimeZone
-import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.profile.AttachmentKey
-import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -62,18 +60,17 @@ class GeneralAttachment(
 }
 
 object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
-    override val key: AttachmentKey<GeneralAttachment> = AttachmentKeys.GENERAL
 
-    override suspend fun load(profile: ProfileSnapshot): GeneralAttachment? = suspendTransaction(NexusPlugin.database) {
-        val attachment = GeneralTable.selectAll().where(GeneralTable.profileId eq profile.id)
+    override suspend fun load(db: Database, id: UUID): GeneralAttachment? = suspendTransaction(db) {
+        val attachment = GeneralTable.selectAll().where(GeneralTable.profileId eq id)
             .firstOrNull()?.toGeneralAttachment()
 
         if (attachment == null) {
-            val newAttachmentId = GeneralTable.upsert {
-                it[profileId] = profile.id
-            } get GeneralTable.id
+            GeneralTable.upsert {
+                it[profileId] = id
+            }
 
-            return@suspendTransaction GeneralTable.selectAll().where(GeneralTable.profileId eq profile.id)
+            return@suspendTransaction GeneralTable.selectAll().where(GeneralTable.profileId eq id)
                 .firstOrNull()?.toGeneralAttachment()
         }
 

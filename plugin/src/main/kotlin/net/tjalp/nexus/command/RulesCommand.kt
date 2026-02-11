@@ -8,7 +8,8 @@ import kotlinx.coroutines.launch
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.config.RulesConfig
 import net.tjalp.nexus.feature.notices.RulesDialog
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.NOTICES
+import net.tjalp.nexus.profile.attachment.NoticesAttachment
+import net.tjalp.nexus.profile.update
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
 
@@ -31,7 +32,7 @@ object RulesCommand {
                     if (!accepted) return@create
 
                     notices.scheduler.launch {
-                        profile.update(NOTICES) {
+                        profile.update<NoticesAttachment> {
                             it.acceptedRulesVersion = rulesVersion
                         }
                     }

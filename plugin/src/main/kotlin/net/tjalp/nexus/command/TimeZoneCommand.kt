@@ -14,7 +14,8 @@ import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.TimeZoneArgument
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
+import net.tjalp.nexus.profile.update
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
 
@@ -33,7 +34,7 @@ object TimeZoneCommand {
                     val profile = player.profile()
 
                     NexusPlugin.scheduler.launch {
-                        profile.update(GENERAL) {
+                        profile.update<GeneralAttachment> {
                             it.timeZone = timeZone
                         }
 

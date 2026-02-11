@@ -25,7 +25,7 @@ import net.kyori.adventure.translation.Translator
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.profile.attachment.AttachmentKeys.GENERAL
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.util.profile
 import net.tjalp.nexus.util.translate
@@ -69,7 +69,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
                 waitForTimeZone(audience, profile)
             }
 
-            profile.update(GENERAL) { att ->
+            profile.update<GeneralAttachment> { att ->
                 att.lastKnownName = username
                 locale?.let { att.preferredLocale = it }
             }
@@ -78,11 +78,11 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
 
     @Suppress("UnstableApiUsage")
     private suspend fun waitForTimeZone(audience: Audience, profile: ProfileSnapshot) {
-        if (profile.getAttachment(GENERAL)?.timeZone != null) return
+        if (profile.attachmentOf<GeneralAttachment>()?.timeZone != null) return
 
         val deferred = CompletableDeferred<TimeZone?>()
         val locale = audience.get(Identity.LOCALE).getOrNull()
-            ?: profile.getAttachment(GENERAL)?.preferredLocale
+            ?: profile.attachmentOf<GeneralAttachment>()?.preferredLocale
 
 //        audience.showDialog(Dialog.create { builder ->
 //            builder.empty()
@@ -174,7 +174,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
 
         audience.closeDialog()
 
-        profile.update(GENERAL) { att ->
+        profile.update<GeneralAttachment> { att ->
             att.timeZone = zone
         }
     }
@@ -190,7 +190,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
         val locale = event.locale()
 
         NexusPlugin.scheduler.launch {
-            profile.update(GENERAL) {
+            profile.update<GeneralAttachment> {
                 it.preferredLocale = locale
             }
         }
