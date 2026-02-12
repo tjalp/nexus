@@ -1,5 +1,6 @@
 package net.tjalp.nexus.punishment
 
+import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
@@ -17,6 +18,7 @@ import kotlin.time.Instant
  * @param caseId The unique case ID of the punishment
  */
 @OptIn(ExperimentalTime::class)
+@Serializable
 data class Punishment(
     val type: PunishmentType,
     val severity: PunishmentSeverity,

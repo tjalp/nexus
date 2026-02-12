@@ -35,7 +35,7 @@ object TimeZoneCommand {
 
                     NexusPlugin.scheduler.launch {
                         profile.update<GeneralAttachment> {
-                            it.timeZone = timeZone
+                            it.setTimeZone(timeZone)
                         }
 
                         sender.sendMessage(

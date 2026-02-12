@@ -2,6 +2,9 @@
 
 package net.tjalp.nexus.profile.attachment
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import net.tjalp.nexus.profile.model.ProfilesTable
 import net.tjalp.nexus.punishment.Punishment
 import net.tjalp.nexus.punishment.PunishmentSeverity
@@ -32,15 +35,18 @@ object PunishmentsTable : IntIdTable("punishments") {
     val issuedBy = varchar("issued_by", 36)
 }
 
+@Serializable
+@SerialName("punishments")
 data class PunishmentAttachment(
-    val profileId: UUID,
     val punishments: Collection<Punishment>
-) {
+) : ProfileAttachment {
+
+    @Transient lateinit var id: UUID
 
     fun addPunishment(punishment: Punishment) {
         PunishmentsTable.insert {
             it[caseId] = punishment.caseId
-            it[punishedProfileId] = profileId
+            it[punishedProfileId] = this@PunishmentAttachment.id
             it[type] = punishment.type.name
             it[reason] = punishment.reason
             it[duration] = punishment.duration
@@ -52,7 +58,7 @@ data class PunishmentAttachment(
 
     fun removePunishment(caseId: String) {
         PunishmentsTable.deleteWhere {
-            PunishmentsTable.caseId eq caseId and (PunishmentsTable.punishedProfileId eq profileId)
+            PunishmentsTable.caseId eq caseId and (PunishmentsTable.punishedProfileId eq this@PunishmentAttachment.id)
         }
     }
 }
@@ -64,9 +70,8 @@ object PunishmentAttachmentProvider : AttachmentProvider<PunishmentAttachment> {
             .map { it.toPunishment() }
 
         return@suspendTransaction PunishmentAttachment(
-            profileId = id,
             punishments = punishments
-        )
+        ).also { it.id = id }
     }
 }
 

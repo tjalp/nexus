@@ -1,10 +1,11 @@
 package net.tjalp.nexus.profile.attachment
 
 import kotlinx.datetime.TimeZone
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import net.tjalp.nexus.profile.model.ProfilesTable
 import net.tjalp.nexus.serializer.LocaleAsStringSerializer
-import net.tjalp.nexus.serializer.UUIDAsStringSerializer
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
@@ -30,14 +31,15 @@ object GeneralTable : CompositeIdTable("general_attachment") {
 }
 
 @Serializable
-data class Test(
-    @Serializable(with = UUIDAsStringSerializer::class)
-    val id: UUID,
+@SerialName("general")
+data class GeneralAttachment(
     val lastKnownName: String?,
     @Serializable(with = LocaleAsStringSerializer::class)
     val preferredLocale: Locale,
     val timeZone: TimeZone?
-) {
+) : ProfileAttachment {
+
+    @Transient lateinit var id: UUID
 
     fun setLastKnownName(value: String?) {
         GeneralTable.update({ GeneralTable.profileId eq id }) {
@@ -55,39 +57,6 @@ data class Test(
         GeneralTable.update({ GeneralTable.profileId eq id }) {
             it[GeneralTable.timeZone] = value?.id
         }
-    }
-}
-
-class GeneralAttachment(
-    val id: UUID,
-    lastKnownName: String?,
-    preferredLocale: Locale,
-    timeZone: TimeZone?
-) {
-
-    var lastKnownName: String? = lastKnownName
-        set(value) {
-            GeneralTable.update({ GeneralTable.profileId eq id }) {
-                it[GeneralTable.lastKnownName] = value
-            }
-        }
-
-    var preferredLocale: Locale = preferredLocale
-        set(value) {
-            GeneralTable.update({ GeneralTable.profileId eq id }) {
-                it[GeneralTable.preferredLocale] = value.toLanguageTag()
-            }
-        }
-
-    var timeZone: TimeZone? = timeZone
-        set(value) {
-            GeneralTable.update({ GeneralTable.profileId eq id }) {
-                it[GeneralTable.timeZone] = value?.id
-            }
-        }
-
-    override fun toString(): String {
-        return "GeneralAttachment(id=$id, lastKnownName=$lastKnownName, preferredLocale=$preferredLocale, timeZone=$timeZone)"
     }
 }
 
@@ -111,8 +80,7 @@ object GeneralAttachmentProvider : AttachmentProvider<GeneralAttachment> {
 }
 
 fun ResultRow.toGeneralAttachment(): GeneralAttachment = GeneralAttachment(
-    id = this[GeneralTable.profileId].value,
     lastKnownName = this[GeneralTable.lastKnownName],
     preferredLocale = this[GeneralTable.preferredLocale].let { Locale.forLanguageTag(it) } ?: Locale.US,
     timeZone = this[GeneralTable.timeZone]?.let { TimeZone.of(it) }
-)
+).also { it.id = this[GeneralTable.profileId].value }

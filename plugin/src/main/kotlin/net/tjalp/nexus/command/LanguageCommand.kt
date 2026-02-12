@@ -34,7 +34,7 @@ object LanguageCommand {
 
                     NexusPlugin.scheduler.launch {
                         profile.update<GeneralAttachment> {
-                            it.preferredLocale = locale
+                            it.setPreferredLocale(locale)
                         }
 
                         sender.sendMessage(

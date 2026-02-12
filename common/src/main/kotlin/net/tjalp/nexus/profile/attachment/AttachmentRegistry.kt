@@ -12,14 +12,14 @@ import java.util.*
  */
 object AttachmentRegistry {
 
-    private val providers = mutableSetOf<AttachmentProvider<*>>()
+    private val providers = mutableSetOf<AttachmentProvider<out ProfileAttachment>>()
 
     /**
      * Registers the given attachment provider to the registry.
      *
      * @param provider The attachment provider to be registered.
      */
-    fun <T : Any> register(provider: AttachmentProvider<T>) {
+    fun <T : ProfileAttachment> register(provider: AttachmentProvider<T>) {
         providers += provider
     }
 
@@ -28,7 +28,7 @@ object AttachmentRegistry {
      *
      * @param provider The attachment provider to be unregistered.
      */
-    fun <T : Any> unregister(provider: AttachmentProvider<T>) {
+    fun <T : ProfileAttachment> unregister(provider: AttachmentProvider<T>) {
         providers -= provider
     }
 
@@ -39,7 +39,7 @@ object AttachmentRegistry {
      * @param id The unique identifier of the profile to retrieve attachments for.
      * @return A collection of all attachments associated with the profile.
      */
-    suspend fun getAttachments(db: Database, id: UUID): Collection<Any> = coroutineScope {
+    suspend fun getAttachments(db: Database, id: UUID): Collection<ProfileAttachment> = coroutineScope {
         return@coroutineScope providers.map { provider ->
             async {
                 provider.load(db, id)

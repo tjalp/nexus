@@ -70,8 +70,8 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
             }
 
             profile.update<GeneralAttachment> { att ->
-                att.lastKnownName = username
-                locale?.let { att.preferredLocale = it }
+                att.setLastKnownName(username)
+                locale?.let { att.setPreferredLocale(it) }
             }
         }
     }
@@ -175,7 +175,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
         audience.closeDialog()
 
         profile.update<GeneralAttachment> { att ->
-            att.timeZone = zone
+            att.setTimeZone(zone)
         }
     }
 
@@ -191,7 +191,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
 
         NexusPlugin.scheduler.launch {
             profile.update<GeneralAttachment> {
-                it.preferredLocale = locale
+                it.setPreferredLocale(locale)
             }
         }
     }

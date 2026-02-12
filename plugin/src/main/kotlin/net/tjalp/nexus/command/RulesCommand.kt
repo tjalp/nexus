@@ -33,7 +33,7 @@ object RulesCommand {
 
                     notices.scheduler.launch {
                         profile.update<NoticesAttachment> {
-                            it.acceptedRulesVersion = rulesVersion
+                            it.setAcceptedRules(rulesVersion)
                         }
                     }
                 })

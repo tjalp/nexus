@@ -1,5 +1,8 @@
 package net.tjalp.nexus.profile.attachment
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -24,30 +27,27 @@ object NoticesTable : CompositeIdTable("notices_attachments") {
     override val primaryKey = PrimaryKey(profileId)
 }
 
-class NoticesAttachment(
-    val id: UUID,
-    acceptedRulesVersion: Int,
-    hasSeenRecommendations: Boolean
-) {
+@Serializable
+@SerialName("notices")
+data class NoticesAttachment(
+    val acceptedRulesVersion: Int,
+    val hasSeenRecommendations: Boolean
+) : ProfileAttachment {
 
-    var acceptedRulesVersion: Int = acceptedRulesVersion
-        set(value) {
-            NoticesTable.update({ NoticesTable.profileId eq id }) {
-                it[NoticesTable.acceptedRulesVersion] = value
-            }
+    @Transient lateinit var id: UUID
+
+    fun setAcceptedRules(version: Int) {
+        NoticesTable.update({ NoticesTable.profileId eq id }) {
+            it[NoticesTable.acceptedRulesVersion] = version
         }
+    }
 
     fun hasAcceptedRules(version: Int): Boolean = acceptedRulesVersion >= version
 
-    var hasSeenRecommendations: Boolean = hasSeenRecommendations
-        set(value) {
-            NoticesTable.update({ NoticesTable.profileId eq id }) {
-                it[NoticesTable.seenRecommendations] = value
-            }
+    fun setSeenRecommendations(value: Boolean) {
+        NoticesTable.update({ NoticesTable.profileId eq id }) {
+            it[NoticesTable.seenRecommendations] = value
         }
-
-    override fun toString(): String {
-        return "NoticesAttachment(id=$id, acceptedRulesVersion=$acceptedRulesVersion, hasSeenRecommendations=$hasSeenRecommendations)"
     }
 }
 
@@ -71,7 +71,6 @@ object NoticesAttachmentProvider : AttachmentProvider<NoticesAttachment> {
 }
 
 fun ResultRow.toNoticesAttachment(): NoticesAttachment = NoticesAttachment(
-    id = this[NoticesTable.profileId].value,
     acceptedRulesVersion = this[NoticesTable.acceptedRulesVersion],
     hasSeenRecommendations = this[NoticesTable.seenRecommendations]
-)
+).also { it.id = this[NoticesTable.profileId].value }

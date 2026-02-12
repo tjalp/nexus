@@ -1,8 +1,8 @@
 package net.tjalp.nexus.profile.model
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import net.tjalp.nexus.profile.ProfilesService
+import net.tjalp.nexus.profile.attachment.ProfileAttachment
 import net.tjalp.nexus.serializer.UUIDAsStringSerializer
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
@@ -32,8 +32,7 @@ data class ProfileSnapshot(
     val id: UUID,
     val createdAt: Instant,
     val modifiedAt: Instant,
-    @Contextual
-    val attachments: Collection<Any> = emptyList()
+    val attachments: Collection<ProfileAttachment> = emptyList()
 ) {
 
     /**
@@ -58,7 +57,7 @@ data class ProfileSnapshot(
 }
 
 @OptIn(ExperimentalTime::class)
-fun ResultRow.toProfileSnapshot(attachments: Collection<Any>): ProfileSnapshot = ProfileSnapshot(
+fun ResultRow.toProfileSnapshot(attachments: Collection<ProfileAttachment>): ProfileSnapshot = ProfileSnapshot(
     id = this[ProfilesTable.id].value,
     createdAt = this[ProfilesTable.createdAt],
     modifiedAt = this[ProfilesTable.modifiedAt],

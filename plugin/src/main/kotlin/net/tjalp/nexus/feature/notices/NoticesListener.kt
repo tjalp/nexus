@@ -43,7 +43,7 @@ class NoticesListener(val notices: NoticesFeature) : Listener {
                     return@runBlocking
                 }
 
-                launch { profile.update { att.acceptedRulesVersion = rulesVersion } }
+                launch { profile.update { att.setAcceptedRules(rulesVersion) } }
             }
 
             val recommendationsConfig = NexusPlugin.configuration.features.notices.recommendations
@@ -52,7 +52,7 @@ class NoticesListener(val notices: NoticesFeature) : Listener {
                 val seen = notices.showAndAwaitRecommendations(audience)
 
                 if (seen) {
-                    launch { profile.update { att.hasSeenRecommendations = true } }
+                    launch { profile.update { att.setSeenRecommendations(true) } }
                 }
             }
         }

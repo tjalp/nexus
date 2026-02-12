@@ -212,15 +212,17 @@ object PunishCommand {
         severity: PunishmentSeverity,
         reason: String
     ): Int {
+        var senderId = context.source.sender.get(Identity.UUID).getOrNull()?.toString()
+            ?: context.source.sender.get(Identity.NAME).getOrNull()
+
+        if (senderId == null) {
+            if (context.source.sender !is ConsoleCommandSender) throw ERROR_SOURCE_UUID_UNKNOWN.create()
+
+            senderId = "System"
+        }
+
         punishments.scheduler.launch {
             try {
-                var senderId = context.source.sender.get(Identity.UUID).getOrNull()?.toString()
-                    ?: context.source.sender.get(Identity.NAME).getOrNull()
-
-                if (senderId == null && context.source.sender !is ConsoleCommandSender) {
-                    throw ERROR_SOURCE_UUID_UNKNOWN.create()
-                } else senderId = "System"
-
                 val uniqueId = withContext(Dispatchers.IO) { NexusPlugin.server.getPlayerUniqueId(target) }
                     ?: throw ERROR_UNKNOWN_TARGET.create(target)
                 val targetProfile = NexusPlugin.profiles.get(id = uniqueId) ?: throw ERROR_NO_PROFILE.create(target)
