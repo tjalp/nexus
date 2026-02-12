@@ -14,3 +14,7 @@ dependencies {
     implementation(libs.bundles.ktor)
     implementation(libs.logback.classic)
 }
+
+ktor {
+    development = true
+}

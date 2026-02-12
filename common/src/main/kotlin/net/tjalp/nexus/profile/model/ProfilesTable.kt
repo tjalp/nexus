@@ -1,6 +1,9 @@
 package net.tjalp.nexus.profile.model
 
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
 import net.tjalp.nexus.profile.ProfilesService
+import net.tjalp.nexus.serializer.UUIDAsStringSerializer
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
@@ -23,10 +26,13 @@ object ProfilesTable : UUIDTable("profiles") {
  * @param modifiedAt The timestamp when the profile was last modified.
  */
 @OptIn(ExperimentalTime::class)
+@Serializable
 data class ProfileSnapshot(
+    @Serializable(with = UUIDAsStringSerializer::class)
     val id: UUID,
     val createdAt: Instant,
     val modifiedAt: Instant,
+    @Contextual
     val attachments: Collection<Any> = emptyList()
 ) {
 

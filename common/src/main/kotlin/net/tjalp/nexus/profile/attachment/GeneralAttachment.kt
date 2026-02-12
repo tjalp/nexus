@@ -1,7 +1,10 @@
 package net.tjalp.nexus.profile.attachment
 
 import kotlinx.datetime.TimeZone
+import kotlinx.serialization.Serializable
 import net.tjalp.nexus.profile.model.ProfilesTable
+import net.tjalp.nexus.serializer.LocaleAsStringSerializer
+import net.tjalp.nexus.serializer.UUIDAsStringSerializer
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
@@ -24,6 +27,35 @@ object GeneralTable : CompositeIdTable("general_attachment") {
     }
 
     override val primaryKey = PrimaryKey(profileId)
+}
+
+@Serializable
+data class Test(
+    @Serializable(with = UUIDAsStringSerializer::class)
+    val id: UUID,
+    val lastKnownName: String?,
+    @Serializable(with = LocaleAsStringSerializer::class)
+    val preferredLocale: Locale,
+    val timeZone: TimeZone?
+) {
+
+    fun setLastKnownName(value: String?) {
+        GeneralTable.update({ GeneralTable.profileId eq id }) {
+            it[GeneralTable.lastKnownName] = value
+        }
+    }
+
+    fun setPreferredLocale(value: Locale) {
+        GeneralTable.update({ GeneralTable.profileId eq id }) {
+            it[GeneralTable.preferredLocale] = value.toLanguageTag()
+        }
+    }
+
+    fun setTimeZone(value: TimeZone?) {
+        GeneralTable.update({ GeneralTable.profileId eq id }) {
+            it[GeneralTable.timeZone] = value?.id
+        }
+    }
 }
 
 class GeneralAttachment(
