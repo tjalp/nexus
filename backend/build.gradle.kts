@@ -17,4 +17,8 @@ dependencies {
 
 ktor {
     development = true
+
+    openApi {
+        enabled = true
+    }
 }

@@ -1,5 +1,6 @@
 package net.tjalp.nexus.profile.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.ProfileAttachment
@@ -27,6 +28,7 @@ object ProfilesTable : UUIDTable("profiles") {
  */
 @OptIn(ExperimentalTime::class)
 @Serializable
+@SerialName("ProfileSnapshot")
 data class ProfileSnapshot(
     @Serializable(with = UUIDAsStringSerializer::class)
     val id: UUID,

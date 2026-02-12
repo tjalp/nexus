@@ -1,5 +1,6 @@
 package net.tjalp.nexus.punishment
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -19,6 +20,7 @@ import kotlin.time.Instant
  */
 @OptIn(ExperimentalTime::class)
 @Serializable
+@SerialName("Punishment")
 data class Punishment(
     val type: PunishmentType,
     val severity: PunishmentSeverity,
