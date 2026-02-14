@@ -62,5 +62,32 @@ data class Punishment(
 
             return type.prefix + "-" + id
         }
+
+        /**
+         * Create a new punishment with the given parameters and a generated case ID.
+         *
+         * @param type The type of punishment
+         * @param severity The severity of the punishment
+         * @param reason The reason for the punishment
+         * @param issuedBy The issuer of the punishment
+         * @param duration The duration of the punishment, defaults to the severity's default duration
+         * @return The created punishment
+         */
+        fun create(
+            type: PunishmentType,
+            severity: PunishmentSeverity,
+            reason: String,
+            issuedBy: String,
+            duration: Duration = severity.duration
+        ): Punishment =
+            Punishment(
+                type = type,
+                severity = severity,
+                duration = duration,
+                reason = reason,
+                timestamp = Clock.System.now(),
+                issuedBy = issuedBy,
+                caseId = generateCaseId(type)
+            )
     }
 }

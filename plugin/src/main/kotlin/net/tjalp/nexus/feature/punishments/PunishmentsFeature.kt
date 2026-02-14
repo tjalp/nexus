@@ -24,7 +24,6 @@ import net.tjalp.nexus.util.unregister
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteReturning
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 class PunishmentsFeature : Feature(PUNISHMENTS) {
@@ -101,14 +100,11 @@ class PunishmentsFeature : Feature(PUNISHMENTS) {
         reason: String,
     ): Punishment? {
         val att = target.attachmentOf<PunishmentAttachment>() ?: return null
-        val punishment = Punishment(
+        val punishment = Punishment.create(
             type = type,
-            duration = severity.duration,
-            reason = reason,
             severity = severity,
-            timestamp = Clock.System.now(),
-            issuedBy = issuer,
-            caseId = Punishment.generateCaseId(type)
+            reason = reason,
+            issuedBy = issuer
         )
 
         target.update { att.addPunishment(punishment) }

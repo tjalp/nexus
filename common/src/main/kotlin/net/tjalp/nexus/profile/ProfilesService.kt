@@ -48,7 +48,7 @@ interface ProfilesService {
      */
     suspend fun upsert(
         profile: ProfileSnapshot,
-        cache: Boolean = true,
+        cache: Boolean = false,
         vararg statements: () -> Unit
     ): ProfileSnapshot
 

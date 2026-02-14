@@ -13,6 +13,7 @@ dependencies {
     implementation(project(":common"))
     implementation(libs.bundles.ktor)
     implementation(libs.logback.classic)
+    implementation(libs.kgraphql.ktor)
 }
 
 ktor {
