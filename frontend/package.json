@@ -32,5 +32,10 @@
 		"format": "prettier --write .",
 		"codegen": "graphql-codegen --config codegen.ts"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"clsx": "^2.1.1",
+		"tailwind-merge": "^3.4.1",
+		"tailwind-variants": "^3.2.2"
+	}
 }

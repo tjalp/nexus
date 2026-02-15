@@ -7,6 +7,9 @@
     --foreground: oklch(0 0 0);
     --primary: oklch(0.491 0.115 154.684);
     --primary-foreground: oklch(0.9 0.05 240);
+    --secondary: oklch(1 0 0);
+    --secondary-foreground: oklch(0 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -15,6 +18,9 @@
         --foreground: oklch(0.984 0.003 247.858);
         --primary: oklch(0.491 0.115 154.684);
         --primary-foreground: oklch(1 0 0);
+        --secondary: oklch(0.405 0.002 247.877);
+        --secondary-foreground: oklch(1 0 0);
+        --destructive: oklch(0.558 0.207 25.046);
     }
 }
 
@@ -23,6 +29,9 @@
     --color-foreground: var(--foreground);
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-destructive: var(--destructive);
 }
 
 @layer base {

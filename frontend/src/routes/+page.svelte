@@ -7,7 +7,7 @@
 	<meta name="description" content="Svelte demo app" />
 </svelte:head>
 
-<Button />
+<Button class="max-w-sm" variant="destructive" disabled>Test</Button>
 
 <style>
 </style>
