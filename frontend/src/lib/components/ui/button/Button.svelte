@@ -65,22 +65,20 @@
 </script>
 
 {#if href}
-    <a
-            bind:this={ref}
-            data-slot="button"
-            class={cn(buttonVariants({ variant }), className)}
-            href={disabled ? undefined : href}
-            aria-disabled={disabled}
-            role={disabled ? "link" : undefined}
-            tabindex={disabled ? -1 : undefined}
-            {...restProps}
-    >
-        <span class="flex w-[calc(100%+4px)] h-[calc(100%+4px)] -m-0.5 gap-1.5 text-center items-center justify-center duration-100
-            {disabled ? 'pt-3.5 px-2.5 pb-2 -mt-2 h-[calc(100%+10px)]' : 'pt-2 px-2.5 pb-3.5 active:pt-3.5 active:pb-2 active:-mt-2 active:h-[calc(100%+10px)]'}"
+    <div data-slot="button" class={cn(buttonVariants({ variant }), className)}>
+        <a href={disabled ? undefined : href}
+           bind:this={ref}
+           aria-disabled={disabled}
+           role={disabled ? "link" : undefined}
+           {...restProps}
         >
-            {@render children?.()}
-        </span>
-    </a>
+            <span class="flex w-[calc(100%+4px)] h-[calc(100%+4px)] -m-0.5 gap-1.5 text-center items-center justify-center duration-100
+                {disabled ? 'pt-3.5 px-2.5 pb-2 -mt-2 h-[calc(100%+10px)]' : 'pt-2 px-2.5 pb-3.5 active:pt-3.5 active:pb-2 active:-mt-2 active:h-[calc(100%+10px)]'}"
+            >
+                {@render children?.()}
+            </span>
+        </a>
+    </div>
 {:else}
     <button
             bind:this={ref}
