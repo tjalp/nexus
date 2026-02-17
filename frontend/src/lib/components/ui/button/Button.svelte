@@ -65,7 +65,7 @@
 </script>
 
 {#if href}
-    <div data-slot="button" class={cn(buttonVariants({ variant }), className)}>
+    <div data-slot="button" class={cn(buttonVariants({ variant }), className, disabled && 'mt-1.5 opacity-60 cursor-not-allowed pointer-events-none after:inset-shadow-[2px_2px_0_0_rgba(178,178,178,0.5),-2px_-2px_0_0_rgba(153,153,153,0.5)] after:bg-[#0000001a] hover:after:bg-[#0000001a]')}>
         <a href={disabled ? undefined : href}
            bind:this={ref}
            aria-disabled={disabled}
