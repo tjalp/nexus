@@ -8,12 +8,14 @@ import io.ktor.server.plugins.swagger.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.routing.openapi.*
+import net.tjalp.nexus.auth.AuthService
+import net.tjalp.nexus.backend.auth.authRoutes
 import net.tjalp.nexus.profile.attachment.PunishmentAttachment
 import java.util.*
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
-fun Application.configureRouting() {
+fun Application.configureRouting(authService: AuthService) {
     routing {
         swaggerUI("/swagger") {
             info = OpenApiInfo("Nexus API", "1.0.0")
@@ -31,6 +33,10 @@ fun Application.configureRouting() {
         get("/") {
             call.respondText("Hello World!")
         }
+
+        // Authentication routes
+        authRoutes(authService)
+
         /**
          * Get a single profile by its ID.
          *

@@ -6,4 +6,5 @@ plugins {
 dependencies {
     api(libs.bundles.kotlinxEcosystem)
     api(libs.bundles.database)
+    api(libs.jbcrypt)
 }

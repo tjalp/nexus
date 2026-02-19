@@ -23,6 +23,8 @@ icu4j = "78.2"
 ktor = "3.4.0"
 logback = "1.5.29"
 kgraphql = "0.38.0"
+jbcrypt = "0.4"
+auth0Jwt = "4.4.0"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -53,14 +55,18 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-server-routing-openapi = { module = "io.ktor:ktor-server-routing-openapi", version.ref = "ktor" }
 ktor-server-cors = { module = "io.ktor:ktor-server-cors", version.ref = "ktor" }
 ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
+ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
+ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt", version.ref = "ktor" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 kgraphql-ktor = { module = "de.stuebingerb:kgraphql-ktor", version.ref = "kgraphql" }
+jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
+auth0-jwt = { module = "com.auth0:java-jwt", version.ref = "auth0Jwt" }
 
 # Libraries can be bundled together for easier import
 [bundles]
 kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines"]
 database = ["exposed-core", "exposed-dao", "exposed-jdbc", "exposed-migration-core", "exposed-migration-jbdc", "exposed-kotlin-datetime", "h2", "postgres", "flyway-postgres", "flyway"]
-ktor = ["ktor-server-core", "ktor-server-netty", "ktor-server-openapi", "ktor-server-swagger", "ktor-content-negation", "ktor-serialization-kotlinx-json", "ktor-server-routing-openapi", "ktor-server-cors", "ktor-server-call-logging"]
+ktor = ["ktor-server-core", "ktor-server-netty", "ktor-server-openapi", "ktor-server-swagger", "ktor-content-negation", "ktor-serialization-kotlinx-json", "ktor-server-routing-openapi", "ktor-server-cors", "ktor-server-call-logging", "ktor-server-auth", "ktor-server-auth-jwt"]
 
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

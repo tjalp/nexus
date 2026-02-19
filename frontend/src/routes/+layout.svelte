@@ -1,17 +1,13 @@
 <script lang="ts">
 	import '../app.css'
 	import Button from "$lib/components/ui/button/Button.svelte";
-	import { page } from '$app/state';
-	import {Client, cacheExchange, fetchExchange, setContextClient} from '@urql/svelte';
+	import {page} from '$app/state';
+	import {setContextClient} from '@urql/svelte';
+	import {urqlClient} from "$lib/urql-client";
 
 	let { children } = $props();
 
-	const client = new Client({
-		url: 'http://localhost:8080/graphql',
-		exchanges: [cacheExchange, fetchExchange],
-		preferGetMethod: false
-	});
-	setContextClient(client);
+	setContextClient(urqlClient);
 </script>
 
 <div class="mx-auto min-h-svh max-w-5xl p-6">

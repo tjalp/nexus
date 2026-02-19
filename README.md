@@ -1,6 +1,28 @@
 ![Nexus Logo](assets/nexus-logo.png)
 
-A Minecraft server plugin providing various utilities and features.
+A Minecraft server plugin providing various utilities and features with a modern web-based management interface.
+
+## Features
+
+- **Player Profile Management**: Track player data, preferences, and settings
+- **Punishment System**: Comprehensive moderation tools with warnings, mutes, bans, and kicks
+- **JWT Authentication**: Secure role-based access control for the web interface
+- **GraphQL API**: Modern API for frontend integration
+- **Role-Based Authorization**: PLAYER, MODERATOR, and ADMIN roles with granular permissions
+
+## Authentication System
+
+This project includes a complete JWT-based authentication system for the backend API. Key features:
+
+- 🔐 Secure password hashing with BCrypt
+- 🎫 JWT token-based authentication (15-minute access tokens)
+- 👥 Role-based access control (PLAYER, MODERATOR, ADMIN)
+- 🛡️ Protected GraphQL mutations
+- 🔍 Privacy-filtered data access (users only see their own punishments unless moderator/admin)
+
+**Quick Start Guide**: See [`QUICK_START.md`](QUICK_START.md) for setup instructions.
+**Full Documentation**: See [`AUTH_IMPLEMENTATION.md`](AUTH_IMPLEMENTATION.md) for complete details.
+**GraphQL Examples**: See [`GRAPHQL_EXAMPLES.md`](GRAPHQL_EXAMPLES.md) for API usage.
 
 ## Building and Running
 

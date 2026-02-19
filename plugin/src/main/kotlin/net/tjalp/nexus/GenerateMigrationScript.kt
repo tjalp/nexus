@@ -2,6 +2,7 @@
 
 package net.tjalp.nexus
 
+import net.tjalp.nexus.auth.UsersTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.attachment.NoticesTable
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
@@ -43,7 +44,8 @@ fun generateMigrationScript() {
         GeneralTable,
         PunishmentsTable,
         NoticesTable,
+        UsersTable,
         scriptDirectory = "src/main/resources/db/migration",
-        scriptName = "V5__add_seen_recommendations_flag"
+        scriptName = "V6__add_web_tables_and_users"
     )
 }

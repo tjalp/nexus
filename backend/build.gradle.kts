@@ -14,6 +14,7 @@ dependencies {
     implementation(libs.bundles.ktor)
     implementation(libs.logback.classic)
     implementation(libs.kgraphql.ktor)
+    implementation(libs.auth0.jwt)
 }
 
 ktor {
@@ -22,4 +23,11 @@ ktor {
     openApi {
         enabled = true
     }
+}
+
+tasks.register<JavaExec>("createAdminUser") {
+    group = "application"
+    description = "Create an admin user in the database. This should only be used for initial setup and should be removed or disabled afterwards for security reasons."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "net.tjalp.nexus.backend.util.CreateAdminUserKt"
 }
