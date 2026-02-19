@@ -73,11 +73,12 @@ suspend fun Application.module() {
                     .build()
             )
             validate { credential ->
-                val userId = credential.payload.getClaim("userId").asString()
+                val userId = credential.payload.getClaim("userId").asInt()
                 val username = credential.payload.getClaim("username").asString()
                 val role = credential.payload.getClaim("role").asString()
+                val profileId = credential.payload.getClaim("profileId").asString()
 
-                if (userId != null && username != null && role != null) {
+                if (userId != null && username != null && role != null && profileId != null) {
                     JWTPrincipal(credential.payload)
                 } else {
                     null
@@ -91,6 +92,16 @@ suspend fun Application.module() {
 
     install(GraphQL) {
         playground = true
+
+        wrap {
+            authenticate("auth-jwt", optional = true, build = it)
+        }
+
+        context { call ->
+            call.authentication.principal<JWTPrincipal>()?.let {
+                +it
+            }
+        }
 
         schema {
             extendedScalars()

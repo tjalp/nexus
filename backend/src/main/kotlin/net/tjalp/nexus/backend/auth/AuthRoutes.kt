@@ -1,5 +1,6 @@
 package net.tjalp.nexus.backend.auth
 
+import com.auth0.jwt.JWT
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -157,8 +158,45 @@ fun Route.authRoutes(authService: AuthService) {
                 return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid request body"))
             }
 
-            // TODO: Implement refresh token validation and new token generation
-            call.respond(HttpStatusCode.NotImplemented, mapOf("error" to "Refresh token endpoint not yet implemented"))
+            // Verify the refresh token
+            val verifier = JWT
+                .require(JwtConfig.algorithm)
+                .withAudience(JwtConfig.getAudience())
+                .withIssuer(JwtConfig.getIssuer())
+                .build()
+
+            val decodedJWT = try {
+                verifier.verify(request.refreshToken)
+            } catch (e: Exception) {
+                return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid or expired refresh token"))
+            }
+
+            // Verify it's a refresh token
+            val tokenType = decodedJWT.getClaim("type").asString()
+            if (tokenType != "refresh") {
+                return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid token type"))
+            }
+
+            // Get the user from the database
+            val userId = decodedJWT.getClaim("userId").asInt()
+                ?: return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid token payload"))
+
+            val user = authService.getUserById(userId)
+                ?: return@post call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "User not found"))
+
+            // Generate new tokens
+            val accessToken = JwtConfig.generateAccessToken(user)
+            val refreshToken = JwtConfig.generateRefreshToken(user)
+
+            call.respond(
+                AuthResponse(
+                    accessToken = accessToken,
+                    refreshToken = refreshToken,
+                    userId = user.id.toString(),
+                    username = user.username,
+                    role = user.role.name
+                )
+            )
         }
     }
 }

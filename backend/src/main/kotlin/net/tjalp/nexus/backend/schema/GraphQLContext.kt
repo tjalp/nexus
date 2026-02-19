@@ -1,8 +1,6 @@
 package net.tjalp.nexus.backend.schema
 
 import com.apurebase.kgraphql.Context
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import net.tjalp.nexus.auth.AuthService
 import net.tjalp.nexus.auth.Role
@@ -13,13 +11,22 @@ import java.util.*
  * Extension function to get the authenticated user from GraphQL context.
  */
 suspend fun Context.getAuthenticatedUser(authService: AuthService): User? {
-    val call = get<ApplicationCall>() ?: return null
-    val principal = call.principal<JWTPrincipal>() ?: return null
+    val principal = this.get<JWTPrincipal>() ?: return null
+    val payload = principal.payload
 
-    val userId = principal.payload.getClaim("userId").asInt() ?: return null
-    val username = principal.payload.getClaim("username").asString() ?: return null
-    val role = principal.payload.getClaim("role").asString() ?: return null
-    val profileId = UUID.fromString(principal.payload.getClaim("profileId").asString()) ?: return null
+    val userId = payload.getClaim("userId").asInt() ?: return null
+    val username = payload.getClaim("username").asString() ?: return null
+    val role = payload.getClaim("role").asString() ?: return null
+    val profileIdString = payload.getClaim("profileId").asString()
+    val profileId = if (profileIdString != null && profileIdString != "null") {
+        try {
+            UUID.fromString(profileIdString)
+        } catch (e: IllegalArgumentException) {
+            null
+        }
+    } else {
+        null
+    }
 
     return User(
         id = userId,

@@ -80,6 +80,12 @@ private fun SchemaBuilder.punishmentSchema(service: ProfilesService, authService
             resolver { attachment, ctx: Context ->
                 val user = ctx.getAuthenticatedUser(authService)
 
+                println("DEBUG: User authenticated: ${user != null}")
+                println("DEBUG: User profileId: ${user?.profileId}")
+                println("DEBUG: Attachment profileId: ${attachment.id}")
+                println("DEBUG: Can view punishments: ${user?.canViewPunishments(attachment.id)}")
+                println("DEBUG: Total punishments: ${attachment.punishments.size}")
+
                 // If no user is authenticated or user cannot view punishments, return empty list
                 if (user == null || !user.canViewPunishments(attachment.id)) {
                     emptyList()

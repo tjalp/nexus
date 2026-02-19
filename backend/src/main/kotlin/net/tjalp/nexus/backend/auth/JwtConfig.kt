@@ -30,7 +30,7 @@ object JwtConfig {
         return JWT.create()
             .withAudience(audience)
             .withIssuer(issuer)
-            .withClaim("userId", user.id.toString())
+            .withClaim("userId", user.id)
             .withClaim("username", user.username)
             .withClaim("role", user.role.name)
             .withClaim("profileId", user.profileId?.toString())

@@ -10,20 +10,6 @@ A Minecraft server plugin providing various utilities and features with a modern
 - **GraphQL API**: Modern API for frontend integration
 - **Role-Based Authorization**: PLAYER, MODERATOR, and ADMIN roles with granular permissions
 
-## Authentication System
-
-This project includes a complete JWT-based authentication system for the backend API. Key features:
-
-- 🔐 Secure password hashing with BCrypt
-- 🎫 JWT token-based authentication (15-minute access tokens)
-- 👥 Role-based access control (PLAYER, MODERATOR, ADMIN)
-- 🛡️ Protected GraphQL mutations
-- 🔍 Privacy-filtered data access (users only see their own punishments unless moderator/admin)
-
-**Quick Start Guide**: See [`QUICK_START.md`](QUICK_START.md) for setup instructions.
-**Full Documentation**: See [`AUTH_IMPLEMENTATION.md`](AUTH_IMPLEMENTATION.md) for complete details.
-**GraphQL Examples**: See [`GRAPHQL_EXAMPLES.md`](GRAPHQL_EXAMPLES.md) for API usage.
-
 ## Building and Running
 
 This project uses [Gradle](https://gradle.org/).
