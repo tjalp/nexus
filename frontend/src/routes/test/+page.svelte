@@ -47,7 +47,7 @@
 </script>
 
 <svelte:head>
-    <title>Home</title>
+    <title>Test Page</title>
     <meta name="description" content="Test page" />
 </svelte:head>
 

@@ -23,7 +23,12 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center">
+<svelte:head>
+	<title>Login Page</title>
+	<meta name="description" content="Login page" />
+</svelte:head>
+
+<div class="flex min-h-dvh items-center justify-center">
 	<div class="w-full max-w-md space-y-8 rounded-lg border p-8">
 		<div>
 			<h2 class="text-center text-3xl font-bold">Sign in to Nexus</h2>
