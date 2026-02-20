@@ -1,46 +1,53 @@
 package net.tjalp.nexus.feature.games
 
-import org.bukkit.entity.Entity
-import org.spongepowered.configurate.reactive.Disposable
+import net.kyori.adventure.text.Component
 
-/**
- * Represents a phase within a game, handling loading, starting, and player management.
- */
-interface GamePhase : Disposable {
+interface FinishablePhase {
+    suspend fun finish()
+}
 
-    /**
-     * Loads the game phase, preparing it for start.
-     *
-     * @param previous The previous game phase, if any.
-     */
-    suspend fun load(previous: GamePhase?) {}
+interface TimerPhase {
+    var remainingTicks: Long?
+}
 
-    /**
-     * Starts the game phase, making it active.
-     *
-     * @param previous The previous game phase, if any.
-     */
-    suspend fun start(previous: GamePhase?)
+open class GamePhase(
+    val id: String,
+    val displayName: Component,
+    val allowJoin: Boolean = false,
+    val joinRequirements: List<GameJoinRequirement> = emptyList(),
+    private val durationTicks: Long? = null,
+    private val completionCondition: (Game) -> Boolean = { false }
+) : FinishablePhase, TimerPhase {
 
-    /**
-     * Determines if an entity can join the game phase.
-     *
-     * @param entity The entity attempting to join.
-     * @return The result of the join attempt.
-     */
-    suspend fun canJoin(entity: Entity): JoinResult = JoinResult.Success
+    override var remainingTicks: Long? = durationTicks
+        set(value) {
+            field = value?.coerceAtLeast(0)
+        }
 
-    /**
-     * Handles an entity joining the game phase.
-     *
-     * @param entity The entity joining.
-     */
-    suspend fun onJoin(entity: Entity)
+    private var isForceFinished = false
 
-    /**
-     * Handles an entity leaving the game phase.
-     *
-     * @param entity The entity leaving.
-     */
-    fun onLeave(entity: Entity)
+    open suspend fun onEnter(game: Game) {}
+
+    open suspend fun onExit(game: Game) {}
+
+    open suspend fun onTick(game: Game, elapsedTicks: Long) {}
+
+    fun shouldAdvance(game: Game, elapsedTicks: Long): Boolean {
+        if (isForceFinished) return true
+        if (completionCondition(game)) return true
+        return remainingTicks?.let { it <= 0 } ?: false
+    }
+
+    override suspend fun finish() {
+        isForceFinished = true
+    }
+
+    internal fun resetState() {
+        remainingTicks = durationTicks
+        isForceFinished = false
+    }
+
+    internal fun updateTimer(deltaTicks: Long) {
+        remainingTicks = remainingTicks?.let { (it - deltaTicks).coerceAtLeast(0) }
+    }
 }
