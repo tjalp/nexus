@@ -102,7 +102,8 @@ data class GamesConfig(
 data class NoticesConfig(
     val enable: Boolean = true,
     val recommendations: RecommendationsConfig,
-    val rules: RulesConfig
+    val rules: RulesConfig,
+    val announcementFormat: String = "<message>"
 )
 
 @ConfigSerializable

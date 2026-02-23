@@ -7,15 +7,13 @@ import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.format.NamedTextColor.DARK_GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.kyori.adventure.text.format.TextDecoration.BOLD
-import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import net.tjalp.nexus.util.miniMessage
 import org.bukkit.Bukkit
 import org.bukkit.permissions.Permissible
 import org.bukkit.permissions.Permission
 
 object NexusChatRenderer {
-
-    private val miniMessage = MiniMessage.miniMessage()
 
     /**
      * Creates a chat renderer. The renderer adds a delete button to messages if the viewer has permission to delete messages.

@@ -10,9 +10,22 @@ import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.empty
 import net.kyori.adventure.text.ComponentLike
+import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.title.Title
 import net.kyori.adventure.translation.GlobalTranslator
 import java.util.*
+
+/**
+ * Global instance of [MiniMessage] to use for (de)serializing MiniMessage strings.
+ */
+val miniMessage: MiniMessage = MiniMessage.miniMessage()
+
+/**
+ * A strict [MiniMessage] instance. Might throw exceptions.
+ *
+ * @see MiniMessage.Builder.strict
+ */
+val mmStrict: MiniMessage = MiniMessage.builder().strict(true).build()
 
 /**
  * Converts this [ComponentLike] to a simple dialog notice.

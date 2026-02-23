@@ -6,13 +6,13 @@ import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.ComponentLike
 import net.kyori.adventure.text.TranslatableComponent
-import net.kyori.adventure.text.minimessage.MiniMessage.miniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.chat.ChatFeature
 import net.tjalp.nexus.feature.chat.NexusChatRenderer
+import net.tjalp.nexus.util.miniMessage
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.PlayerDeathEvent
@@ -118,7 +118,7 @@ class ChatListener(private val feature: ChatFeature) : Listener {
      * @return A new Component representing the formatted event message.
      */
     private fun eventMessage(messageFormat: String, original: ComponentLike, name: ComponentLike): Component {
-        return miniMessage().deserialize(
+        return miniMessage.deserialize(
             messageFormat,
             Placeholder.component("message", original.asComponent()),
             Placeholder.component("name", name.asComponent())

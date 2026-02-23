@@ -4,10 +4,17 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.identity.Identity
+import net.kyori.adventure.sound.Sound
+import net.kyori.adventure.text.Component.empty
+import net.kyori.adventure.text.ComponentLike
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import net.kyori.adventure.title.Title
 import net.tjalp.nexus.Feature
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.NOTICES
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.NoticesAttachmentProvider
+import net.tjalp.nexus.util.miniMessage
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import java.util.*
@@ -17,6 +24,7 @@ import kotlin.time.Duration.Companion.minutes
 class NoticesFeature : Feature(NOTICES) {
 
     private lateinit var listener: NoticesListener
+    private val config get() = NexusPlugin.configuration.features.notices
 
     override fun onEnable() {
         AttachmentRegistry.register(NoticesAttachmentProvider)
@@ -72,5 +80,26 @@ class NoticesFeature : Feature(NOTICES) {
                 audience.closeDialog()
             }
         }
+    }
+
+    /**
+     * Send an announcemen to the given audience, with the given message and sound.
+     *
+     * @param message The message to send in the announcement. This will be parsed as a MiniMessage string, and can contain placeholders.
+     * @param audience The audience to send the announcement to. Defaults to the entire server.
+     * @param type The type of announcement to send. Defaults to a chat message.
+     * @param sound An optional sound to play when sending the announcement.
+     */
+    fun announce(message: ComponentLike, audience: Audience = NexusPlugin.server, type: AnnouncementType = AnnouncementType.CHAT, sound: Sound? = null) {
+        val format = config.announcementFormat
+        val announcement = miniMessage.deserialize(format, Placeholder.component("message", message))
+
+        when (type) {
+            AnnouncementType.CHAT -> audience.sendMessage(announcement)
+            AnnouncementType.ACTION_BAR -> audience.sendActionBar(announcement)
+            AnnouncementType.TITLE -> audience.showTitle(Title.title(empty(), announcement))
+        }
+
+        sound?.let { audience.playSound(it, Sound.Emitter.self()) }
     }
 }

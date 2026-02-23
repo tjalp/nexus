@@ -24,6 +24,7 @@ import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.phase.FinishablePhase
 import net.tjalp.nexus.feature.games.phase.TimerPhase
 import net.tjalp.nexus.util.SecondCountdownTimer
+import net.tjalp.nexus.util.miniMessage
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.Material
@@ -210,7 +211,7 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
                 .parentStyle(style(color(0x71A6D1))),
             winnerNames.map { it.colorIfAbsent(WHITE) }
         )
-        val title = miniMessage().deserialize("<bold><gradient:#D4F1F8:#71A6D1>FIGHT OVER!")
+        val title = miniMessage.deserialize("<bold><gradient:#D4F1F8:#71A6D1>FIGHT OVER!")
         val subtitle = text().color(color(0x71A6D1)).append(winnersComponent)
             .append(text(" win${if (winners?.size == 1) "s" else ""} the snowball fight!")).build()
         val times = times(0.seconds.toJavaDuration(), 4.seconds.toJavaDuration(), 1.seconds.toJavaDuration())
@@ -265,7 +266,7 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
         }
         hitEntity.freezeTicks = 60
 
-        val hitByMessage = miniMessage().deserialize(
+        val hitByMessage = miniMessage.deserialize(
             HIT_BY_MESSAGES.random(),
             Placeholder.component("shooter", shooter.name().colorIfAbsent(WHITE))
         ).colorIfAbsent(color(0x71A6D1))
@@ -282,7 +283,7 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
 //            customName(shooter.name().colorIfAbsent(PRIMARY_COLOR))
         }
 
-        val targetHitMessage = miniMessage().deserialize(
+        val targetHitMessage = miniMessage.deserialize(
             TARGET_HIT_MESSAGES.random(),
             Placeholder.component("target", hitEntity.name().colorIfAbsent(WHITE))
         ).colorIfAbsent(PRIMARY_COLOR)

@@ -14,20 +14,18 @@ import net.kyori.adventure.text.event.ClickCallback
 import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.format.TextDecoration.BOLD
-import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.Constants.PUNISHMENTS_PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.config.RulesConfig
+import net.tjalp.nexus.util.miniMessage
 import net.tjalp.nexus.util.translate
 import java.util.*
 
 @Suppress("UnstableApiUsage")
 object RulesDialog {
-
-    private val mm = MiniMessage.miniMessage()
 
     val KEY = DialogKeys.create(key("nexus", "rules"))
 
@@ -56,13 +54,13 @@ object RulesDialog {
         config.rules.forEach { rule ->
             val component = text().color(GRAY)
                 .append(
-                    mm.deserialize(rule.title).colorIfAbsent(PUNISHMENTS_PRIMARY_COLOR).decorationIfAbsent(
+                    miniMessage.deserialize(rule.title).colorIfAbsent(PUNISHMENTS_PRIMARY_COLOR).decorationIfAbsent(
                         BOLD,
                         TextDecoration.State.TRUE
                     )
                 )
                 .appendNewline()
-                .append(mm.deserialize(rule.description))
+                .append(miniMessage.deserialize(rule.description))
                 .build()
 
             bodies += DialogBody.plainMessage(component, 250)

@@ -81,6 +81,10 @@ object NexusPlugin : JavaPlugin() {
         // register commands
         this.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { commands ->
             commands.registrar().apply {
+                AnnounceCommand.create(this).forEach {
+                    register(it, "Announce messages to the server")
+                }
+//                register(AnnounceCommand.create(dispatcher), "Announce messages to the server", AnnounceCommand.aliases)
                 register(BodyCommand.create(), "Body management commands")
                 register(DisguiseCommand.create(this@NexusPlugin), "Disguise management commands")
                 register(GameCommand.create(), "Game management commands")

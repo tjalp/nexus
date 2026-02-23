@@ -18,21 +18,19 @@ import net.kyori.adventure.text.format.NamedTextColor.AQUA
 import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.kyori.adventure.text.format.TextDecoration.BOLD
 import net.kyori.adventure.text.format.TextDecoration.UNDERLINED
-import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.Constants.COMPLEMENTARY_COLOR
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.config.RecommendationsConfig
+import net.tjalp.nexus.util.miniMessage
+import net.tjalp.nexus.util.mmStrict
 import net.tjalp.nexus.util.translate
 import java.util.*
 
 @Suppress("UnstableApiUsage")
 object RecommendationsDialog {
-
-    private val mm = MiniMessage.miniMessage()
-    private val strictMm = MiniMessage.builder().strict(true).build()
 
     private val config: RecommendationsConfig
         get() = NexusPlugin.configuration.features.notices.recommendations
@@ -90,17 +88,17 @@ object RecommendationsDialog {
                 .appendNewline().appendNewline()
 
             settings.forEachIndexed { index, setting ->
-                val hoverComponent = mm.deserialize(setting.description).colorIfAbsent(PRIMARY_COLOR)
+                val hoverComponent = miniMessage.deserialize(setting.description).colorIfAbsent(PRIMARY_COLOR)
                     .appendNewline().appendNewline()
-                    .append(mm.deserialize(setting.settingPath))
+                    .append(miniMessage.deserialize(setting.settingPath))
                 val component = text()
                     .color(GRAY)
                     .append(
-                        mm.deserialize(setting.name).colorIfAbsent(MONOCHROME_COLOR)
+                        miniMessage.deserialize(setting.name).colorIfAbsent(MONOCHROME_COLOR)
                             .hoverEvent(HoverEvent.showText(hoverComponent))
                     )
                     .append(text(" → "))
-                    .append(mm.deserialize(setting.value).colorIfAbsent(MONOCHROME_COLOR))
+                    .append(miniMessage.deserialize(setting.value).colorIfAbsent(MONOCHROME_COLOR))
 
                 if (index != 0) settingsComponent.appendNewline()
 
@@ -134,16 +132,16 @@ object RecommendationsDialog {
                 .appendNewline().appendNewline()
 
             val stringList = mods.map { mod ->
-                val component = mm.deserialize(mod.name)
+                val component = miniMessage.deserialize(mod.name)
                     .colorIfAbsent(MONOCHROME_COLOR)
-                    .hoverEvent(HoverEvent.showText(mm.deserialize(mod.description).colorIfAbsent(PRIMARY_COLOR)))
+                    .hoverEvent(HoverEvent.showText(miniMessage.deserialize(mod.description).colorIfAbsent(PRIMARY_COLOR)))
                     .clickEvent(ClickEvent.openUrl(mod.link))
                     .translate(locale)
 
-                strictMm.serialize(component)
+                mmStrict.serialize(component)
             }
             val formattedList = ListFormatter.getInstance(locale ?: Locale.US).format(stringList)
-            val formattedComponent = mm.deserialize(formattedList)
+            val formattedComponent = miniMessage.deserialize(formattedList)
                 .colorIfAbsent(GRAY)
 
             modsComponent.append(formattedComponent)
