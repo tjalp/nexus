@@ -25,12 +25,14 @@ logback = "1.5.29"
 kgraphql = "0.38.0"
 jbcrypt = "0.4"
 auth0Jwt = "4.4.0"
+lettuce = "7.4.0.RELEASE"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
 kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinxCoroutinesReactive = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactive", version.ref = "kotlinxCoroutines" }
 paperweightUserDev = { group = "io.papermc.paperweight.userdev", name = "io.papermc.paperweight.userdev.gradle.plugin", version.ref = "paperweightUserDev" }
 configurateKotlinExtras = { module = "org.spongepowered:configurate-extra-kotlin", version.ref = "configurateKotlinExtras" }
 commonsCollections = { module = "org.apache.commons:commons-collections4", version.ref = "commonsCollections" }
@@ -61,10 +63,11 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 kgraphql-ktor = { module = "de.stuebingerb:kgraphql-ktor", version.ref = "kgraphql" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
 auth0-jwt = { module = "com.auth0:java-jwt", version.ref = "auth0Jwt" }
+lettuce = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
 
 # Libraries can be bundled together for easier import
 [bundles]
-kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines"]
+kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines", "kotlinxCoroutinesReactive"]
 database = ["exposed-core", "exposed-dao", "exposed-jdbc", "exposed-migration-core", "exposed-migration-jbdc", "exposed-kotlin-datetime", "h2", "postgres", "flyway-postgres", "flyway"]
 ktor = ["ktor-server-core", "ktor-server-netty", "ktor-server-openapi", "ktor-server-swagger", "ktor-content-negation", "ktor-serialization-kotlinx-json", "ktor-server-routing-openapi", "ktor-server-cors", "ktor-server-call-logging", "ktor-server-auth", "ktor-server-auth-jwt"]
 

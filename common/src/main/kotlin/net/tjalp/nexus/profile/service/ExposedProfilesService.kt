@@ -1,14 +1,18 @@
 package net.tjalp.nexus.profile.service
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import net.tjalp.nexus.profile.ProfileEvent
 import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import net.tjalp.nexus.profile.model.ProfilesTable
 import net.tjalp.nexus.profile.model.toProfileSnapshot
+import net.tjalp.nexus.redis.RedisController
+import net.tjalp.nexus.redis.Signals
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.jdbc.*
@@ -17,13 +21,26 @@ import java.util.*
 import kotlin.time.ExperimentalTime
 
 class ExposedProfilesService(
-    private val db: Database
+    private val db: Database,
+    private val redis: RedisController? = null,
+    private val scope: CoroutineScope? = null
 ) : ProfilesService {
 
     private val _updates = MutableSharedFlow<ProfileEvent.Updated>(replay = 0, extraBufferCapacity = 64)
     override val updates: SharedFlow<ProfileEvent.Updated> = _updates.asSharedFlow()
 
     private val profileCache = hashMapOf<UUID, ProfileSnapshot>()
+
+    init {
+        // Listen for profile update signals
+        if (redis != null && scope != null) {
+            scope.launch {
+                redis.subscribe(Signals.PROFILE_UPDATE).collect { id ->
+                    get(id)
+                }
+            }
+        }
+    }
 
     override suspend fun get(
         id: UUID,
@@ -73,6 +90,12 @@ class ExposedProfilesService(
         _updates.tryEmit(ProfileEvent.Updated(profile.id, profileCache[profile.id], profile))
 
         if (cache || profileCache.contains(profile.id)) profileCache[profile.id] = profile
+
+        if (redis != null && scope != null) {
+            scope.launch {
+                redis.publish(Signals.PROFILE_UPDATE, profile.id)
+            }
+        }
 
         profile
     }

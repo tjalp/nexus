@@ -13,6 +13,9 @@ import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.datetime.TimeZone
 import net.tjalp.nexus.auth.AuthService
 import net.tjalp.nexus.auth.service.ExposedAuthService
@@ -24,6 +27,7 @@ import net.tjalp.nexus.profile.attachment.GeneralAttachmentProvider
 import net.tjalp.nexus.profile.attachment.NoticesAttachmentProvider
 import net.tjalp.nexus.profile.attachment.PunishmentAttachmentProvider
 import net.tjalp.nexus.profile.service.ExposedProfilesService
+import net.tjalp.nexus.redis.RedisController
 import org.jetbrains.exposed.v1.jdbc.Database
 import java.lang.System.getenv
 import java.util.*
@@ -36,7 +40,8 @@ val db = Database.connect(
     password = getenv("DATABASE_PASSWORD") ?: "postgres"
 )
 
-val profiles: ProfilesService = ExposedProfilesService(db)
+val redis = RedisController("redis://localhost")
+val profiles: ProfilesService = ExposedProfilesService(db, redis, CoroutineScope(Dispatchers.Default + SupervisorJob()))
 val authService: AuthService = ExposedAuthService(db)
 
 fun main(args: Array<String>) {
