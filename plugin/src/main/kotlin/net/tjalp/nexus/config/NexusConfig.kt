@@ -65,6 +65,7 @@ data class FeaturesConfig(
     @Setting("physical_spectator") val physicalSpectator: PhysicalSpectatorConfig,
     val punishments: PunishmentsConfig,
     val seasons: SeasonsConfig,
+    val servers: ServersConfig,
     @Setting("teleport_requests") val teleportRequests: TeleportRequestsConfig,
     val waypoints: WaypointsConfig
 )
@@ -188,6 +189,19 @@ data class SeasonWinterConfig(
     val grassColor: String = "858780",
     val waterColor: String = "3d57d6",
     val waterFogColor: String = "050533"
+)
+
+@ConfigSerializable
+data class ServersConfig(
+    val enable: Boolean = false,
+    val serverId: String = "server-1",
+    val serverName: String = "Server 1",
+    val serverType: String = "SURVIVAL",
+    val host: String = "localhost",
+    val port: Int = 25565,
+    val maxPlayers: Int = -1,
+    val heartbeatIntervalSeconds: Long = 10,
+    val heartbeatTimeoutSeconds: Long = 60
 )
 
 @ConfigSerializable

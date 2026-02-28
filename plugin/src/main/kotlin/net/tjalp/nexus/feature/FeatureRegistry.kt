@@ -11,6 +11,7 @@ import net.tjalp.nexus.feature.FeatureKeys.NOTICES
 import net.tjalp.nexus.feature.FeatureKeys.PHYSICAL_SPECTATOR
 import net.tjalp.nexus.feature.FeatureKeys.PUNISHMENTS
 import net.tjalp.nexus.feature.FeatureKeys.SEASONS
+import net.tjalp.nexus.feature.FeatureKeys.SERVERS
 import net.tjalp.nexus.feature.FeatureKeys.TELEPORT_REQUESTS
 import net.tjalp.nexus.feature.FeatureKeys.WAYPOINTS
 import net.tjalp.nexus.feature.chat.ChatFeature
@@ -21,6 +22,7 @@ import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
+import net.tjalp.nexus.feature.servers.ServersFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.feature.waypoints.WaypointsFeature
 import kotlin.reflect.KClass
@@ -81,6 +83,12 @@ object FeatureRegistry {
             SeasonsFeature::class,
             { SeasonsFeature() },
             { it.seasons.enable }
+        ),
+        FeatureDefinition(
+            SERVERS,
+            ServersFeature::class,
+            { ServersFeature() },
+            { it.servers.enable }
         ),
         FeatureDefinition(
             TELEPORT_REQUESTS,

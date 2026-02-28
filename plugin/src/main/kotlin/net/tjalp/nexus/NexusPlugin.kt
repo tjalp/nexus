@@ -14,6 +14,7 @@ import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
+import net.tjalp.nexus.feature.servers.ServersFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.feature.waypoints.WaypointsFeature
 import net.tjalp.nexus.lang.Lang
@@ -53,6 +54,7 @@ object NexusPlugin : JavaPlugin() {
     val physicalSpectator: PhysicalSpectatorFeature? get() = features.getFeature()
     val punishments: PunishmentsFeature? get() = features.getFeature()
     val seasons: SeasonsFeature? get() = features.getFeature()
+    val servers: ServersFeature? get() = features.getFeature()
     val teleportRequests: TeleportRequestsFeature? get() = features.getFeature()
     val waypoints: WaypointsFeature? get() = features.getFeature()
 
@@ -98,6 +100,7 @@ object NexusPlugin : JavaPlugin() {
                 register(RecommendationsCommand.create(), "Show recommendations dialog")
                 register(RulesCommand.create(), "Show rules dialog")
                 register(SeasonCommand.create(), "Season management commands")
+                // TODO: ServerCommand.create().forEach { register(it, "Server management and transfer commands") }
                 register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)
                 register(TimeZoneCommand.create(), "Time zone management commands")
                 register(WaypointCommand.create(), "Waypoint management commands")

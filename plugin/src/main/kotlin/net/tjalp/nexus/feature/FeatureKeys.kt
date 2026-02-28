@@ -12,6 +12,7 @@ object FeatureKeys {
     const val PHYSICAL_SPECTATOR = "physical_spectator"
     const val PUNISHMENTS = "punishments"
     const val SEASONS = "seasons"
+    const val SERVERS = "servers"
     const val TELEPORT_REQUESTS = "teleport_requests"
     const val WAYPOINTS = "waypoints"
 }
