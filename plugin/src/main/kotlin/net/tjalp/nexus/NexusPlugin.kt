@@ -100,7 +100,7 @@ object NexusPlugin : JavaPlugin() {
                 register(RecommendationsCommand.create(), "Show recommendations dialog")
                 register(RulesCommand.create(), "Show rules dialog")
                 register(SeasonCommand.create(), "Season management commands")
-                // TODO: ServerCommand.create().forEach { register(it, "Server management and transfer commands") }
+                register(ServerCommand.create(), "Server management commands")
                 register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)
                 register(TimeZoneCommand.create(), "Time zone management commands")
                 register(WaypointCommand.create(), "Waypoint management commands")
