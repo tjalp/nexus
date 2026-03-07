@@ -1,6 +1,8 @@
 package net.tjalp.nexus.redis
 
-import kotlinx.serialization.builtins.serializer
+import net.tjalp.nexus.player.PlayerChangeServerEvent
+import net.tjalp.nexus.player.PlayerOfflineEvent
+import net.tjalp.nexus.player.PlayerOnlineEvent
 import net.tjalp.nexus.serializer.UUIDAsStringSerializer
 import net.tjalp.nexus.server.*
 import java.util.*
@@ -62,5 +64,32 @@ object Signals {
         namespace = SignalNamespace("server:player:leave"),
         type = PlayerLeaveServerEvent::class,
         serializer = PlayerLeaveServerEvent.serializer()
+    )
+
+    /**
+     * Player online signal key, used to indicate a player came online.
+     */
+    val PLAYER_ONLINE = SignalKey(
+        namespace = SignalNamespace("player:online"),
+        type = PlayerOnlineEvent::class,
+        serializer = PlayerOnlineEvent.serializer()
+    )
+
+    /**
+     * Player offline signal key, used to indicate a player went offline.
+     */
+    val PLAYER_OFFLINE = SignalKey(
+        namespace = SignalNamespace("player:offline"),
+        type = PlayerOfflineEvent::class,
+        serializer = PlayerOfflineEvent.serializer()
+    )
+
+    /**
+     * Player change server signal key, used to indicate a player changed servers.
+     */
+    val PLAYER_CHANGE_SERVER = SignalKey(
+        namespace = SignalNamespace("player:change-server"),
+        type = PlayerChangeServerEvent::class,
+        serializer = PlayerChangeServerEvent.serializer()
     )
 }

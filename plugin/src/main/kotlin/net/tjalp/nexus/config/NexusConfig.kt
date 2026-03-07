@@ -200,8 +200,8 @@ data class ServersConfig(
     val host: String = "localhost",
     val port: Int = 25565,
     val maxPlayers: Int = -1,
-    val heartbeatIntervalSeconds: Long = 10,
-    val heartbeatTimeoutSeconds: Long = 60
+    val heartbeatIntervalSeconds: Long = 5,
+    val heartbeatTimeoutSeconds: Long = 20
 )
 
 @ConfigSerializable

@@ -7,6 +7,8 @@ import kotlinx.coroutines.launch
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
+import net.tjalp.nexus.player.PlayerRegistry
+import net.tjalp.nexus.player.RedisPlayerRegistry
 import net.tjalp.nexus.server.RedisServerRegistry
 import net.tjalp.nexus.server.ServerInfo
 import net.tjalp.nexus.server.ServerRegistry
@@ -30,8 +32,12 @@ class ServersFeature : Feature(SERVERS), Listener {
     lateinit var serverRegistry: ServerRegistry
         private set
 
+    lateinit var playerRegistry: PlayerRegistry
+        private set
+
     private lateinit var serverInfo: ServerInfo
     private var heartbeatJob: Job? = null
+    private var heartbeatTtl: Long = 60
 
     override fun onEnable() {
         val config = NexusPlugin.configuration.features.servers
@@ -53,7 +59,10 @@ class ServersFeature : Feature(SERVERS), Listener {
             maxPlayers = config.maxPlayers
         )
 
+        heartbeatTtl = config.heartbeatTimeoutSeconds
+
         serverRegistry = RedisServerRegistry(NexusPlugin.redis, scheduler)
+        playerRegistry = RedisPlayerRegistry(NexusPlugin.redis, scheduler)
 
         // Register this server as online
         scheduler.launch {
@@ -66,7 +75,7 @@ class ServersFeature : Feature(SERVERS), Listener {
             }
         }
 
-        startHeartbeat(config.heartbeatIntervalSeconds)
+        startHeartbeat(config.heartbeatIntervalSeconds, config.heartbeatTimeoutSeconds)
 
         this.register()
 
@@ -83,6 +92,13 @@ class ServersFeature : Feature(SERVERS), Listener {
             serverRegistry.serverOfflineEvents.collect { event ->
                 if (event.serverId != serverInfo.id) {
                     NexusPlugin.logger.info("Server '${event.serverId}' went offline")
+
+                    // Clean up players from offline server
+                    try {
+                        playerRegistry.cleanupServerPlayers(event.serverId)
+                    } catch (e: Exception) {
+                        NexusPlugin.logger.warning("Failed to cleanup players from server ${event.serverId}: ${e.message}")
+                    }
                 }
             }
         }
@@ -108,13 +124,27 @@ class ServersFeature : Feature(SERVERS), Listener {
     /**
      * Start sending heartbeats to Redis
      */
-    private fun startHeartbeat(intervalSeconds: Long) {
+    private fun startHeartbeat(intervalSeconds: Long, ttl: Long) {
         heartbeatJob = scheduler.launch(Dispatchers.Default) {
             while (true) {
                 delay(intervalSeconds.seconds)
                 try {
                     val playerCount = NexusPlugin.server.onlinePlayers.size
-                    serverRegistry.updateHeartbeat(serverInfo.id, playerCount)
+                    serverRegistry.updateHeartbeat(serverInfo.id, playerCount, ttl)
+
+                    // Refresh player TTLs to keep them alive
+                    NexusPlugin.server.onlinePlayers.forEach { player ->
+                        try {
+                            playerRegistry.updatePlayerLocation(
+                                playerId = player.uniqueId,
+                                username = player.name,
+                                serverId = serverInfo.id,
+                                ttl = ttl
+                            )
+                        } catch (e: Exception) {
+                            NexusPlugin.logger.warning("Failed to refresh player TTL for ${player.name}: ${e.message}")
+                        }
+                    }
                 } catch (e: Exception) {
                     NexusPlugin.logger.warning("Failed to send heartbeat: ${e.message}")
                 }
@@ -126,7 +156,12 @@ class ServersFeature : Feature(SERVERS), Listener {
     fun onPlayerJoin(event: PlayerJoinEvent) {
         scheduler.launch {
             try {
-                serverRegistry.setPlayerServer(event.player.uniqueId, serverInfo.id)
+                playerRegistry.updatePlayerLocation(
+                    playerId = event.player.uniqueId,
+                    username = event.player.name,
+                    serverId = serverInfo.id,
+                    ttl = heartbeatTtl
+                )
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("Failed to track player join: ${e.message}")
             }
@@ -137,7 +172,11 @@ class ServersFeature : Feature(SERVERS), Listener {
     fun onPlayerQuit(event: PlayerQuitEvent) {
         scheduler.launch {
             try {
-                serverRegistry.setPlayerServer(event.player.uniqueId, null)
+                playerRegistry.updatePlayerLocation(
+                    playerId = event.player.uniqueId,
+                    username = event.player.name,
+                    serverId = null
+                )
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("Failed to track player quit: ${e.message}")
             }
@@ -179,7 +218,8 @@ class ServersFeature : Feature(SERVERS), Listener {
      * @return The server info, or null if player is not online or server not found
      */
     suspend fun getPlayerServer(playerId: UUID): ServerInfo? {
-        val serverId = serverRegistry.getPlayerServer(playerId) ?: return null
+        val player = playerRegistry.getPlayer(playerId) ?: return null
+        val serverId = player.serverId ?: return null
         return serverRegistry.getServer(serverId)
     }
 }

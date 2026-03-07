@@ -9,7 +9,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.redis.Signals
-import java.util.*
 
 /**
  * Redis-backed implementation of ServerRegistry
@@ -34,8 +33,7 @@ class RedisServerRegistry(
     override val playerLeaveEvents: Flow<PlayerLeaveServerEvent> = _playerLeaveEvents.asSharedFlow()
 
     companion object {
-        private const val SERVERS_KEY = "nexus:servers"
-        private const val PLAYERS_KEY = "nexus:players"
+        private const val SERVER_INFO_PREFIX = "nexus:server:info:"
         private const val SERVER_PLAYERS_PREFIX = "nexus:server:players:"
     }
 
@@ -67,27 +65,22 @@ class RedisServerRegistry(
     }
 
     override suspend fun getServer(serverId: String): ServerInfo? {
-        val json = redis.query.hget(SERVERS_KEY, serverId) ?: return null
+        val json = redis.query.get(SERVER_INFO_PREFIX + serverId) ?: return null
         return try {
-            Json.decodeFromString<ServerInfo>(json)
-        } catch (e: Exception) {
+            Json.decodeFromString<ServerInfo>(json).copy(online = true)
+        } catch (_: Exception) {
             null
         }
     }
 
     override suspend fun getOnlineServers(): Collection<ServerInfo> {
-        val serversMap = mutableListOf<ServerInfo>()
-        redis.query.hgetall(SERVERS_KEY).collect { keyValue ->
-            try {
-                val server = Json.decodeFromString<ServerInfo>(keyValue.value)
-                if (server.online) {
-                    serversMap.add(server)
-                }
-            } catch (_: Exception) {
-                // Ignore invalid entries
-            }
+        val servers = mutableListOf<ServerInfo>()
+
+        redis.query.hgetall("$SERVER_INFO_PREFIX*").collect { key ->
+            servers += Json.decodeFromString<ServerInfo>(key.value)
         }
-        return serversMap
+
+        return servers
     }
 
     override suspend fun getServersByType(type: ServerType): Collection<ServerInfo> {
@@ -97,74 +90,37 @@ class RedisServerRegistry(
     override suspend fun registerServer(server: ServerInfo) {
         val onlineServer = server.copy(online = true)
         val json = Json.encodeToString(onlineServer)
-        redis.query.hset(SERVERS_KEY, server.id, json)
+
+        // Store server info with 60 second TTL - will expire if heartbeat stops
+        redis.query.setex(SERVER_INFO_PREFIX + server.id, 60, json)
+
         redis.publish(Signals.SERVER_ONLINE, ServerOnlineEvent(onlineServer))
     }
 
     override suspend fun unregisterServer(serverId: String) {
         val server = getServer(serverId)
         if (server != null) {
-            val offlineServer = server.copy(online = false)
-            val json = Json.encodeToString(offlineServer)
-            redis.query.hset(SERVERS_KEY, serverId, json)
+            // Delete server info key immediately
+            redis.query.del(SERVER_INFO_PREFIX + serverId)
+
+            // Publish offline event
             redis.publish(Signals.SERVER_OFFLINE, ServerOfflineEvent(serverId))
 
-            // Clean up player tracking for this server
+            // Clean up per-server player set
             redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
         }
     }
 
-    override suspend fun updateHeartbeat(serverId: String, playerCount: Int) {
+    override suspend fun updateHeartbeat(serverId: String, playerCount: Int, ttl: Long) {
         val server = getServer(serverId) ?: return
         val updatedServer = server.copy(online = true)
         val json = Json.encodeToString(updatedServer)
-        redis.query.hset(SERVERS_KEY, serverId, json)
+
+        // Refresh server info with TTL
+        // If server stops sending heartbeats, this key will expire and server will be automatically removed
+        redis.query.setex(SERVER_INFO_PREFIX + serverId, ttl, json)
+
         redis.publish(Signals.SERVER_HEARTBEAT, ServerHeartbeat(serverId, playerCount))
-    }
-
-    override suspend fun getPlayerServer(playerId: UUID): String? {
-        return redis.query.hget(PLAYERS_KEY, playerId.toString())
-    }
-
-    override suspend fun setPlayerServer(playerId: UUID, serverId: String?) {
-        val playerIdStr = playerId.toString()
-
-        if (serverId == null) {
-            // Remove player
-            val currentServer = redis.query.hget(PLAYERS_KEY, playerIdStr)
-            redis.query.hdel(PLAYERS_KEY, playerIdStr)
-
-            if (currentServer != null) {
-                redis.query.srem(SERVER_PLAYERS_PREFIX + currentServer, playerIdStr)
-                redis.publish(Signals.PLAYER_LEAVE_SERVER, PlayerLeaveServerEvent(playerIdStr, currentServer))
-            }
-        } else {
-            // Get previous server if any
-            val previousServer = redis.query.hget(PLAYERS_KEY, playerIdStr)
-
-            // Remove from previous server
-            if (previousServer != null && previousServer != serverId) {
-                redis.query.srem(SERVER_PLAYERS_PREFIX + previousServer, playerIdStr)
-                redis.publish(Signals.PLAYER_LEAVE_SERVER, PlayerLeaveServerEvent(playerIdStr, previousServer))
-            }
-
-            // Add to new server
-            redis.query.hset(PLAYERS_KEY, playerIdStr, serverId)
-            redis.query.sadd(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
-            redis.publish(Signals.PLAYER_JOIN_SERVER, PlayerJoinServerEvent(playerIdStr, serverId))
-        }
-    }
-
-    override suspend fun getPlayersOnServer(serverId: String): Collection<UUID> {
-        val playerIds = mutableListOf<UUID>()
-        redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
-            try {
-                playerIds.add(UUID.fromString(playerIdStr))
-            } catch (_: Exception) {
-                // Ignore invalid UUIDs
-            }
-        }
-        return playerIds
     }
 }
 

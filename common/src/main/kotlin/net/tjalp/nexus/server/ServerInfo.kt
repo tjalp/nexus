@@ -1,6 +1,7 @@
 package net.tjalp.nexus.server
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * Represents the type of Minecraft server
@@ -33,7 +34,7 @@ data class ServerInfo(
     val host: String,
     val port: Int,
     val maxPlayers: Int = -1,
-    val online: Boolean = false
+    @Transient val online: Boolean = false
 )
 
 /**

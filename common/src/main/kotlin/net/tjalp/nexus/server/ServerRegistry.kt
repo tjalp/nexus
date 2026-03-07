@@ -1,7 +1,6 @@
 package net.tjalp.nexus.server
 
 import kotlinx.coroutines.flow.Flow
-import java.util.*
 
 /**
  * Registry for tracking servers in the network
@@ -50,32 +49,9 @@ interface ServerRegistry {
      *
      * @param serverId The ID of the server
      * @param playerCount Current number of players
+     * @param ttl Time in seconds until the server is considered offline without another heartbeat
      */
-    suspend fun updateHeartbeat(serverId: String, playerCount: Int)
-
-    /**
-     * Get the server ID where a player is currently located
-     *
-     * @param playerId The UUID of the player
-     * @return The server ID, or null if player is not online
-     */
-    suspend fun getPlayerServer(playerId: UUID): String?
-
-    /**
-     * Set the server where a player is located
-     *
-     * @param playerId The UUID of the player
-     * @param serverId The ID of the server, or null to remove the player
-     */
-    suspend fun setPlayerServer(playerId: UUID, serverId: String?)
-
-    /**
-     * Get all players on a specific server
-     *
-     * @param serverId The ID of the server
-     * @return Collection of player UUIDs
-     */
-    suspend fun getPlayersOnServer(serverId: String): Collection<UUID>
+    suspend fun updateHeartbeat(serverId: String, playerCount: Int, ttl: Long)
 
     /**
      * Flow of server online events
