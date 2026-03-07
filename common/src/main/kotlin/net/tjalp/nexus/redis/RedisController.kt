@@ -84,4 +84,23 @@ class RedisController(
             .filter { it.channel == key.namespace.value }
             .map { Json.decodeFromString(messageSerializer, it.message).data }
     }
+
+    /**
+     * Subscribe to Redis keyspace notifications for expired keys matching a pattern.
+     * This requires Redis to be configured with `notify-keyspace-events` containing "Ex" or "AE".
+     *
+     * @param pattern The key pattern to watch for expirations (e.g., "nexus:server:info:*")
+     * @return A flow of expired key names
+     */
+    fun subscribeToKeyExpirations(pattern: String): Flow<String> {
+        // Subscribe to keyevent notifications for expired events
+        // Pattern: __keyevent@{db}__:expired
+        val channel = "__keyevent@0__:expired"
+        pubSub.reactive().subscribe(channel).subscribe()
+
+        return pubSub.reactive().observeChannels().asFlow()
+            .filter { it.channel == channel }
+            .map { it.message } // The message is the expired key name
+            .filter { it.startsWith(pattern.substringBefore('*')) }
+    }
 }

@@ -62,6 +62,26 @@ class RedisServerRegistry(
                 _playerLeaveEvents.emit(event)
             }
         }
+
+        // Subscribe to keyspace notifications for server key expirations
+        // This detects when servers crash and their TTL expires
+        scope.launch {
+            redis.subscribeToKeyExpirations(SERVER_INFO_PREFIX).collect { expiredKey ->
+                val serverId = expiredKey.removePrefix(SERVER_INFO_PREFIX)
+
+                // When server info key expires, the server has crashed
+                // Clean up associated data and publish offline event
+                try {
+                    // Delete per-server player set
+                    redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
+
+                    // Publish offline event so all servers know
+                    redis.publish(Signals.SERVER_OFFLINE, ServerOfflineEvent(serverId))
+                } catch (_: Exception) {
+                    // Log but don't crash if cleanup fails
+                }
+            }
+        }
     }
 
     override suspend fun getServer(serverId: String): ServerInfo? {
@@ -76,8 +96,18 @@ class RedisServerRegistry(
     override suspend fun getOnlineServers(): Collection<ServerInfo> {
         val servers = mutableListOf<ServerInfo>()
 
-        redis.query.hgetall("$SERVER_INFO_PREFIX*").collect { key ->
-            servers += Json.decodeFromString<ServerInfo>(key.value)
+        // Use KEYS to get all server info keys
+        // Note: KEYS is blocking, but acceptable for small numbers of servers
+        // For large-scale production, consider implementing cursor-based SCAN
+        redis.query.keys(SERVER_INFO_PREFIX + "*").collect { key ->
+            val json = redis.query.get(key)
+            if (json != null) {
+                try {
+                    servers += Json.decodeFromString<ServerInfo>(json)
+                } catch (_: Exception) {
+                    // Ignore invalid JSON
+                }
+            }
         }
 
         return servers
@@ -93,6 +123,10 @@ class RedisServerRegistry(
 
         // Store server info with 60 second TTL - will expire if heartbeat stops
         redis.query.setex(SERVER_INFO_PREFIX + server.id, 60, json)
+
+        // Initialize per-server player set with TTL (even if empty)
+        // This ensures cleanup happens when server crashes
+        redis.query.expire(SERVER_PLAYERS_PREFIX + server.id, 60)
 
         redis.publish(Signals.SERVER_ONLINE, ServerOnlineEvent(onlineServer))
     }
@@ -119,6 +153,9 @@ class RedisServerRegistry(
         // Refresh server info with TTL
         // If server stops sending heartbeats, this key will expire and server will be automatically removed
         redis.query.setex(SERVER_INFO_PREFIX + serverId, ttl, json)
+
+        // Also refresh the TTL on the per-server player set to prevent stale data
+        redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
 
         redis.publish(Signals.SERVER_HEARTBEAT, ServerHeartbeat(serverId, playerCount))
     }

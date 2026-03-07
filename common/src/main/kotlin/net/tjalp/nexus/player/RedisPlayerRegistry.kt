@@ -62,6 +62,25 @@ class RedisPlayerRegistry(
                 _playerChangeServerEvents.emit(event)
             }
         }
+
+        // Subscribe to keyspace notifications for player key expirations
+        // This detects when player info keys expire (due to server crash or connection loss)
+        scope.launch {
+            redis.subscribeToKeyExpirations(PLAYER_INFO_PREFIX).collect { expiredKey ->
+                val playerIdStr = expiredKey.removePrefix(PLAYER_INFO_PREFIX)
+
+                try {
+                    // Player's key expired, clean up references
+                    // The player info is already gone, so we just remove from sets
+                    redis.query.srem(ONLINE_PLAYERS_SET, playerIdStr)
+
+                    // Note: We don't know which server they were on since the key expired
+                    // But that's okay - the per-server set will also expire with the same TTL
+                } catch (e: Exception) {
+                    // Log but don't crash if cleanup fails
+                }
+            }
+        }
     }
 
     override suspend fun getPlayer(playerId: UUID): PlayerInfo? {
@@ -150,6 +169,8 @@ class RedisPlayerRegistry(
             if (currentPlayer == null) {
                 // Player coming online for the first time
                 redis.query.sadd(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                // Set TTL on the server's player set to auto-cleanup if server crashes
+                redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
                 redis.publish(Signals.PLAYER_ONLINE, PlayerOnlineEvent(newPlayer))
             } else if (currentPlayer.serverId != serverId) {
                 // Player changing servers
@@ -157,10 +178,15 @@ class RedisPlayerRegistry(
                     redis.query.srem(SERVER_PLAYERS_PREFIX + currentPlayer.serverId, playerIdStr)
                 }
                 redis.query.sadd(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                // Refresh TTL on the new server's player set
+                redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
                 redis.publish(
                     Signals.PLAYER_CHANGE_SERVER,
                     PlayerChangeServerEvent(playerIdStr, currentPlayer.serverId, serverId)
                 )
+            } else {
+                // Same server, just refresh TTL on the server's player set
+                redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
             }
         }
     }
@@ -210,6 +236,27 @@ class RedisPlayerRegistry(
 
         // Delete the server players set
         redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
+    }
+
+    /**
+     * Clean up stale entries from the global online players set
+     * This removes player UUIDs where the player info no longer exists
+     */
+    private suspend fun cleanupStaleOnlinePlayers() {
+        val stalePlayerIds = mutableListOf<String>()
+
+        redis.query.smembers(ONLINE_PLAYERS_SET).collect { playerIdStr ->
+            // Check if player info still exists
+            val exists = redis.query.exists(PLAYER_INFO_PREFIX + playerIdStr) ?: 0L
+            if (exists == 0L) {
+                stalePlayerIds.add(playerIdStr)
+            }
+        }
+
+        // Remove stale entries
+        if (stalePlayerIds.isNotEmpty()) {
+            redis.query.srem(ONLINE_PLAYERS_SET, *stalePlayerIds.toTypedArray())
+        }
     }
 }
 

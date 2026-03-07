@@ -9,6 +9,7 @@ import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
 import net.tjalp.nexus.player.PlayerRegistry
 import net.tjalp.nexus.player.RedisPlayerRegistry
+import net.tjalp.nexus.redis.RedisConfig
 import net.tjalp.nexus.server.RedisServerRegistry
 import net.tjalp.nexus.server.ServerInfo
 import net.tjalp.nexus.server.ServerRegistry
@@ -45,7 +46,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         // Parse server type from config
         val serverType = try {
             ServerType.valueOf(config.serverType.uppercase())
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             NexusPlugin.logger.warning("Invalid server type '${config.serverType}', defaulting to OTHER")
             ServerType.OTHER
         }
@@ -63,6 +64,17 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         serverRegistry = RedisServerRegistry(NexusPlugin.redis, scheduler)
         playerRegistry = RedisPlayerRegistry(NexusPlugin.redis, scheduler)
+
+        // Configure Redis for keyspace notifications (needed for crash detection)
+        scheduler.launch {
+            try {
+                NexusPlugin.logger.info("Configuring Redis for Nexus network...")
+                RedisConfig.enableKeyspaceNotifications(NexusPlugin.redis)
+                RedisConfig.validateConfiguration(NexusPlugin.redis)
+            } catch (e: Exception) {
+                NexusPlugin.logger.warning("Failed to configure Redis: ${e.message}")
+            }
+        }
 
         // Register this server as online
         scheduler.launch {
