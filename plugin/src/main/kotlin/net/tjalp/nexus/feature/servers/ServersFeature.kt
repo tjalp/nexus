@@ -1,9 +1,6 @@
 package net.tjalp.nexus.feature.servers
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
@@ -122,7 +119,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         heartbeatJob?.cancel()
 
         // Unregister this server
-        scheduler.launch {
+        runBlocking {
             try {
                 serverRegistry.unregisterServer(serverInfo.id)
                 NexusPlugin.logger.info("Unregistered server '${serverInfo.name}' (${serverInfo.id})")
