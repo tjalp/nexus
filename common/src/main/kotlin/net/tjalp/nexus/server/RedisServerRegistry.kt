@@ -34,7 +34,6 @@ class RedisServerRegistry(
 
     companion object {
         private const val SERVER_INFO_PREFIX = "nexus:server:info:"
-        private const val SERVER_PLAYERS_PREFIX = "nexus:server:players:"
     }
 
     init {
@@ -70,15 +69,12 @@ class RedisServerRegistry(
                 val serverId = expiredKey.removePrefix(SERVER_INFO_PREFIX)
 
                 // When server info key expires, the server has crashed
-                // Clean up associated data and publish offline event
+                // Publish offline event so all servers know – player cleanup is handled
+                // by whoever listens to SERVER_OFFLINE (typically via PlayerRegistry.cleanupServerPlayers)
                 try {
-                    // Delete per-server player set
-                    redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
-
-                    // Publish offline event so all servers know
                     redis.publish(Signals.SERVER_OFFLINE, ServerOfflineEvent(serverId))
                 } catch (_: Exception) {
-                    // Log but don't crash if cleanup fails
+                    // Log but don't crash if publish fails
                 }
             }
         }
@@ -124,9 +120,6 @@ class RedisServerRegistry(
         // Store server info with 60 second TTL - will expire if heartbeat stops
         redis.query.setex(SERVER_INFO_PREFIX + server.id, 60, json)
 
-        // Initialize per-server player set with TTL (even if empty)
-        // This ensures cleanup happens when server crashes
-        redis.query.expire(SERVER_PLAYERS_PREFIX + server.id, 60)
 
         redis.publish(Signals.SERVER_ONLINE, ServerOnlineEvent(onlineServer))
     }
@@ -137,11 +130,9 @@ class RedisServerRegistry(
             // Delete server info key immediately
             redis.query.del(SERVER_INFO_PREFIX + serverId)
 
-            // Publish offline event
+            // Publish offline event – player cleanup is handled by
+            // whoever listens to SERVER_OFFLINE (via PlayerRegistry.cleanupServerPlayers)
             redis.publish(Signals.SERVER_OFFLINE, ServerOfflineEvent(serverId))
-
-            // Clean up per-server player set
-            redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
         }
     }
 
@@ -154,8 +145,6 @@ class RedisServerRegistry(
         // If server stops sending heartbeats, this key will expire and server will be automatically removed
         redis.query.setex(SERVER_INFO_PREFIX + serverId, ttl, json)
 
-        // Also refresh the TTL on the per-server player set to prevent stale data
-        redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
 
         redis.publish(Signals.SERVER_HEARTBEAT, ServerHeartbeat(serverId, playerCount))
     }

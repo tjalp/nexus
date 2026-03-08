@@ -1,6 +1,8 @@
 package net.tjalp.nexus.player
 
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
+import io.lettuce.core.ScanArgs
+import io.lettuce.core.ScanCursor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -10,15 +12,23 @@ import kotlinx.serialization.json.Json
 import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.redis.Signals
 import java.util.*
+import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
- * Redis-backed implementation of PlayerRegistry
+ * Redis-backed implementation of PlayerRegistry.
  *
- * Uses the following Redis data structures:
- * - Hash: `nexus:player:info:{uuid}` - Player information with TTL
- * - Set: `nexus:server:{serverId}:players` - Players on each server with TTL
- * - Set: `nexus:players:online` - Global set of all online player UUIDs
+ * **Single source of truth:** The per-player key `nexus:player:info:{uuid}` is the
+ * authoritative record. It stores serialized [PlayerInfo] (including serverId and status)
+ * and has a TTL aligned with the server heartbeat so it auto-expires on crash.
+ *
+ * **Derived index:** The set `nexus:server:players:{serverId}` is a secondary index
+ * kept in sync by this class. It is always rebuildable from the player info keys.
+ * Its TTL matches the server heartbeat so it also self-cleans on crash.
+ *
+ * There is **no global online-players set**. Listing all online players uses SCAN
+ * over the `nexus:player:info:*` keyspace, which is crash-safe because every key
+ * has a TTL.
  *
  * @param redis The Redis controller for pub/sub and data storage
  * @param scope Coroutine scope for launching async operations
@@ -38,13 +48,15 @@ class RedisPlayerRegistry(
     override val playerChangeServerEvents: Flow<PlayerChangeServerEvent> = _playerChangeServerEvents.asSharedFlow()
 
     companion object {
+        /** Per-player info key. This is the single source of truth. */
         private const val PLAYER_INFO_PREFIX = "nexus:player:info:"
+
+        /** Per-server player set – derived index only. */
         private const val SERVER_PLAYERS_PREFIX = "nexus:server:players:"
-        private const val ONLINE_PLAYERS_SET = "nexus:players:online"
     }
 
     init {
-        // Subscribe to player events
+        // Subscribe to player events via pub/sub
         scope.launch {
             redis.subscribe(Signals.PLAYER_ONLINE).collect { event ->
                 _playerOnlineEvents.emit(event)
@@ -63,25 +75,19 @@ class RedisPlayerRegistry(
             }
         }
 
-        // Subscribe to keyspace notifications for player key expirations
-        // This detects when player info keys expire (due to server crash or connection loss)
+        // Listen for player info key expirations (server crash / transfer timeout).
+        // When a player info key expires the player is gone – the per-server set also
+        // has a TTL so it will self-expire. No action needed here beyond observing.
         scope.launch {
-            redis.subscribeToKeyExpirations(PLAYER_INFO_PREFIX).collect { expiredKey ->
-                val playerIdStr = expiredKey.removePrefix(PLAYER_INFO_PREFIX)
-
-                try {
-                    // Player's key expired, clean up references
-                    // The player info is already gone, so we just remove from sets
-                    redis.query.srem(ONLINE_PLAYERS_SET, playerIdStr)
-
-                    // Note: We don't know which server they were on since the key expired
-                    // But that's okay - the per-server set will also expire with the same TTL
-                } catch (e: Exception) {
-                    // Log but don't crash if cleanup fails
-                }
+            redis.subscribeToKeyExpirations(PLAYER_INFO_PREFIX).collect { _ ->
+                // The per-server set has a matching TTL, so it self-cleans.
+                // We could attempt to remove from derived indices here, but the
+                // key is already gone so we don't know the serverId. This is fine.
             }
         }
     }
+
+    // ── Queries ──────────────────────────────────────────────────────────────
 
     override suspend fun getPlayer(playerId: UUID): PlayerInfo? {
         val json = redis.query.get(PLAYER_INFO_PREFIX + playerId.toString()) ?: return null
@@ -94,14 +100,20 @@ class RedisPlayerRegistry(
 
     override suspend fun getOnlinePlayers(): Collection<PlayerInfo> {
         val players = mutableListOf<PlayerInfo>()
+        val scanArgs = ScanArgs.Builder.matches(PLAYER_INFO_PREFIX + "*").limit(100)
+        var cursor = redis.query.scan(scanArgs)
 
-        redis.query.smembers(ONLINE_PLAYERS_SET).collect { playerIdStr ->
-            try {
-                val playerId = UUID.fromString(playerIdStr)
-                getPlayer(playerId)?.let { players.add(it) }
-            } catch (_: Exception) {
-                // Ignore invalid UUIDs
+        while (cursor != null) {
+            for (key in cursor.keys) {
+                val json = redis.query.get(key)
+                if (json != null) {
+                    try {
+                        players += Json.decodeFromString<PlayerInfo>(json)
+                    } catch (_: Exception) { /* skip invalid */ }
+                }
             }
+            if (cursor.isFinished) break
+            cursor = redis.query.scan(ScanCursor.of(cursor.cursor), scanArgs)
         }
 
         return players
@@ -111,11 +123,13 @@ class RedisPlayerRegistry(
         val players = mutableListOf<PlayerInfo>()
 
         redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
-            try {
-                val playerId = UUID.fromString(playerIdStr)
-                getPlayer(playerId)?.let { players.add(it) }
-            } catch (_: Exception) {
-                // Ignore invalid UUIDs
+            // Validate against the source of truth
+            val info = getPlayer(safeUuid(playerIdStr) ?: return@collect)
+            if (info != null) {
+                players += info
+            } else {
+                // Stale entry in the set – remove it
+                redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
             }
         }
 
@@ -126,69 +140,73 @@ class RedisPlayerRegistry(
         return redis.query.scard(SERVER_PLAYERS_PREFIX + serverId) ?: 0L
     }
 
-    override suspend fun getAllPlayers(): Collection<PlayerInfo> {
-        // For now, return all online players
-        // TODO: To include recently offline players, could maintain a separate set with longer TTL
-        return getOnlinePlayers()
-    }
+    // ── Mutations ────────────────────────────────────────────────────────────
 
-    override suspend fun updatePlayerLocation(playerId: UUID, username: String, serverId: String?, ttl: Long) {
+    override suspend fun registerPlayer(playerId: UUID, username: String, serverId: String, ttl: Long) {
         val playerIdStr = playerId.toString()
         val currentPlayer = getPlayer(playerId)
 
-        if (serverId == null) {
-            // Player going offline
-            if (currentPlayer != null && currentPlayer.serverId != null) {
-                // Remove from current server
-                redis.query.srem(SERVER_PLAYERS_PREFIX + currentPlayer.serverId, playerIdStr)
-                redis.query.srem(ONLINE_PLAYERS_SET, playerIdStr)
+        val newInfo = PlayerInfo(
+            id = playerId,
+            username = username,
+            serverId = serverId,
+            status = PlayerStatus.ONLINE,
+            lastSeen = kotlin.time.Clock.System.now()
+        )
 
-                // Delete player info (or set a longer TTL for offline state if desired)
-                redis.query.del(PLAYER_INFO_PREFIX + playerIdStr)
+        val json = Json.encodeToString(PlayerInfo.serializer(), newInfo)
 
-                // Publish offline event
-                redis.publish(Signals.PLAYER_OFFLINE, PlayerOfflineEvent(playerIdStr, currentPlayer.serverId))
-            }
-        } else {
-            // Player going online or changing servers
-            val newPlayer = PlayerInfo(
-                id = playerId,
-                username = username,
-                serverId = serverId,
-                lastSeen = kotlin.time.Clock.System.now()
-            )
+        // Write the single source of truth with TTL
+        redis.query.setex(PLAYER_INFO_PREFIX + playerIdStr, ttl, json)
 
-            val json = Json.encodeToString(PlayerInfo.serializer(), newPlayer)
+        // Update derived index
+        if (currentPlayer != null && currentPlayer.serverId != null && currentPlayer.serverId != serverId) {
+            // Changing servers – remove from old server set
+            redis.query.srem(SERVER_PLAYERS_PREFIX + currentPlayer.serverId, playerIdStr)
+        }
+        redis.query.sadd(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+        redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
 
-            // Store player info with TTL
-            redis.query.setex(PLAYER_INFO_PREFIX + playerIdStr, ttl, json)
-
-            // Add to online players set
-            redis.query.sadd(ONLINE_PLAYERS_SET, playerIdStr)
-
-            if (currentPlayer == null) {
-                // Player coming online for the first time
-                redis.query.sadd(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
-                // Set TTL on the server's player set to auto-cleanup if server crashes
-                redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
-                redis.publish(Signals.PLAYER_ONLINE, PlayerOnlineEvent(newPlayer))
-            } else if (currentPlayer.serverId != serverId) {
-                // Player changing servers
-                if (currentPlayer.serverId != null) {
-                    redis.query.srem(SERVER_PLAYERS_PREFIX + currentPlayer.serverId, playerIdStr)
-                }
-                redis.query.sadd(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
-                // Refresh TTL on the new server's player set
-                redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
+        // Publish appropriate event
+        if (currentPlayer == null || currentPlayer.status == PlayerStatus.TRANSFERRING) {
+            if (currentPlayer?.serverId != null && currentPlayer.serverId != serverId) {
+                // Was transferring from another server
                 redis.publish(
                     Signals.PLAYER_CHANGE_SERVER,
                     PlayerChangeServerEvent(playerIdStr, currentPlayer.serverId, serverId)
                 )
-            } else {
-                // Same server, just refresh TTL on the server's player set
-                redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
+            } else if (currentPlayer == null) {
+                // Fresh join
+                redis.publish(Signals.PLAYER_ONLINE, PlayerOnlineEvent(newInfo))
             }
+            // If transferring to the same server (reconnect), just update silently
+        } else if (currentPlayer.serverId != serverId) {
+            // Was online on a different server (direct server change without transfer flag)
+            redis.query.srem(SERVER_PLAYERS_PREFIX + (currentPlayer.serverId ?: ""), playerIdStr)
+            redis.publish(
+                Signals.PLAYER_CHANGE_SERVER,
+                PlayerChangeServerEvent(playerIdStr, currentPlayer.serverId, serverId)
+            )
         }
+        // If same server and already ONLINE, this is just a heartbeat refresh – no event needed
+    }
+
+    override suspend fun markTransferring(playerId: UUID, ttl: Long) {
+        val playerIdStr = playerId.toString()
+        val currentPlayer = getPlayer(playerId) ?: return
+
+        val transferringInfo = currentPlayer.copy(
+            status = PlayerStatus.TRANSFERRING,
+            lastSeen = Clock.System.now()
+        )
+
+        val json = Json.encodeToString(PlayerInfo.serializer(), transferringInfo)
+
+        // Update the source of truth with a shorter TTL so it auto-expires if the transfer fails
+        redis.query.setex(PLAYER_INFO_PREFIX + playerIdStr, ttl, json)
+
+        // Keep them in the per-server set for now – they'll be moved on registerPlayer()
+        // or cleaned up by TTL expiration if the transfer fails
     }
 
     override suspend fun removePlayer(playerId: UUID) {
@@ -196,67 +214,72 @@ class RedisPlayerRegistry(
         val currentPlayer = getPlayer(playerId)
 
         if (currentPlayer != null) {
-            // Remove from current server if applicable
+            // Remove from derived index
             if (currentPlayer.serverId != null) {
                 redis.query.srem(SERVER_PLAYERS_PREFIX + currentPlayer.serverId, playerIdStr)
             }
 
-            // Remove from online players set
-            redis.query.srem(ONLINE_PLAYERS_SET, playerIdStr)
-
-            // Delete player info
+            // Delete the source of truth
             redis.query.del(PLAYER_INFO_PREFIX + playerIdStr)
+
+            // Publish offline event
+            redis.publish(
+                Signals.PLAYER_OFFLINE,
+                PlayerOfflineEvent(playerIdStr, currentPlayer.serverId ?: "unknown")
+            )
         }
     }
 
     override suspend fun cleanupServerPlayers(serverId: String) {
-        // Get all players on this server
         val playerIds = mutableListOf<String>()
         redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
-            playerIds.add(playerIdStr)
+            playerIds += playerIdStr
         }
 
-        // Remove each player
         for (playerIdStr in playerIds) {
             try {
-                UUID.fromString(playerIdStr) // Validate UUID format
-
-                // Publish offline event before cleanup
+                // Publish offline event
                 redis.publish(Signals.PLAYER_OFFLINE, PlayerOfflineEvent(playerIdStr, serverId))
 
-                // Remove from online players set
-                redis.query.srem(ONLINE_PLAYERS_SET, playerIdStr)
-
-                // Delete player info
+                // Delete the source of truth
                 redis.query.del(PLAYER_INFO_PREFIX + playerIdStr)
             } catch (_: Exception) {
-                // Ignore invalid UUIDs
+                // Ignore errors during cleanup
             }
         }
 
-        // Delete the server players set
+        // Delete the derived index
         redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
     }
 
-    /**
-     * Clean up stale entries from the global online players set
-     * This removes player UUIDs where the player info no longer exists
-     */
-    private suspend fun cleanupStaleOnlinePlayers() {
-        val stalePlayerIds = mutableListOf<String>()
+    override suspend fun refreshServerPlayersTtl(serverId: String, ttl: Long) {
+        // Refresh TTL on the derived index
+        redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
 
-        redis.query.smembers(ONLINE_PLAYERS_SET).collect { playerIdStr ->
-            // Check if player info still exists
-            val exists = redis.query.exists(PLAYER_INFO_PREFIX + playerIdStr) ?: 0L
-            if (exists == 0L) {
-                stalePlayerIds.add(playerIdStr)
+        // Refresh TTL on each player's source-of-truth key
+        redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
+            try {
+                val key = PLAYER_INFO_PREFIX + playerIdStr
+                // Only refresh if the key still exists (don't resurrect expired keys)
+                val exists = redis.query.exists(key) ?: 0L
+                if (exists > 0L) {
+                    redis.query.expire(key, ttl)
+                } else {
+                    // Key expired – clean up the stale set entry
+                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                }
+            } catch (_: Exception) {
+                // Ignore individual refresh failures
             }
         }
+    }
 
-        // Remove stale entries
-        if (stalePlayerIds.isNotEmpty()) {
-            redis.query.srem(ONLINE_PLAYERS_SET, *stalePlayerIds.toTypedArray())
-        }
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private fun safeUuid(str: String): UUID? = try {
+        UUID.fromString(str)
+    } catch (_: Exception) {
+        null
     }
 }
 

@@ -7,11 +7,23 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 /**
+ * The status of a player in the network
+ */
+@Serializable
+enum class PlayerStatus {
+    /** Player is online and connected to a server */
+    ONLINE,
+    /** Player is transferring between servers */
+    TRANSFERRING
+}
+
+/**
  * Information about a player in the network
  *
  * @property id The unique identifier (UUID) of the player
  * @property username The current username of the player
  * @property serverId The ID of the server the player is currently on, or null if offline
+ * @property status The current status of the player
  * @property lastSeen The timestamp when the player was last seen online
  */
 @OptIn(ExperimentalTime::class)
@@ -21,6 +33,7 @@ data class PlayerInfo(
     val id: UUID,
     val username: String,
     val serverId: String? = null,
+    val status: PlayerStatus = PlayerStatus.ONLINE,
     val lastSeen: Instant
 )
 

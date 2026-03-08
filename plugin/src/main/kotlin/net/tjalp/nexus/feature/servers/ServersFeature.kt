@@ -10,6 +10,7 @@ import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
 import net.tjalp.nexus.player.PlayerRegistry
+import net.tjalp.nexus.player.PlayerStatus
 import net.tjalp.nexus.player.RedisPlayerRegistry
 import net.tjalp.nexus.redis.RedisConfig
 import net.tjalp.nexus.server.RedisServerRegistry
@@ -123,9 +124,12 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         heartbeatJob?.cancel()
 
-        // Unregister this server
+        // Clean up players and unregister this server
         runBlocking {
             try {
+                // Clean up all players on this server first
+                playerRegistry.cleanupServerPlayers(serverInfo.id)
+
                 serverRegistry.unregisterServer(serverInfo.id)
                 NexusPlugin.logger.info("Unregistered server '${serverInfo.name}' (${serverInfo.id})")
             } catch (e: Exception) {
@@ -146,19 +150,8 @@ class ServersFeature : Feature(SERVERS), Listener {
                     val playerCount = NexusPlugin.server.onlinePlayers.size
                     serverRegistry.updateHeartbeat(serverInfo.id, playerCount, ttl)
 
-                    // Refresh player TTLs to keep them alive
-                    NexusPlugin.server.onlinePlayers.forEach { player ->
-                        try {
-                            playerRegistry.updatePlayerLocation(
-                                playerId = player.uniqueId,
-                                username = player.name,
-                                serverId = serverInfo.id,
-                                ttl = ttl
-                            )
-                        } catch (e: Exception) {
-                            NexusPlugin.logger.warning("Failed to refresh player TTL for ${player.name}: ${e.message}")
-                        }
-                    }
+                    // Refresh TTLs for all players on this server in one call
+                    playerRegistry.refreshServerPlayersTtl(serverInfo.id, ttl)
                 } catch (e: Exception) {
                     NexusPlugin.logger.warning("Failed to send heartbeat: ${e.message}")
                 }
@@ -170,7 +163,7 @@ class ServersFeature : Feature(SERVERS), Listener {
     fun onPlayerJoin(event: PlayerJoinEvent) {
         scheduler.launch {
             try {
-                playerRegistry.updatePlayerLocation(
+                playerRegistry.registerPlayer(
                     playerId = event.player.uniqueId,
                     username = event.player.name,
                     serverId = serverInfo.id,
@@ -200,7 +193,11 @@ class ServersFeature : Feature(SERVERS), Listener {
 
             val existingPlayer = playerRegistry.getPlayer(id)
 
-            if (existingPlayer != null && existingPlayer.serverId != null && existingPlayer.serverId != serverInfo.id) {
+            if (existingPlayer != null
+                && existingPlayer.status != PlayerStatus.TRANSFERRING
+                && existingPlayer.serverId != null
+                && existingPlayer.serverId != serverInfo.id
+            ) {
                 event.kickMessage(translatable("multiserver.kick.already_online", RED))
             }
         }
@@ -210,11 +207,15 @@ class ServersFeature : Feature(SERVERS), Listener {
     fun onPlayerQuit(event: PlayerQuitEvent) {
         scheduler.launch {
             try {
-                playerRegistry.updatePlayerLocation(
-                    playerId = event.player.uniqueId,
-                    username = event.player.name,
-                    serverId = null
-                )
+                // Check if the player is transferring – if so, don't remove them.
+                // The receiving server will call registerPlayer() to update their info,
+                // or the TTL will expire if the transfer fails.
+                val player = playerRegistry.getPlayer(event.player.uniqueId)
+                if (player != null && player.status == PlayerStatus.TRANSFERRING) {
+                    return@launch
+                }
+
+                playerRegistry.removePlayer(event.player.uniqueId)
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("Failed to track player quit: ${e.message}")
             }
@@ -222,7 +223,10 @@ class ServersFeature : Feature(SERVERS), Listener {
     }
 
     /**
-     * Transfer a player to another server
+     * Transfer a player to another server.
+     * Marks the player as TRANSFERRING so they remain in the registry
+     * during the transition. If the transfer fails, the entry will
+     * auto-expire based on the TTL.
      *
      * @param player The player to transfer
      * @param serverId The ID of the target server
@@ -234,6 +238,10 @@ class ServersFeature : Feature(SERVERS), Listener {
         if (targetServer == null || !targetServer.online) {
             return false
         }
+
+        // Mark the player as transferring BEFORE initiating the transfer.
+        // This prevents onPlayerQuit from fully removing them from the registry.
+        playerRegistry.markTransferring(player.uniqueId, heartbeatTtl)
 
         player.transfer(targetServer.host, targetServer.port)
 
