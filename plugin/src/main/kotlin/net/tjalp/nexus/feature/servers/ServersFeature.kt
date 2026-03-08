@@ -1,6 +1,11 @@
 package net.tjalp.nexus.feature.servers
 
+import io.papermc.paper.connection.PlayerLoginConnection
+import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent
 import kotlinx.coroutines.*
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.translatable
+import net.kyori.adventure.text.format.NamedTextColor.RED
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
@@ -173,6 +178,30 @@ class ServersFeature : Feature(SERVERS), Listener {
                 )
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("Failed to track player join: ${e.message}")
+            }
+        }
+    }
+
+    @Suppress("UnstableApiUsage")
+    @EventHandler(priority = EventPriority.LOW)
+    fun onConnectionValidate(event: PlayerConnectionValidateLoginEvent) {
+        val conn = event.connection
+
+        if (conn !is PlayerLoginConnection) return
+
+        // disallow if already online on another server in the network
+        runBlocking {
+            val id = conn.authenticatedProfile?.id
+
+            if (id == null) {
+                event.kickMessage(text("Failed to verify your profile, please try again later", RED))
+                return@runBlocking
+            }
+
+            val existingPlayer = playerRegistry.getPlayer(id)
+
+            if (existingPlayer != null && existingPlayer.serverId != null && existingPlayer.serverId != serverInfo.id) {
+                event.kickMessage(translatable("multiserver.kick.already_online", RED))
             }
         }
     }
