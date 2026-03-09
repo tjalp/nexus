@@ -150,8 +150,9 @@ class ServersFeature : Feature(SERVERS), Listener {
                     val playerCount = NexusPlugin.server.onlinePlayers.size
                     serverRegistry.updateHeartbeat(serverInfo.id, playerCount, ttl)
 
-                    // Refresh TTLs for all players on this server in one call
-                    playerRegistry.refreshServerPlayersTtl(serverInfo.id, ttl)
+                    // Refresh TTLs only for players that are genuinely online right now
+                    val onlineIds = NexusPlugin.server.onlinePlayers.map { it.uniqueId }.toSet()
+                    playerRegistry.refreshServerPlayersTtl(serverInfo.id, ttl, onlineIds)
                 } catch (e: Exception) {
                     NexusPlugin.logger.warning("Failed to send heartbeat: ${e.message}")
                 }

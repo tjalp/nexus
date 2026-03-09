@@ -80,13 +80,18 @@ interface PlayerRegistry {
     suspend fun cleanupServerPlayers(serverId: String)
 
     /**
-     * Refresh the TTL of all players on a server.
+     * Refresh the TTL of players that are currently online on a server.
      * Called during heartbeat to keep player entries alive.
+     *
+     * Only players whose UUID is present in [onlinePlayerIds] will have their TTL
+     * refreshed. Players that are absent (e.g. transferring) are intentionally
+     * skipped so that their TTL is not extended by this server's heartbeat.
      *
      * @param serverId The ID of the server
      * @param ttl Time in seconds for the new TTL
+     * @param onlinePlayerIds UUIDs of players that are genuinely online on this server right now
      */
-    suspend fun refreshServerPlayersTtl(serverId: String, ttl: Long)
+    suspend fun refreshServerPlayersTtl(serverId: String, ttl: Long, onlinePlayerIds: Set<UUID>)
 
     /**
      * Flow of player online events

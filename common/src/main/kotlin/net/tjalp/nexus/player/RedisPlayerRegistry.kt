@@ -151,7 +151,7 @@ class RedisPlayerRegistry(
             username = username,
             serverId = serverId,
             status = PlayerStatus.ONLINE,
-            lastSeen = kotlin.time.Clock.System.now()
+            lastSeen = Clock.System.now()
         )
 
         val json = Json.encodeToString(PlayerInfo.serializer(), newInfo)
@@ -252,26 +252,45 @@ class RedisPlayerRegistry(
         redis.query.del(SERVER_PLAYERS_PREFIX + serverId)
     }
 
-    override suspend fun refreshServerPlayersTtl(serverId: String, ttl: Long) {
+    override suspend fun refreshServerPlayersTtl(serverId: String, ttl: Long, onlinePlayerIds: Set<UUID>) {
         // Refresh TTL on the derived index
         redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
 
-        // Refresh TTL on each player's source-of-truth key
-        redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
+        onlinePlayerIds.forEach { id ->
             try {
-                val key = PLAYER_INFO_PREFIX + playerIdStr
-                // Only refresh if the key still exists (don't resurrect expired keys)
+                val key = PLAYER_INFO_PREFIX + id
                 val exists = redis.query.exists(key) ?: 0L
+
                 if (exists > 0L) {
                     redis.query.expire(key, ttl)
-                } else {
-                    // Key expired – clean up the stale set entry
-                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                    return@forEach
                 }
-            } catch (_: Exception) {
-                // Ignore individual refresh failures
-            }
+
+                // Key expired – clean up the stale set entry
+                redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, id.toString())
+            } catch (_: Exception) {}
         }
+//        redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
+//            try {
+//                val uuid = safeUuid(playerIdStr) ?: run {
+//                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+//                    return@collect
+//                }
+//
+//                if (uuid !in onlinePlayerIds) return@collect
+//
+//                val key = PLAYER_INFO_PREFIX + playerIdStr
+//                val exists = redis.query.exists(key) ?: 0L
+//                if (exists > 0L) {
+//                    redis.query.expire(key, ttl)
+//                } else {
+//                    // Key expired – clean up the stale set entry
+//                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+//                }
+//            } catch (_: Exception) {
+//                // Ignore individual refresh failures
+//            }
+//        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

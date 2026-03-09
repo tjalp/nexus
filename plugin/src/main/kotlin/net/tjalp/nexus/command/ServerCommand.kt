@@ -141,7 +141,7 @@ object ServerCommand {
 
             players.forEach { player ->
                 launch {
-                    player.sendMessage(
+                    player.sendActionBar(
                         Component.text("Transferring to ", NamedTextColor.GRAY)
                             .append(Component.text(targetServer.name, PRIMARY_COLOR))
                             .append(Component.text("...", NamedTextColor.GRAY))
