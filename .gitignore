@@ -5,6 +5,9 @@ build/
 !**/src/test/**/build/
 run/
 backend/docs/
+dev/plugins/
+dev/*-plugins/
+dev/*-server-data/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

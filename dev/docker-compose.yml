@@ -1,0 +1,61 @@
+name: "nexus"
+services:
+#  survival:
+#    image: itzg/minecraft-server
+#    restart: unless-stopped
+#    tty: true
+#    stdin_open: true
+#    ports:
+#      - "25565:25565"
+#      - "19132:19132/udp"
+#    environment:
+#      EULA: "TRUE"
+#      MEMORY: "2G"
+#      TYPE: "PAPER"
+#      VERSION: "1.21.11"
+#      USE_AIKAR_FLAGS: "true"
+#      TZ: "Europe/Amsterdam"
+#    volumes:
+#      - survival-data:/data
+  creative:
+    image: itzg/minecraft-server
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "25566:25565"
+      - "19133:19132/udp"
+    environment:
+      EULA: "TRUE"
+      MEMORY: "2G"
+      TYPE: "PAPER"
+      VERSION: "1.21.11"
+      USE_AIKAR_FLAGS: "true"
+      TZ: "Europe/Amsterdam"
+    volumes:
+#      - creative-data:/data
+      - ./plugins:/plugins
+      - ./creative-server-data:/data
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mcuser
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: minecraft
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+  redis:
+    image: redis:8
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+volumes:
+  creative-data:
+  survival-data:
+  postgres-data:
+  redis-data:

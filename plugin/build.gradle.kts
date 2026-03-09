@@ -67,6 +67,17 @@ tasks.register<JavaExec>("generateMigrationScript") {
     mainClass = "net.tjalp.nexus.GenerateMigrationScriptKt"
 }
 
+tasks.register<Copy>("copyJarToDevPlugins") {
+    group = "application"
+    description = "Copy the built jar to the /dev/plugins/ directory for testing"
+
+    // copy and rename file to "nexus.jar"
+    dependsOn(tasks.shadowJar)
+    from(tasks.shadowJar.get().archiveFile)
+    rename { "nexus.jar" }
+    into(file("../dev/plugins/"))
+}
+
 tasks.shadowJar {
     mergeServiceFiles {
         include("META-INF/services/**")

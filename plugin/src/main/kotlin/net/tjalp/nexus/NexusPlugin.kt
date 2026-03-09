@@ -71,7 +71,11 @@ object NexusPlugin : JavaPlugin() {
             password = configuration.database.password
         )
         runMigrations()
-        redis = RedisController("redis://localhost")
+        redis = RedisController(
+            host = configuration.redis.host,
+            port = configuration.redis.port,
+            password = configuration.redis.password
+        )
         profiles = ExposedProfilesService(db = database, redis = redis, scope = scheduler)
         PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }

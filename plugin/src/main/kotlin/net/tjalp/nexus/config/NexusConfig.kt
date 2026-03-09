@@ -12,6 +12,7 @@ import java.nio.file.Path
 @ConfigSerializable
 data class NexusConfig(
     val database: DatabaseConfig,
+    val redis: RedisConfig,
     val features: FeaturesConfig
 ) {
 
@@ -53,6 +54,13 @@ data class DatabaseConfig(
     val driver: String = "org.postgresql.Driver",
     val user: String = "postgres",
     val password: String = "postgres",
+)
+
+@ConfigSerializable
+data class RedisConfig(
+    val host: String = "localhost",
+    val port: Int = 6379,
+    val password: String = "",
 )
 
 @ConfigSerializable
