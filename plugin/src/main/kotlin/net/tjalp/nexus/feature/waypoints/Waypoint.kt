@@ -7,9 +7,8 @@ import net.tjalp.nexus.NexusPlugin
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.World
-import org.bukkit.attribute.Attribute
-import org.bukkit.entity.ArmorStand
-import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Player
+import java.util.*
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -25,6 +24,9 @@ import kotlin.uuid.toKotlinUuid
  * @param z The z-coordinate of the waypoint.
  * @param colorRgb The color of the waypoint in RGB format.
  * @param styleString The style of the waypoint as a string.
+ * @param transmitRange The maximum visible range of the waypoint
+ * @param isGlobal Whether this waypoint is visible to all players in the world.
+ * @param visibleTo The explicit player audience for this waypoint when [isGlobal] is false
  */
 @OptIn(ExperimentalUuidApi::class)
 @Serializable
@@ -36,6 +38,9 @@ class Waypoint(
     private var z: Double,
     private var colorRgb: Int,
     private var styleString: String,
+    var transmitRange: Double = Double.MAX_VALUE,
+    private var isGlobal: Boolean = true,
+    private var visibleTo: Set<Uuid> = emptySet()
 ) {
 
     /**
@@ -45,23 +50,20 @@ class Waypoint(
      * @param location The location of the waypoint.
      * @param color The color of the waypoint.
      * @param style The style of the waypoint.
+     * @param transmitRange The maximum visible range of the waypoint
      */
-    constructor(id: String, location: Location, color: Color, style: Key) : this(
+    constructor(id: String, location: Location, color: Color, style: Key, transmitRange: Double = Double.MAX_VALUE) : this(
         id,
         location.world!!.uid.toKotlinUuid(),
         location.x,
         location.y,
         location.z,
         color.asRGB(),
-        style.asString()
+        style.asString(),
+        transmitRange,
     ) {
         require(location.world != null) { "Location world cannot be null" }
     }
-
-    /**
-     * The entity representing the waypoint in the world.
-     */
-    var entity: LivingEntity? = null; private set
 
     /**
      * The world the waypoint is located in.
@@ -75,16 +77,11 @@ class Waypoint(
      */
     var location: Location
         set(value) {
-            // remove chunk ticket from old location
-            world?.getChunkAt(location)?.removePluginChunkTicket(NexusPlugin)
-
-            // teleport entity if spawned
-            entity?.teleport(value)
+            val world = requireNotNull(value.world) { "Location world cannot be null" }
             x = value.x
             y = value.y
             z = value.z
-            worldId = value.world.uid.toKotlinUuid()
-            world?.getChunkAt(value)?.addPluginChunkTicket(NexusPlugin)
+            worldId = world.uid.toKotlinUuid()
         }
         get() = Location(world, x, y, z)
 
@@ -103,29 +100,54 @@ class Waypoint(
      */
     var style: Key
         set(value) {
-            // TODO("Handle updating the entity style if spawned")
             styleString = value.asString()
         }
         get() = key(styleString)
 
     /**
-     * Spawns the waypoint entity in the world.
+     * Whether this waypoint is visible to all players in the world.
      */
-    fun spawn(world: World) {
-        require(entity == null || entity?.isValid == false) { "Waypoint entity already spawned" }
-
-        entity = world.spawn(location, ArmorStand::class.java) {
-            it.isPersistent = false
-//            it.isMarker = true
-            it.getAttribute(Attribute.WAYPOINT_TRANSMIT_RANGE)?.baseValue = Double.MAX_VALUE
+    var global: Boolean
+        get() = isGlobal
+        set(value) {
+            isGlobal = value
+            if (value) visibleTo = emptySet()
         }
+
+    /**
+     * The explicit player audience for this waypoint when [global] is false.
+     */
+    val audience: Set<UUID>
+        get() = visibleTo.map { it.toJavaUuid() }.toSet()
+
+    /**
+     * Makes this waypoint private and visible to the given players only.
+     */
+    fun showTo(players: Set<UUID>) {
+        isGlobal = false
+        visibleTo = players.map { it.toKotlinUuid() }.toSet()
     }
 
     /**
-     * Despawns the waypoint entity from the world.
+     * Adds one player to this waypoint's private audience.
      */
-    fun despawn() {
-        entity?.remove()
-        entity = null
+    fun showTo(playerId: UUID) {
+        isGlobal = false
+        visibleTo = visibleTo + playerId.toKotlinUuid()
+    }
+
+    /**
+     * Removes one player from this waypoint's private audience.
+     */
+    fun hideFrom(playerId: UUID) {
+        visibleTo = visibleTo - playerId.toKotlinUuid()
+    }
+
+    /**
+     * Checks if this waypoint should be shown to the given player.
+     */
+    fun isVisibleTo(player: Player): Boolean {
+        if (player.world.uid != worldId.toJavaUuid()) return false
+        return isGlobal || visibleTo.contains(player.uniqueId.toKotlinUuid())
     }
 }

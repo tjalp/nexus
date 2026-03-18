@@ -1,6 +1,7 @@
 package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
+import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
@@ -9,8 +10,10 @@ import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.argument
 import io.papermc.paper.command.brigadier.Commands.literal
 import io.papermc.paper.command.brigadier.MessageComponentSerializer
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component.translatable
+import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.WaypointArgument
@@ -34,24 +37,50 @@ object WaypointCommand {
             .requires { NexusPlugin.waypoints != null && it.sender.hasPermission("nexus.command.waypoint") }
             .then(literal("create")
                 .then(argument("id", StringArgumentType.string())
-                    .executes { context -> createWaypoint(context, context.getArgument("id", String::class.java)) }))
+                    .executes { context -> createWaypoint(context, context.getArgument("id", String::class.java)) }
+                    .then(argument("color", ArgumentTypes.namedColor())
+                        .executes { context -> createWaypoint(
+                            context,
+                            id = StringArgumentType.getString(context, "id"),
+                            color = Color.fromRGB(context.getArgument("color", TextColor::class.java).value())
+                        ) }
+                        .then(argument("style", StringArgumentType.word())
+                            .executes { context -> createWaypoint(
+                                context,
+                                id = StringArgumentType.getString(context, "id"),
+                                color = Color.fromRGB(context.getArgument("color", TextColor::class.java).value()),
+                                style = Key.key(context.getArgument("style", String::class.java))
+                            ) }
+                            .then(argument("transmitRange", DoubleArgumentType.doubleArg())
+                                .executes { context -> createWaypoint(
+                                    context,
+                                    id = StringArgumentType.getString(context, "id"),
+                                    color = Color.fromRGB(context.getArgument("color", TextColor::class.java).value()),
+                                    style = Key.key(context.getArgument("style", String::class.java)),
+                                    transmitRange = DoubleArgumentType.getDouble(context, "transmitRange"),
+                                ) })))))
             .then(literal("remove")
                 .then(argument("id", WaypointArgument)
                     .executes { context -> removeWaypoint(context, context.getArgument("id", Waypoint::class.java)) }))
             .build()
     }
 
-    private fun createWaypoint(context: CommandContext<CommandSourceStack>, id: String): Int {
+    private fun createWaypoint(
+        context: CommandContext<CommandSourceStack>,
+        id: String,
+        color: Color = Color.WHITE,
+        style: Key = Key.key("default"),
+        transmitRange: Double = Double.MAX_VALUE,
+    ): Int {
         val location = context.source.location
         val world = location.world
-        val waypoint = Waypoint(id, location, Color.WHITE, Key.key("default"))
+        val waypoint = Waypoint(id, location, color, style, transmitRange)
 
         if (waypoints.availableWaypoints.find { it.id == id } != null) {
             throw ERROR_DUPLICATE_WAYPOINT.create(id)
         }
 
         waypoints.saveWaypoint(world, waypoint)
-        waypoint.spawn(world)
 
         context.source.sender.sendMessage(
             translatable("command.waypoint.create.success", Argument.string("id", id))

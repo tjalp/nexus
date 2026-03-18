@@ -9,6 +9,8 @@ import org.bukkit.NamespacedKey
 import org.bukkit.World
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerChangedWorldEvent
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.world.WorldLoadEvent
 import org.bukkit.event.world.WorldUnloadEvent
 import org.bukkit.persistence.PersistentDataType
@@ -17,6 +19,8 @@ import org.bukkit.persistence.PersistentDataType
  * Feature that manages waypoints in the world.
  */
 class WaypointsFeature : Feature(WAYPOINTS), Listener {
+
+    private val displayManager = WaypointDisplayManager()
 
     /**
      * All available waypoints across all (loaded) worlds.
@@ -31,9 +35,16 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     override fun onEnable() {
         this.register()
+
+        // Handle worlds that are already loaded when the feature is enabled.
+        NexusPlugin.server.worlds.forEach { world ->
+            loadWaypoints(world)
+        }
     }
 
     override fun onDisposed() {
+        _loadedWaypoints.clear()
+        displayManager.clear()
         this.unregister()
     }
 
@@ -58,13 +69,14 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      * @param world The world to load the waypoints from.
      */
     fun loadWaypoints(world: World) {
-        val waypoints = readWaypoints(world)
+        val oldWaypoints = _loadedWaypoints.filter { it.world == world }
+        oldWaypoints.forEach { displayManager.unregister(it) }
+        _loadedWaypoints.removeAll(oldWaypoints.toSet())
 
-        _loadedWaypoints.forEach { it.despawn() }
-        _loadedWaypoints.clear()
+        val waypoints = readWaypoints(world)
         _loadedWaypoints.addAll(waypoints)
 
-        waypoints.forEach { it.spawn(world) }
+        waypoints.forEach { displayManager.register(it) }
     }
 
     /**
@@ -85,6 +97,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
         )
 
         _loadedWaypoints.add(waypoint)
+        displayManager.register(waypoint)
     }
 
     /**
@@ -104,27 +117,32 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
         )
 
         _loadedWaypoints.remove(waypoint)
-        waypoint.despawn()
+        displayManager.unregister(waypoint)
     }
 
     @EventHandler
     fun on(event: WorldLoadEvent) {
-        val world = event.world
-        val waypoints = readWaypoints(world)
-
-        _loadedWaypoints.addAll(waypoints)
-
-        waypoints.forEach { it.spawn(world) }
+        loadWaypoints(event.world)
     }
 
     @EventHandler
     fun on(event: WorldUnloadEvent) {
         for (waypoint in loadedWaypoints.toList()) {
-            if (waypoint.location.world == event.world) {
-                waypoint.despawn()
+            if (waypoint.world == event.world) {
+                displayManager.unregister(waypoint)
                 _loadedWaypoints.remove(waypoint)
             }
         }
+    }
+
+    @EventHandler
+    fun on(event: PlayerJoinEvent) {
+        displayManager.refresh(event.player, loadedWaypoints)
+    }
+
+    @EventHandler
+    fun on(event: PlayerChangedWorldEvent) {
+        displayManager.refresh(event.player, loadedWaypoints)
     }
 
     companion object {
