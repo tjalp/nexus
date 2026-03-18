@@ -4,7 +4,9 @@ import net.tjalp.nexus.player.PlayerChangeServerEvent
 import net.tjalp.nexus.player.PlayerOfflineEvent
 import net.tjalp.nexus.player.PlayerOnlineEvent
 import net.tjalp.nexus.serializer.UUIDAsStringSerializer
-import net.tjalp.nexus.server.*
+import net.tjalp.nexus.server.ServerHeartbeat
+import net.tjalp.nexus.server.ServerOfflineEvent
+import net.tjalp.nexus.server.ServerOnlineEvent
 import java.util.*
 
 /**
@@ -46,24 +48,6 @@ object Signals {
         namespace = SignalNamespace("server:heartbeat"),
         type = ServerHeartbeat::class,
         serializer = ServerHeartbeat.serializer()
-    )
-
-    /**
-     * Player join server signal key, used to indicate a player joined a server.
-     */
-    val PLAYER_JOIN_SERVER = SignalKey(
-        namespace = SignalNamespace("server:player:join"),
-        type = PlayerJoinServerEvent::class,
-        serializer = PlayerJoinServerEvent.serializer()
-    )
-
-    /**
-     * Player leave server signal key, used to indicate a player left a server.
-     */
-    val PLAYER_LEAVE_SERVER = SignalKey(
-        namespace = SignalNamespace("server:player:leave"),
-        type = PlayerLeaveServerEvent::class,
-        serializer = PlayerLeaveServerEvent.serializer()
     )
 
     /**

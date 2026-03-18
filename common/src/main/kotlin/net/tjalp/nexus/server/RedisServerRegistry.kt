@@ -24,13 +24,9 @@ class RedisServerRegistry(
 
     private val _serverOnlineEvents = MutableSharedFlow<ServerOnlineEvent>()
     private val _serverOfflineEvents = MutableSharedFlow<ServerOfflineEvent>()
-    private val _playerJoinEvents = MutableSharedFlow<PlayerJoinServerEvent>()
-    private val _playerLeaveEvents = MutableSharedFlow<PlayerLeaveServerEvent>()
 
     override val serverOnlineEvents: Flow<ServerOnlineEvent> = _serverOnlineEvents.asSharedFlow()
     override val serverOfflineEvents: Flow<ServerOfflineEvent> = _serverOfflineEvents.asSharedFlow()
-    override val playerJoinEvents: Flow<PlayerJoinServerEvent> = _playerJoinEvents.asSharedFlow()
-    override val playerLeaveEvents: Flow<PlayerLeaveServerEvent> = _playerLeaveEvents.asSharedFlow()
 
     companion object {
         private const val SERVER_INFO_PREFIX = "nexus:server:info:"
@@ -47,18 +43,6 @@ class RedisServerRegistry(
         scope.launch {
             redis.subscribe(Signals.SERVER_OFFLINE).collect { event ->
                 _serverOfflineEvents.emit(event)
-            }
-        }
-
-        scope.launch {
-            redis.subscribe(Signals.PLAYER_JOIN_SERVER).collect { event ->
-                _playerJoinEvents.emit(event)
-            }
-        }
-
-        scope.launch {
-            redis.subscribe(Signals.PLAYER_LEAVE_SERVER).collect { event ->
-                _playerLeaveEvents.emit(event)
             }
         }
 

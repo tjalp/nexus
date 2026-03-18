@@ -62,15 +62,5 @@ interface ServerRegistry {
      * Flow of server offline events
      */
     val serverOfflineEvents: Flow<ServerOfflineEvent>
-
-    /**
-     * Flow of player join server events
-     */
-    val playerJoinEvents: Flow<PlayerJoinServerEvent>
-
-    /**
-     * Flow of player leave server events
-     */
-    val playerLeaveEvents: Flow<PlayerLeaveServerEvent>
 }
 
