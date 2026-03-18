@@ -71,6 +71,12 @@ class Waypoint(
     val world: World?; get() = NexusPlugin.server.getWorld(worldId.toJavaUuid())
 
     /**
+     * The UUID of the world this waypoint belongs to.
+     */
+    val worldUuid: UUID
+        get() = worldId.toJavaUuid()
+
+    /**
      * The location of the waypoint.
      * Setting this will teleport the entity if it is spawned.
      * Warning: The world WILL be null if the entity is not spawned.

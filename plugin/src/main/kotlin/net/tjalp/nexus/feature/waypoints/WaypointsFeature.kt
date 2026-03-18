@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.waypoints
 
+import io.papermc.paper.event.player.PlayerClientLoadedWorldEvent
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.WAYPOINTS
@@ -10,7 +11,7 @@ import org.bukkit.World
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerChangedWorldEvent
-import org.bukkit.event.player.PlayerJoinEvent
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.world.WorldLoadEvent
 import org.bukkit.event.world.WorldUnloadEvent
 import org.bukkit.persistence.PersistentDataType
@@ -127,7 +128,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     @EventHandler
     fun on(event: WorldUnloadEvent) {
-        for (waypoint in loadedWaypoints.toList()) {
+        for (waypoint in loadedWaypoints) {
             if (waypoint.world == event.world) {
                 displayManager.unregister(waypoint)
                 _loadedWaypoints.remove(waypoint)
@@ -136,13 +137,18 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
     }
 
     @EventHandler
-    fun on(event: PlayerJoinEvent) {
+    fun on(event: PlayerClientLoadedWorldEvent) {
         displayManager.refresh(event.player, loadedWaypoints)
     }
 
     @EventHandler
     fun on(event: PlayerChangedWorldEvent) {
         displayManager.refresh(event.player, loadedWaypoints)
+    }
+
+    @EventHandler
+    fun on(event: PlayerQuitEvent) {
+        displayManager.untrackAll(event.player)
     }
 
     companion object {
