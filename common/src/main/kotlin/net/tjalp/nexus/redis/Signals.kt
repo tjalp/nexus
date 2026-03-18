@@ -1,5 +1,6 @@
 package net.tjalp.nexus.redis
 
+import net.tjalp.nexus.chat.ChatMessageSignal
 import net.tjalp.nexus.player.PlayerChangeServerEvent
 import net.tjalp.nexus.player.PlayerOfflineEvent
 import net.tjalp.nexus.player.PlayerOnlineEvent
@@ -75,5 +76,11 @@ object Signals {
         namespace = SignalNamespace("player:change-server"),
         type = PlayerChangeServerEvent::class,
         serializer = PlayerChangeServerEvent.serializer()
+    )
+
+    val CHAT_MESSAGE = SignalKey(
+        namespace = SignalNamespace("chat:message"),
+        type = ChatMessageSignal::class,
+        serializer = ChatMessageSignal.serializer()
     )
 }

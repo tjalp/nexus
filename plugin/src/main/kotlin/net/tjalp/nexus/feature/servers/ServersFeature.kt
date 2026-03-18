@@ -39,9 +39,14 @@ class ServersFeature : Feature(SERVERS), Listener {
     lateinit var playerRegistry: PlayerRegistry
         private set
 
-    private lateinit var serverInfo: ServerInfo
+    lateinit var serverInfo: ServerInfo
+        private set
+
     private var heartbeatJob: Job? = null
     private var heartbeatTtl: Long = 60
+
+    var globalChat: GlobalChatHandler? = null
+        private set
 
     override fun onEnable() {
         val config = NexusPlugin.configuration.features.servers
@@ -135,9 +140,12 @@ class ServersFeature : Feature(SERVERS), Listener {
                 NexusPlugin.logger.info("Player ${event.playerId} transferred from server ${event.fromServerId} to ${event.toServerId}")
             }
         }
+
+        globalChat = GlobalChatHandler(this)
     }
 
     override fun onDisposed() {
+        globalChat?.dispose()
         this.unregister()
 
         heartbeatJob?.cancel()
