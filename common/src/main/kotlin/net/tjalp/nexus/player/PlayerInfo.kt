@@ -56,7 +56,7 @@ data class PlayerOnlineEvent(
 @Serializable
 data class PlayerOfflineEvent(
     val playerId: String,
-    val lastServerId: String
+    val lastServerId: String?
 )
 
 /**

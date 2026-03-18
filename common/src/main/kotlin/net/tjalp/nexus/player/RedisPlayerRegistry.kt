@@ -77,12 +77,12 @@ class RedisPlayerRegistry(
 
         // Listen for player info key expirations (server crash / transfer timeout).
         // When a player info key expires the player is gone – the per-server set also
-        // has a TTL so it will self-expire. No action needed here beyond observing.
+        // has a TTL so it will self-expire.
         scope.launch {
-            redis.subscribeToKeyExpirations(PLAYER_INFO_PREFIX).collect { _ ->
-                // The per-server set has a matching TTL, so it self-cleans.
-                // We could attempt to remove from derived indices here, but the
-                // key is already gone so we don't know the serverId. This is fine.
+            redis.subscribeToKeyExpirations(PLAYER_INFO_PREFIX).collect { expiredKey ->
+                val playerId = expiredKey.removePrefix(PLAYER_INFO_PREFIX)
+
+                _playerOfflineEvents.emit(PlayerOfflineEvent(playerId, null))
             }
         }
     }
@@ -270,27 +270,28 @@ class RedisPlayerRegistry(
                 redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, id.toString())
             } catch (_: Exception) {}
         }
-//        redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
-//            try {
-//                val uuid = safeUuid(playerIdStr) ?: run {
-//                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
-//                    return@collect
-//                }
-//
-//                if (uuid !in onlinePlayerIds) return@collect
-//
-//                val key = PLAYER_INFO_PREFIX + playerIdStr
-//                val exists = redis.query.exists(key) ?: 0L
-//                if (exists > 0L) {
-//                    redis.query.expire(key, ttl)
-//                } else {
-//                    // Key expired – clean up the stale set entry
-//                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
-//                }
-//            } catch (_: Exception) {
-//                // Ignore individual refresh failures
-//            }
-//        }
+
+        redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
+            try {
+                val uuid = safeUuid(playerIdStr) ?: run {
+                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                    return@collect
+                }
+
+                if (uuid in onlinePlayerIds) return@collect
+
+                val key = PLAYER_INFO_PREFIX + playerIdStr
+                val exists = redis.query.exists(key) ?: 0L
+                if (exists > 0L) {
+                    redis.query.expire(key, ttl)
+                } else {
+                    // Key expired – clean up the stale set entry
+                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                }
+            } catch (_: Exception) {
+                // Ignore individual refresh failures
+            }
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

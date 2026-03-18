@@ -117,6 +117,20 @@ class ServersFeature : Feature(SERVERS), Listener {
                 }
             }
         }
+
+        scheduler.launch {
+            playerRegistry.playerOfflineEvents.collect { event ->
+                NexusPlugin.logger.info("Player with id ${event.playerId} went offline from server ${event.lastServerId}")
+            }
+
+            playerRegistry.playerOnlineEvents.collect { event ->
+                NexusPlugin.logger.info("Player ${event.player.username} came online on server ${event.player.serverId}")
+            }
+
+            playerRegistry.playerChangeServerEvents.collect { event ->
+                NexusPlugin.logger.info("Player ${event.playerId} transferred from server ${event.fromServerId} to ${event.toServerId}")
+            }
+        }
     }
 
     override fun onDisposed() {
