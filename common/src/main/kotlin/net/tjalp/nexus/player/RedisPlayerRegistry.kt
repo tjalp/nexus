@@ -238,11 +238,12 @@ class RedisPlayerRegistry(
 
         for (playerIdStr in playerIds) {
             try {
-                // Publish offline event
-                redis.publish(Signals.PLAYER_OFFLINE, PlayerOfflineEvent(playerIdStr, serverId))
-
-                // Delete the source of truth
-                redis.query.del(PLAYER_INFO_PREFIX + playerIdStr)
+                // Delete source-of-truth first. If another instance already removed it,
+                // skip publishing to avoid duplicate offline events.
+                val deleted = redis.query.del(PLAYER_INFO_PREFIX + playerIdStr) ?: 0L
+                if (deleted > 0L) {
+                    redis.publish(Signals.PLAYER_OFFLINE, PlayerOfflineEvent(playerIdStr, serverId))
+                }
             } catch (_: Exception) {
                 // Ignore errors during cleanup
             }
@@ -253,24 +254,11 @@ class RedisPlayerRegistry(
     }
 
     override suspend fun refreshServerPlayersTtl(serverId: String, ttl: Long, onlinePlayerIds: Set<UUID>) {
-        // Refresh TTL on the derived index
+        // Keep the derived per-server index alive while this server is healthy.
         redis.query.expire(SERVER_PLAYERS_PREFIX + serverId, ttl)
 
-        onlinePlayerIds.forEach { id ->
-            try {
-                val key = PLAYER_INFO_PREFIX + id
-                val exists = redis.query.exists(key) ?: 0L
-
-                if (exists > 0L) {
-                    redis.query.expire(key, ttl)
-                    return@forEach
-                }
-
-                // Key expired – clean up the stale set entry
-                redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, id.toString())
-            } catch (_: Exception) {}
-        }
-
+        // Only players that are actually online on this JVM server should get TTL refresh.
+        // TRANSFERRING (or any non-ONLINE status) is intentionally not refreshed.
         redis.query.smembers(SERVER_PLAYERS_PREFIX + serverId).collect { playerIdStr ->
             try {
                 val uuid = safeUuid(playerIdStr) ?: run {
@@ -278,16 +266,33 @@ class RedisPlayerRegistry(
                     return@collect
                 }
 
-                if (uuid in onlinePlayerIds) return@collect
-
                 val key = PLAYER_INFO_PREFIX + playerIdStr
-                val exists = redis.query.exists(key) ?: 0L
-                if (exists > 0L) {
-                    redis.query.expire(key, ttl)
-                } else {
-                    // Key expired – clean up the stale set entry
-                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+
+                if (uuid !in onlinePlayerIds) {
+                    // Not currently online here: never extend TTL. Only prune stale index entries.
+                    val exists = redis.query.exists(key) ?: 0L
+                    if (exists == 0L) {
+                        redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                    }
+                    return@collect
                 }
+
+                val info = getPlayer(uuid)
+                if (info == null) {
+                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                    return@collect
+                }
+
+                if (info.serverId != serverId) {
+                    // Stale membership in this server index.
+                    redis.query.srem(SERVER_PLAYERS_PREFIX + serverId, playerIdStr)
+                    return@collect
+                }
+
+                if (info.status == PlayerStatus.ONLINE) {
+                    redis.query.expire(key, ttl)
+                }
+                // If TRANSFERRING, do not refresh TTL from this server heartbeat.
             } catch (_: Exception) {
                 // Ignore individual refresh failures
             }
@@ -302,7 +307,4 @@ class RedisPlayerRegistry(
         null
     }
 }
-
-
-
 

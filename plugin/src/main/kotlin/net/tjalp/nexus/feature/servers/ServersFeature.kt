@@ -122,11 +122,15 @@ class ServersFeature : Feature(SERVERS), Listener {
             playerRegistry.playerOfflineEvents.collect { event ->
                 NexusPlugin.logger.info("Player with id ${event.playerId} went offline from server ${event.lastServerId}")
             }
+        }
 
+        scheduler.launch {
             playerRegistry.playerOnlineEvents.collect { event ->
                 NexusPlugin.logger.info("Player ${event.player.username} came online on server ${event.player.serverId}")
             }
+        }
 
+        scheduler.launch {
             playerRegistry.playerChangeServerEvents.collect { event ->
                 NexusPlugin.logger.info("Player ${event.playerId} transferred from server ${event.fromServerId} to ${event.toServerId}")
             }
@@ -284,5 +288,4 @@ class ServersFeature : Feature(SERVERS), Listener {
         return serverRegistry.getServer(serverId)
     }
 }
-
 
