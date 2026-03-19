@@ -21,7 +21,7 @@ import org.bukkit.persistence.PersistentDataType
  */
 class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
-    private val displayManager = WaypointDisplayManager()
+    private val renderer = WaypointRenderer()
 
     /**
      * All available waypoints across all (loaded) worlds.
@@ -45,7 +45,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     override fun onDisposed() {
         _loadedWaypoints.clear()
-        displayManager.clear()
+        renderer.clear()
         this.unregister()
     }
 
@@ -71,13 +71,13 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      */
     fun loadWaypoints(world: World) {
         val oldWaypoints = _loadedWaypoints.filter { it.world == world }
-        oldWaypoints.forEach { displayManager.unregister(it) }
+        oldWaypoints.forEach { renderer.unregister(it) }
         _loadedWaypoints.removeAll(oldWaypoints.toSet())
 
         val waypoints = readWaypoints(world)
         _loadedWaypoints.addAll(waypoints)
 
-        waypoints.forEach { displayManager.register(it) }
+        waypoints.forEach { renderer.register(it) }
     }
 
     /**
@@ -98,7 +98,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
         )
 
         _loadedWaypoints.add(waypoint)
-        displayManager.register(waypoint)
+        renderer.register(waypoint)
     }
 
     /**
@@ -118,7 +118,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
         )
 
         _loadedWaypoints.remove(waypoint)
-        displayManager.unregister(waypoint)
+        renderer.unregister(waypoint)
     }
 
     @EventHandler
@@ -130,7 +130,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
     fun on(event: WorldUnloadEvent) {
         for (waypoint in loadedWaypoints) {
             if (waypoint.world == event.world) {
-                displayManager.unregister(waypoint)
+                renderer.unregister(waypoint)
                 _loadedWaypoints.remove(waypoint)
             }
         }
@@ -138,17 +138,17 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     @EventHandler
     fun on(event: PlayerClientLoadedWorldEvent) {
-        displayManager.refresh(event.player, loadedWaypoints)
+        renderer.refresh(event.player, loadedWaypoints)
     }
 
     @EventHandler
     fun on(event: PlayerChangedWorldEvent) {
-        displayManager.refresh(event.player, loadedWaypoints)
+        renderer.refresh(event.player, loadedWaypoints)
     }
 
     @EventHandler
     fun on(event: PlayerQuitEvent) {
-        displayManager.untrackAll(event.player)
+        renderer.untrackAll(event.player)
     }
 
     companion object {

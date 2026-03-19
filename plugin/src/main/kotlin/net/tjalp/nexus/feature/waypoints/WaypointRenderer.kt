@@ -5,9 +5,10 @@ import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket
 import net.minecraft.resources.Identifier
 import net.minecraft.resources.ResourceKey
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.waypoints.WaypointStyleAssets
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.util.sendPacket
+import net.tjalp.nexus.util.PacketManager
 import org.bukkit.entity.Player
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -18,7 +19,7 @@ import java.util.*
  * This is the only layer that deals with packet-backed display mechanics.
  * The storage model stays packet/entity-agnostic.
  */
-class WaypointDisplayManager {
+class WaypointRenderer {
 
     private val waypointIdsByKey = mutableMapOf<String, UUID>()
     private val trackedByPlayer = mutableMapOf<UUID, MutableSet<UUID>>()
@@ -34,7 +35,7 @@ class WaypointDisplayManager {
         for (player in NexusPlugin.server.onlinePlayers) {
             val tracked = trackedByPlayer[player.uniqueId] ?: continue
             if (tracked.remove(waypointId)) {
-                player.sendPacket(buildUntrackPacket(waypointId))
+                PacketManager.sendPacket(player, buildUntrackPacket(waypointId))
             }
         }
     }
@@ -62,7 +63,7 @@ class WaypointDisplayManager {
         for (player in NexusPlugin.server.onlinePlayers) {
             val tracked = trackedByPlayer[player.uniqueId] ?: continue
             for (waypointId in tracked.toList()) {
-                player.sendPacket(buildUntrackPacket(waypointId))
+                PacketManager.sendPacket(player, buildUntrackPacket(waypointId))
             }
         }
 
@@ -77,14 +78,14 @@ class WaypointDisplayManager {
 
         when {
             shouldBeVisible && !isTracked -> {
-                player.sendPacket(buildTrackPacket(waypointId, waypoint))
+                PacketManager.sendPacket(player, buildTrackPacket(waypointId, waypoint))
                 tracked += waypointId
             }
             shouldBeVisible && isTracked -> {
-                player.sendPacket(buildUpdatePacket(waypointId, waypoint))
+                PacketManager.sendPacket(player, buildUpdatePacket(waypointId, waypoint))
             }
             !shouldBeVisible && isTracked -> {
-                player.sendPacket(buildUntrackPacket(waypointId))
+                PacketManager.sendPacket(player, buildUntrackPacket(waypointId))
                 tracked -= waypointId
             }
         }
@@ -102,17 +103,23 @@ class WaypointDisplayManager {
     @Suppress("UNCHECKED_CAST")
     private fun buildTrackPacket(waypointId: UUID, waypoint: Waypoint): Packet<*> {
         val icon = createIcon(waypoint)
-        val position = createPosition(waypoint)
 
-        return ClientboundTrackedWaypointPacket.addWaypointPosition(waypointId, icon, position)
+        return when (val target = waypoint.target) {
+            is WaypointTarget.Block -> ClientboundTrackedWaypointPacket.addWaypointPosition(waypointId, icon, createPosition(target))
+            is WaypointTarget.Chunk -> ClientboundTrackedWaypointPacket.addWaypointChunk(waypointId, icon, createChunkPosition(target))
+            is WaypointTarget.Azimuth -> ClientboundTrackedWaypointPacket.addWaypointAzimuth(waypointId, icon, target.angle)
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun buildUpdatePacket(waypointId: UUID, waypoint: Waypoint): Packet<*> {
         val icon = createIcon(waypoint)
-        val position = createPosition(waypoint)
 
-        return ClientboundTrackedWaypointPacket.updateWaypointPosition(waypointId, icon, position)
+        return when (val target = waypoint.target) {
+            is WaypointTarget.Block -> ClientboundTrackedWaypointPacket.updateWaypointPosition(waypointId, icon, createPosition(target))
+            is WaypointTarget.Chunk -> ClientboundTrackedWaypointPacket.updateWaypointChunk(waypointId, icon, createChunkPosition(target))
+            is WaypointTarget.Azimuth -> ClientboundTrackedWaypointPacket.updateWaypointAzimuth(waypointId, icon, target.angle)
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -120,10 +127,12 @@ class WaypointDisplayManager {
         return ClientboundTrackedWaypointPacket.removeWaypoint(waypointId)
     }
 
-    private fun createPosition(waypoint: Waypoint): Vec3i {
-        val location = waypoint.location
+    private fun createPosition(target: WaypointTarget.Block): Vec3i {
+        return Vec3i(target.x, target.y, target.z)
+    }
 
-        return Vec3i(location.blockX, location.blockY, location.blockZ)
+    private fun createChunkPosition(target: WaypointTarget.Chunk): ChunkPos {
+        return ChunkPos(target.chunkX, target.chunkZ)
     }
 
     private fun createIcon(waypoint: Waypoint): MinecraftWaypointIcon {

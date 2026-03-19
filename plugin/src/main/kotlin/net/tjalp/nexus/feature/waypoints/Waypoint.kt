@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.waypoints
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.key.Key.key
@@ -16,31 +17,17 @@ import kotlin.uuid.toKotlinUuid
 
 /**
  * Represents a waypoint in the world.
- *
- * @param id The unique identifier of the waypoint.
- * @param worldId The unique identifier of the world the waypoint is located in.
- * @param x The x-coordinate of the waypoint.
- * @param y The y-coordinate of the waypoint.
- * @param z The z-coordinate of the waypoint.
- * @param colorRgb The color of the waypoint in RGB format.
- * @param styleString The style of the waypoint as a string.
- * @param transmitRange The maximum visible range of the waypoint
- * @param isGlobal Whether this waypoint is visible to all players in the world.
- * @param visibleTo The explicit player audience for this waypoint when [isGlobal] is false
  */
 @OptIn(ExperimentalUuidApi::class)
 @Serializable
 class Waypoint(
     val id: String,
     private var worldId: Uuid,
-    private var x: Double,
-    private var y: Double,
-    private var z: Double,
+    var target: WaypointTarget,
     private var colorRgb: Int,
     private var styleString: String,
     var transmitRange: Double = Double.MAX_VALUE,
-    private var isGlobal: Boolean = true,
-    private var visibleTo: Set<Uuid> = emptySet()
+    private var visibility: WaypointVisibility = WaypointVisibility.Global
 ) {
 
     /**
@@ -52,12 +39,16 @@ class Waypoint(
      * @param style The style of the waypoint.
      * @param transmitRange The maximum visible range of the waypoint
      */
-    constructor(id: String, location: Location, color: Color, style: Key, transmitRange: Double = Double.MAX_VALUE) : this(
+    constructor(
+        id: String,
+        location: Location,
+        color: Color,
+        style: Key,
+        transmitRange: Double = Double.MAX_VALUE
+    ) : this(
         id,
         location.world!!.uid.toKotlinUuid(),
-        location.x,
-        location.y,
-        location.z,
+        WaypointTarget.Block(location.blockX, location.blockY, location.blockZ),
         color.asRGB(),
         style.asString(),
         transmitRange,
@@ -75,21 +66,6 @@ class Waypoint(
      */
     val worldUuid: UUID
         get() = worldId.toJavaUuid()
-
-    /**
-     * The location of the waypoint.
-     * Setting this will teleport the entity if it is spawned.
-     * Warning: The world WILL be null if the entity is not spawned.
-     */
-    var location: Location
-        set(value) {
-            val world = requireNotNull(value.world) { "Location world cannot be null" }
-            x = value.x
-            y = value.y
-            z = value.z
-            worldId = world.uid.toKotlinUuid()
-        }
-        get() = Location(world, x, y, z)
 
     /**
      * The color of the waypoint.
@@ -114,39 +90,47 @@ class Waypoint(
      * Whether this waypoint is visible to all players in the world.
      */
     var global: Boolean
-        get() = isGlobal
+        get() = visibility is WaypointVisibility.Global
         set(value) {
-            isGlobal = value
-            if (value) visibleTo = emptySet()
+            visibility = if (value) WaypointVisibility.Global else WaypointVisibility.Players(emptySet())
         }
 
     /**
      * The explicit player audience for this waypoint when [global] is false.
      */
     val audience: Set<UUID>
-        get() = visibleTo.map { it.toJavaUuid() }.toSet()
+        get() = when (val current = visibility) {
+            WaypointVisibility.Global -> emptySet()
+            is WaypointVisibility.Players -> current.playerIds.map { it.toJavaUuid() }.toSet()
+        }
 
     /**
      * Makes this waypoint private and visible to the given players only.
      */
     fun showTo(players: Set<UUID>) {
-        isGlobal = false
-        visibleTo = players.map { it.toKotlinUuid() }.toSet()
+        visibility = WaypointVisibility.Players(players.map { it.toKotlinUuid() }.toSet())
     }
 
     /**
      * Adds one player to this waypoint's private audience.
      */
     fun showTo(playerId: UUID) {
-        isGlobal = false
-        visibleTo = visibleTo + playerId.toKotlinUuid()
+        val playerUuid = playerId.toKotlinUuid()
+        visibility = when (val current = visibility) {
+            WaypointVisibility.Global -> WaypointVisibility.Players(setOf(playerUuid))
+            is WaypointVisibility.Players -> current.copy(playerIds = current.playerIds + playerUuid)
+        }
     }
 
     /**
      * Removes one player from this waypoint's private audience.
      */
     fun hideFrom(playerId: UUID) {
-        visibleTo = visibleTo - playerId.toKotlinUuid()
+        val playerUuid = playerId.toKotlinUuid()
+        visibility = when (val current = visibility) {
+            WaypointVisibility.Global -> current
+            is WaypointVisibility.Players -> current.copy(playerIds = current.playerIds - playerUuid)
+        }
     }
 
     /**
@@ -154,6 +138,77 @@ class Waypoint(
      */
     fun isVisibleTo(player: Player): Boolean {
         if (player.world.uid != worldId.toJavaUuid()) return false
-        return isGlobal || visibleTo.contains(player.uniqueId.toKotlinUuid())
+
+        val inRange = when (val target = target) {
+            is WaypointTarget.Block -> {
+                player.location.distanceSquared(
+                    Location(
+                        player.world,
+                        target.x + 0.5,
+                        target.y + 0.5,
+                        target.z + 0.5
+                    )
+                ) <= transmitRange * transmitRange
+            }
+            is WaypointTarget.Chunk -> {
+                player.location.distanceSquared(
+                    Location(
+                        player.world,
+                        (target.chunkX * 16 + 8).toDouble(),
+                        player.location.y,
+                        (target.chunkZ * 16 + 8).toDouble()
+                    )
+                ) <= transmitRange * transmitRange
+            }
+            is WaypointTarget.Azimuth -> true
+        }
+
+        if (!inRange) return false
+
+        return when (val current = visibility) {
+            WaypointVisibility.Global -> true
+            is WaypointVisibility.Players -> current.playerIds.contains(player.uniqueId.toKotlinUuid())
+        }
     }
 }
+
+@Serializable
+sealed interface WaypointTarget {
+
+    @Serializable
+    @SerialName("block")
+    data class Block(
+        val x: Int,
+        val y: Int,
+        val z: Int
+    ) : WaypointTarget
+
+    @Serializable
+    @SerialName("chunk")
+    data class Chunk(
+        val chunkX: Int,
+        val chunkZ: Int
+    ) : WaypointTarget
+
+    @Serializable
+    @SerialName("azimuth")
+    data class Azimuth(
+        val angle: Float
+    ) : WaypointTarget
+}
+
+@Serializable
+sealed interface WaypointVisibility {
+
+    @Serializable
+    @SerialName("global")
+    data object Global : WaypointVisibility
+
+    @Serializable
+    @SerialName("players")
+    @OptIn(ExperimentalUuidApi::class)
+    data class Players(
+        val playerIds: Set<Uuid>
+    ) : WaypointVisibility
+}
+

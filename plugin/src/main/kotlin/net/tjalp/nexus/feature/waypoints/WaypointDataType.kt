@@ -6,6 +6,11 @@ import org.bukkit.persistence.PersistentDataType
 
 object WaypointDataType : PersistentDataType<ByteArray, Waypoint> {
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        classDiscriminator = "type"
+    }
+
     override fun getPrimitiveType(): Class<ByteArray> = ByteArray::class.java
 
     override fun getComplexType(): Class<Waypoint> = Waypoint::class.java
@@ -13,10 +18,10 @@ object WaypointDataType : PersistentDataType<ByteArray, Waypoint> {
     override fun toPrimitive(
         complex: Waypoint,
         context: PersistentDataAdapterContext
-    ): ByteArray = Json.encodeToString(complex).toByteArray()
+    ): ByteArray = json.encodeToString(complex).toByteArray()
 
     override fun fromPrimitive(
         primitive: ByteArray,
         context: PersistentDataAdapterContext
-    ): Waypoint = Json.decodeFromString(primitive.decodeToString())
+    ): Waypoint = json.decodeFromString<Waypoint>(primitive.decodeToString())
 }

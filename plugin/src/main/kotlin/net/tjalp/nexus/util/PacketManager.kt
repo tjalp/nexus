@@ -63,6 +63,13 @@ object PacketManager {
         }
     }
 
+    /**
+     * Send a packet to a specific player.
+     */
+    fun sendPacket(player: Player, packet: Packet<*>) {
+        player.asServerPlayer().connection.send(packet)
+    }
+
     private data class InterceptResponse(
         val cancel: Boolean,
         val packet: Packet<*>
