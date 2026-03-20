@@ -38,7 +38,7 @@ object WaypointCommand {
         get() = NexusPlugin.waypoints ?: error("Waypoints feature is not enabled")
 
     fun create(): LiteralCommandNode<CommandSourceStack> {
-        return literal("waypoint")
+        return literal("nwaypoint")
             .requires { NexusPlugin.waypoints != null && it.sender.hasPermission("nexus.command.waypoint") }
             .then(literal("create")
                 .then(argument("id", StringArgumentType.string())
@@ -99,18 +99,21 @@ object WaypointCommand {
     @OptIn(ExperimentalUuidApi::class)
     private fun createTestWaypoint(context: CommandContext<CommandSourceStack>): Int {
         val location = context.source.location
-        val waypoint = Waypoint(
-            id = UUID.randomUUID().toString(),
-            worldId = location.world.uid.toKotlinUuid(),
-            target = WaypointTarget.Block(location.blockX, location.blockY, location.blockZ),
-            colorRgb = Color.RED.asRGB(),
-            styleString = "minecraft:default",
-            transmitRange = 10.0
-        )
 
-        waypoints.saveWaypoint(location.world, waypoint)
+        for (angle in setOf(0f, .5f * Math.PI.toFloat(), Math.PI.toFloat(), 1.5f * Math.PI.toFloat())) {
+            val waypoint = Waypoint(
+                id = UUID.randomUUID().toString(),
+                worldId = location.world.uid.toKotlinUuid(),
+                target = WaypointTarget.Azimuth(angle),
+                colorRgb = Color.RED.asRGB(),
+                styleString = "minecraft:default",
+                transmitRange = 10.0
+            )
 
-        context.source.sender.sendMessage(text("Created test waypoint with ID '${waypoint.id}'"))
+            waypoints.saveWaypoint(location.world, waypoint)
+
+            context.source.sender.sendMessage(text("Created test waypoint with ID '${waypoint.id}'"))
+        }
 
         return Command.SINGLE_SUCCESS
     }
