@@ -21,7 +21,7 @@ import org.bukkit.persistence.PersistentDataType
  */
 class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
-    private val renderer = WaypointRenderer()
+    val renderer = WaypointRenderer()
 
     /**
      * All available waypoints across all (loaded) worlds.

@@ -172,6 +172,25 @@ class Waypoint(
     }
 }
 
+/**
+ * Refreshes the waypoint.
+ *
+ * @see WaypointRenderer.refresh
+ */
+fun Waypoint.refresh() {
+    NexusPlugin.waypoints?.renderer?.refresh(this)
+}
+
+/**
+ * Save a waypoint in the specified world, by default the waypoint's world.
+ *
+ * @param world The world to save the waypoint in
+ * @see WaypointsFeature.saveWaypoint
+ */
+fun Waypoint.save(world: World = this.world!!) {
+    NexusPlugin.waypoints?.saveWaypoint(world, this)
+}
+
 @Serializable
 sealed interface WaypointTarget {
 

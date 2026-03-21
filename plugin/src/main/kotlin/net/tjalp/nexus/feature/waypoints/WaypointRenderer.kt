@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.waypoints
 
+import kotlinx.coroutines.launch
 import net.minecraft.core.Vec3i
 import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket
@@ -8,7 +9,9 @@ import net.minecraft.resources.ResourceKey
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.waypoints.WaypointStyleAssets
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.util.PacketAction
 import net.tjalp.nexus.util.PacketManager
+import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -23,6 +26,16 @@ class WaypointRenderer {
 
     private val waypointIdsByKey = mutableMapOf<String, UUID>()
     private val trackedByPlayer = mutableMapOf<UUID, MutableSet<UUID>>()
+
+    init {
+        PacketManager.addPacketListener(ClientboundTrackedWaypointPacket::class) { packet, _ ->
+            val waypoint = packet.waypoint
+            NexusPlugin.waypoints?.scheduler?.launch {
+                Bukkit.broadcastMessage("Received waypoint packet: waypoint=$waypoint")
+            }
+            PacketAction.Continue
+        }
+    }
 
     fun register(waypoint: Waypoint) {
         waypointIdsByKey.getOrPut(key(waypoint)) { trackingId(waypoint) }
