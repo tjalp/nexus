@@ -3,9 +3,9 @@
 package net.tjalp.nexus.command
 
 import com.mojang.brigadier.Command
+import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
-import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
@@ -17,7 +17,6 @@ import io.papermc.paper.command.brigadier.argument.resolvers.AngleResolver
 import io.papermc.paper.command.brigadier.argument.resolvers.BlockPositionResolver
 import io.papermc.paper.command.brigadier.argument.resolvers.ColumnBlockPositionResolver
 import net.kyori.adventure.key.Key
-import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.minimessage.translation.Argument
@@ -25,12 +24,10 @@ import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.WaypointArgument
 import net.tjalp.nexus.feature.waypoints.Waypoint
+import net.tjalp.nexus.feature.waypoints.WaypointPersistence
 import net.tjalp.nexus.feature.waypoints.WaypointTarget
 import net.tjalp.nexus.feature.waypoints.save
 import org.bukkit.Color
-import java.util.*
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.toKotlinUuid
 
 object WaypointCommand {
 
@@ -48,31 +45,17 @@ object WaypointCommand {
         return literal("nwaypoint")
             .requires { NexusPlugin.waypoints != null && it.sender.hasPermission("nexus.command.waypoint") }
             .then(literal("create")
-                .then(argument("id", StringArgumentType.string())
-                    .executes { context -> createWaypoint(context, context.getArgument("id", String::class.java)) }
-                    .then(argument("color", ArgumentTypes.namedColor())
+                .then(argument("id", StringArgumentType.word())
+                    .executes { context -> createWaypoint(
+                        context.source,
+                        id = StringArgumentType.getString(context, "id")
+                    ) }
+                    .then(argument("persistent", BoolArgumentType.bool())
                         .executes { context -> createWaypoint(
-                            context,
+                            context.source,
                             id = StringArgumentType.getString(context, "id"),
-                            color = Color.fromRGB(context.getArgument("color", TextColor::class.java).value())
-                        ) }
-                        .then(argument("style", StringArgumentType.word())
-                            .executes { context -> createWaypoint(
-                                context,
-                                id = StringArgumentType.getString(context, "id"),
-                                color = Color.fromRGB(context.getArgument("color", TextColor::class.java).value()),
-                                style = Key.key(context.getArgument("style", String::class.java))
-                            ) }
-                            .then(argument("transmitRange", DoubleArgumentType.doubleArg())
-                                .executes { context -> createWaypoint(
-                                    context,
-                                    id = StringArgumentType.getString(context, "id"),
-                                    color = Color.fromRGB(context.getArgument("color", TextColor::class.java).value()),
-                                    style = Key.key(context.getArgument("style", String::class.java)),
-                                    transmitRange = DoubleArgumentType.getDouble(context, "transmitRange"),
-                                ) }))))
-                .then(literal("test")
-                    .executes(::createTestWaypoint)))
+                            persistent = BoolArgumentType.getBool(context, "persistent")
+                        ) })))
             .then(literal("modify")
                 .then(argument("id", WaypointArgument)
                     .then(literal("color")
@@ -95,6 +78,13 @@ object WaypointCommand {
                                 context.source,
                                 context.getArgument("id", Waypoint::class.java),
                                 context.getArgument("style", Key::class.java)
+                            ) }))
+                    .then(literal("range")
+                        .then(argument("range", DoubleArgumentType.doubleArg(0.0))
+                            .executes { context -> setWaypointRange(
+                                context.source,
+                                context.getArgument("id", Waypoint::class.java),
+                                DoubleArgumentType.getDouble(context, "range")
                             ) }))
                     .then(literal("position")
                         .then(literal("block")
@@ -120,52 +110,32 @@ object WaypointCommand {
                                 ) })))))
             .then(literal("remove")
                 .then(argument("id", WaypointArgument)
-                    .executes { context -> removeWaypoint(context, context.getArgument("id", Waypoint::class.java)) }))
+                    .executes { context -> removeWaypoint(
+                        context.source,
+                        context.getArgument("id", Waypoint::class.java)
+                    ) }))
             .build()
     }
 
     private fun createWaypoint(
-        context: CommandContext<CommandSourceStack>,
+        source: CommandSourceStack,
         id: String,
-        color: Color = Color.WHITE,
-        style: Key = Key.key("default"),
-        transmitRange: Double = Double.MAX_VALUE,
+        persistent: Boolean = true,
     ): Int {
-        val location = context.source.location
+        val location = source.location
         val world = location.world
-        val waypoint = Waypoint(id, location, color, style, transmitRange)
+        val persistence = if (persistent) WaypointPersistence.Persistent else WaypointPersistence.Runtime
+        val waypoint = Waypoint(id, location, Color.WHITE, Key.key("default"))
 
         if (waypoints.availableWaypoints.find { it.id == id } != null) {
             throw ERROR_DUPLICATE_WAYPOINT.create(id)
         }
 
-        waypoint.save(world)
+        waypoint.save(world, persistence)
 
-        context.source.sender.sendMessage(
+        source.sender.sendMessage(
             translatable("command.waypoint.create.success", PRIMARY_COLOR, Argument.string("id", id))
         )
-
-        return Command.SINGLE_SUCCESS
-    }
-
-    @OptIn(ExperimentalUuidApi::class)
-    private fun createTestWaypoint(context: CommandContext<CommandSourceStack>): Int {
-        val location = context.source.location
-
-        for (angle in setOf(0f, .5f * Math.PI.toFloat(), Math.PI.toFloat(), 1.5f * Math.PI.toFloat())) {
-            val waypoint = Waypoint(
-                id = UUID.randomUUID().toString(),
-                worldId = location.world.uid.toKotlinUuid(),
-                target = WaypointTarget.Azimuth(angle),
-                colorRgb = Color.RED.asRGB(),
-                styleString = "minecraft:default",
-                transmitRange = 10.0
-            )
-
-            waypoint.save(location.world)
-
-            context.source.sender.sendMessage(text("Created test waypoint with ID '${waypoint.id}'", PRIMARY_COLOR))
-        }
 
         return Command.SINGLE_SUCCESS
     }
@@ -184,6 +154,15 @@ object WaypointCommand {
         waypoint.save()
 
         source.sender.sendMessage(translatable("command.waypoint.modify.style", PRIMARY_COLOR))
+
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun setWaypointRange(source: CommandSourceStack, waypoint: Waypoint, range: Double): Int {
+        waypoint.transmitRange = range
+        waypoint.save()
+
+        source.sender.sendMessage(translatable("command.waypoint.modify.range", PRIMARY_COLOR))
 
         return Command.SINGLE_SUCCESS
     }
@@ -219,10 +198,10 @@ object WaypointCommand {
         return Command.SINGLE_SUCCESS
     }
 
-    private fun removeWaypoint(context: CommandContext<CommandSourceStack>, waypoint: Waypoint): Int {
-        waypoints.removeWaypoint(waypoint.world ?: context.source.location.world, waypoint)
+    private fun removeWaypoint(source: CommandSourceStack, waypoint: Waypoint): Int {
+        waypoints.removeWaypoint(waypoint.world ?: source.location.world, waypoint)
 
-        context.source.sender.sendMessage(
+        source.sender.sendMessage(
             translatable("command.waypoint.remove.success", Argument.string("id", waypoint.id))
         )
 

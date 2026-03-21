@@ -28,7 +28,7 @@ object WaypointArgument : CustomArgumentType.Converted<Waypoint, String> {
             ?: throw ERROR_UNKNOWN_WAYPOINT.create(nativeType)
     }
 
-    override fun getNativeType(): ArgumentType<String> = StringArgumentType.string()
+    override fun getNativeType(): ArgumentType<String> = StringArgumentType.word()
 
     override fun <S : Any> listSuggestions(
         context: CommandContext<S>,

@@ -27,9 +27,17 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      * All available waypoints across all (loaded) worlds.
      */
     val availableWaypoints: Collection<Waypoint>
-        get() = NexusPlugin.server.worlds.flatMap { readWaypoints(it) }
+        get() {
+            val persisted = NexusPlugin.server.worlds.flatMap { readWaypoints(it) }
+            val runtime = _loadedWaypointsByKey.values.filter {
+                _waypointPersistenceByKey[key(it)] == WaypointPersistence.Runtime
+            }
+
+            return (persisted + runtime).associateBy { key(it) }.values.toList()
+        }
 
     private val _loadedWaypointsByKey = mutableMapOf<String, Waypoint>()
+    private val _waypointPersistenceByKey = mutableMapOf<String, WaypointPersistence>()
 
     val loadedWaypoints: Collection<Waypoint>
         get() = _loadedWaypointsByKey.values.toList()
@@ -45,6 +53,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     override fun onDisposed() {
         _loadedWaypointsByKey.clear()
+        _waypointPersistenceByKey.clear()
         renderer.clear()
         this.unregister()
     }
@@ -70,14 +79,25 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      * @param world The world to load the waypoints from.
      */
     fun loadWaypoints(world: World) {
-        val oldWaypoints = _loadedWaypointsByKey.values.filter { it.world == world }
-        oldWaypoints.forEach {
-            renderer.unregister(it)
-            _loadedWaypointsByKey.remove(key(it))
+        val oldPersistentKeys = _loadedWaypointsByKey
+            .filter { (k, waypoint) ->
+                waypoint.worldUuid == world.uid && _waypointPersistenceByKey[k] == WaypointPersistence.Persistent
+            }
+            .keys
+
+        oldPersistentKeys.forEach { waypointKey ->
+            val waypoint = _loadedWaypointsByKey[waypointKey] ?: return@forEach
+            renderer.unregister(waypoint)
+            _loadedWaypointsByKey.remove(waypointKey)
+            _waypointPersistenceByKey.remove(waypointKey)
         }
 
         val waypoints = readWaypoints(world)
-        waypoints.forEach { _loadedWaypointsByKey[key(it)] = it }
+        waypoints.forEach {
+            val waypointKey = key(it)
+            _loadedWaypointsByKey[waypointKey] = it
+            _waypointPersistenceByKey[waypointKey] = WaypointPersistence.Persistent
+        }
 
         waypoints.forEach { renderer.register(it) }
     }
@@ -90,16 +110,24 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      * @param waypoint The waypoint to register.
      * @throws IllegalArgumentException if a waypoint with the same id is already registered in the world.
      */
-    fun saveWaypoint(world: World, waypoint: Waypoint) {
-        val waypoints = readWaypoints(world).filter { it.id != waypoint.id }
+    fun saveWaypoint(
+        world: World,
+        waypoint: Waypoint,
+        persistence: WaypointPersistence = waypointPersistence(waypoint) ?: WaypointPersistence.Persistent
+    ) {
+        if (persistence == WaypointPersistence.Persistent) {
+            val waypoints = readWaypoints(world).filter { it.id != waypoint.id }
 
-        world.persistentDataContainer.set(
-            WAYPOINTS_KEY,
-            PersistentDataType.LIST.listTypeFrom(WaypointDataType),
-            waypoints.plus(waypoint)
-        )
+            world.persistentDataContainer.set(
+                WAYPOINTS_KEY,
+                PersistentDataType.LIST.listTypeFrom(WaypointDataType),
+                waypoints.plus(waypoint)
+            )
+        }
 
-        _loadedWaypointsByKey[key(waypoint)] = waypoint
+        val waypointKey = key(waypoint)
+        _loadedWaypointsByKey[waypointKey] = waypoint
+        _waypointPersistenceByKey[waypointKey] = persistence
         renderer.register(waypoint)
     }
 
@@ -111,15 +139,21 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      * @param waypoint The waypoint to unregister.
      */
     fun removeWaypoint(world: World, waypoint: Waypoint) {
-        val waypoints = readWaypoints(world).filter { it.id != waypoint.id }
+        val waypointKey = key(waypoint)
+        val persistence = _waypointPersistenceByKey[waypointKey]
 
-        world.persistentDataContainer.set(
-            WAYPOINTS_KEY,
-            PersistentDataType.LIST.listTypeFrom(WaypointDataType),
-            waypoints
-        )
+        if (persistence != WaypointPersistence.Runtime) {
+            val waypoints = readWaypoints(world).filter { it.id != waypoint.id }
 
-        _loadedWaypointsByKey.remove(key(waypoint))
+            world.persistentDataContainer.set(
+                WAYPOINTS_KEY,
+                PersistentDataType.LIST.listTypeFrom(WaypointDataType),
+                waypoints
+            )
+        }
+
+        _loadedWaypointsByKey.remove(waypointKey)
+        _waypointPersistenceByKey.remove(waypointKey)
         renderer.unregister(waypoint)
     }
 
@@ -133,8 +167,14 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
         val worldWaypoints = _loadedWaypointsByKey.values.filter { it.world == event.world }
         worldWaypoints.forEach {
             renderer.unregister(it)
-            _loadedWaypointsByKey.remove(key(it))
+            val waypointKey = key(it)
+            _loadedWaypointsByKey.remove(waypointKey)
+            _waypointPersistenceByKey.remove(waypointKey)
         }
+    }
+
+    fun waypointPersistence(waypoint: Waypoint): WaypointPersistence? {
+        return _waypointPersistenceByKey[key(waypoint)]
     }
 
     private fun key(waypoint: Waypoint): String {
@@ -163,4 +203,9 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
          */
         val WAYPOINTS_KEY = NamespacedKey(NexusPlugin, "waypoints")
     }
+}
+
+enum class WaypointPersistence {
+    Persistent,
+    Runtime
 }

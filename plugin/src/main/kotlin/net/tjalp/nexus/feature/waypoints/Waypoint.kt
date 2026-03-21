@@ -185,10 +185,17 @@ fun Waypoint.refresh() {
  * Save a waypoint in the specified world, by default the waypoint's world.
  *
  * @param world The world to save the waypoint in
+ * @param persistence Optional persistence override; when omitted, existing mode is preserved.
  * @see WaypointsFeature.saveWaypoint
  */
-fun Waypoint.save(world: World = this.world!!) {
-    NexusPlugin.waypoints?.saveWaypoint(world, this)
+fun Waypoint.save(world: World = this.world!!, persistence: WaypointPersistence? = null) {
+    val feature = NexusPlugin.waypoints ?: return
+
+    if (persistence == null) {
+        feature.saveWaypoint(world, this)
+    } else {
+        feature.saveWaypoint(world, this, persistence)
+    }
 }
 
 @Serializable
