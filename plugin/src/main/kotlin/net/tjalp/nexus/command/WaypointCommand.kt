@@ -201,7 +201,7 @@ object WaypointCommand {
     private fun setWaypointTarget(source: CommandSourceStack, waypoint: Waypoint, resolver: ColumnBlockPositionResolver): Int {
         val position = resolver.resolve(source)
 
-        waypoint.target = WaypointTarget.Chunk(position.blockX(), position.blockZ())
+        waypoint.target = WaypointTarget.Chunk(position.blockX() / 16, position.blockZ() / 16)
         waypoint.save()
         source.sender.sendMessage(translatable("command.waypoint.modify.target.chunk", PRIMARY_COLOR))
 

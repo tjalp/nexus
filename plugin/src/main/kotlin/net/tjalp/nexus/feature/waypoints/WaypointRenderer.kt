@@ -26,6 +26,7 @@ class WaypointRenderer {
 
     private val waypointIdsByKey = mutableMapOf<String, UUID>()
     private val trackedByPlayer = mutableMapOf<UUID, MutableSet<UUID>>()
+    private val trackedSignaturesByPlayer = mutableMapOf<UUID, MutableMap<UUID, WaypointRetrackSignature>>()
 
     init {
         PacketManager.addPacketListener(ClientboundTrackedWaypointPacket::class) { packet, _ ->
@@ -50,6 +51,7 @@ class WaypointRenderer {
             if (tracked.remove(waypointId)) {
                 PacketManager.sendPacket(player, buildUntrackPacket(waypointId))
             }
+            trackedSignaturesByPlayer[player.uniqueId]?.remove(waypointId)
         }
     }
 
@@ -70,6 +72,7 @@ class WaypointRenderer {
 
     fun untrackAll(player: Player) {
         trackedByPlayer.remove(player.uniqueId)
+        trackedSignaturesByPlayer.remove(player.uniqueId)
     }
 
     fun clear() {
@@ -81,28 +84,63 @@ class WaypointRenderer {
         }
 
         trackedByPlayer.clear()
+        trackedSignaturesByPlayer.clear()
         waypointIdsByKey.clear()
     }
 
     private fun syncForPlayer(player: Player, waypoint: Waypoint, waypointId: UUID) {
         val tracked = trackedByPlayer.getOrPut(player.uniqueId) { mutableSetOf() }
+        val trackedSignatures = trackedSignaturesByPlayer.getOrPut(player.uniqueId) { mutableMapOf() }
         val shouldBeVisible = waypoint.isVisibleTo(player)
         val isTracked = waypointId in tracked
+        val currentSignature = waypoint.retrackSignature()
 
         when {
             shouldBeVisible && !isTracked -> {
                 PacketManager.sendPacket(player, buildTrackPacket(waypointId, waypoint))
                 tracked += waypointId
+                trackedSignatures[waypointId] = currentSignature
             }
             shouldBeVisible && isTracked -> {
-                PacketManager.sendPacket(player, buildUpdatePacket(waypointId, waypoint))
+                val previousSignature = trackedSignatures[waypointId]
+                if (previousSignature != currentSignature) {
+                    // Client cannot apply these changes via update packets, so retrack.
+                    PacketManager.sendPacket(player, buildUntrackPacket(waypointId))
+                    PacketManager.sendPacket(player, buildTrackPacket(waypointId, waypoint))
+                } else {
+                    PacketManager.sendPacket(player, buildUpdatePacket(waypointId, waypoint))
+                }
+                trackedSignatures[waypointId] = currentSignature
             }
             !shouldBeVisible && isTracked -> {
                 PacketManager.sendPacket(player, buildUntrackPacket(waypointId))
                 tracked -= waypointId
+                trackedSignatures.remove(waypointId)
             }
         }
     }
+
+    private fun Waypoint.retrackSignature(): WaypointRetrackSignature {
+        val targetType = when (target) {
+            is WaypointTarget.Block -> WaypointTargetType.Block
+            is WaypointTarget.Chunk -> WaypointTargetType.Chunk
+            is WaypointTarget.Azimuth -> WaypointTargetType.Azimuth
+        }
+
+        return WaypointRetrackSignature(
+            targetType = targetType,
+            colorRgb = color.asRGB(),
+            style = style.asString()
+        )
+    }
+
+    private enum class WaypointTargetType { Block, Chunk, Azimuth }
+
+    private data class WaypointRetrackSignature(
+        val targetType: WaypointTargetType,
+        val colorRgb: Int,
+        val style: String
+    )
 
     private fun key(waypoint: Waypoint): String {
         return "${waypoint.worldUuid}/${waypoint.id}"

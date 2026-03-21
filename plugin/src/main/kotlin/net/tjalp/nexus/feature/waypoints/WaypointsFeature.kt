@@ -29,10 +29,10 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
     val availableWaypoints: Collection<Waypoint>
         get() = NexusPlugin.server.worlds.flatMap { readWaypoints(it) }
 
-    private val _loadedWaypoints = mutableSetOf<Waypoint>()
+    private val _loadedWaypointsByKey = mutableMapOf<String, Waypoint>()
 
     val loadedWaypoints: Collection<Waypoint>
-        get() = _loadedWaypoints.toSet()
+        get() = _loadedWaypointsByKey.values.toList()
 
     override fun onEnable() {
         this.register()
@@ -44,7 +44,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
     }
 
     override fun onDisposed() {
-        _loadedWaypoints.clear()
+        _loadedWaypointsByKey.clear()
         renderer.clear()
         this.unregister()
     }
@@ -70,12 +70,14 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
      * @param world The world to load the waypoints from.
      */
     fun loadWaypoints(world: World) {
-        val oldWaypoints = _loadedWaypoints.filter { it.world == world }
-        oldWaypoints.forEach { renderer.unregister(it) }
-        _loadedWaypoints.removeAll(oldWaypoints.toSet())
+        val oldWaypoints = _loadedWaypointsByKey.values.filter { it.world == world }
+        oldWaypoints.forEach {
+            renderer.unregister(it)
+            _loadedWaypointsByKey.remove(key(it))
+        }
 
         val waypoints = readWaypoints(world)
-        _loadedWaypoints.addAll(waypoints)
+        waypoints.forEach { _loadedWaypointsByKey[key(it)] = it }
 
         waypoints.forEach { renderer.register(it) }
     }
@@ -97,7 +99,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
             waypoints.plus(waypoint)
         )
 
-        _loadedWaypoints.add(waypoint)
+        _loadedWaypointsByKey[key(waypoint)] = waypoint
         renderer.register(waypoint)
     }
 
@@ -117,7 +119,7 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
             waypoints
         )
 
-        _loadedWaypoints.remove(waypoint)
+        _loadedWaypointsByKey.remove(key(waypoint))
         renderer.unregister(waypoint)
     }
 
@@ -128,12 +130,15 @@ class WaypointsFeature : Feature(WAYPOINTS), Listener {
 
     @EventHandler
     fun on(event: WorldUnloadEvent) {
-        for (waypoint in loadedWaypoints) {
-            if (waypoint.world == event.world) {
-                renderer.unregister(waypoint)
-                _loadedWaypoints.remove(waypoint)
-            }
+        val worldWaypoints = _loadedWaypointsByKey.values.filter { it.world == event.world }
+        worldWaypoints.forEach {
+            renderer.unregister(it)
+            _loadedWaypointsByKey.remove(key(it))
         }
+    }
+
+    private fun key(waypoint: Waypoint): String {
+        return "${waypoint.worldUuid}/${waypoint.id}"
     }
 
     @EventHandler
