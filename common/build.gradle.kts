@@ -14,5 +14,5 @@ dependencies {
     api(libs.ktor.serialization.kotlinx.json)
     api(libs.ktor.server.core)
     api(libs.ktor.server.cio)
-    api(libs.ktor.content.negotiation)
+    api(libs.ktor.content.negation)
 }

@@ -51,7 +51,9 @@ class ServersFeature : Feature(SERVERS), Listener {
     var globalChat: GlobalChatHandler? = null
         private set
 
-    private var p2pApiServer: P2PApiServer? = null
+    var p2pApiServer: P2PApiServer? = null
+        internal set
+
     private var useP2PMode: Boolean = false
 
     override fun onEnable() {

@@ -9,6 +9,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.tjalp.nexus.player.P2PPlayerRegistry
@@ -25,6 +26,7 @@ import net.tjalp.nexus.server.ServerInfo
  * - Player queries
  * - Player event notifications
  * - Global chat messages
+ * - Profile update notifications
  *
  * @param serverInfo The local server information
  * @param serverRegistry The P2P server registry
@@ -40,6 +42,7 @@ class P2PApiServer(
 
     private var server: ApplicationEngine? = null
     private var localPlayerCount: Int = 0
+    private var globalChatHandler: Any? = null // Will be set by GlobalChatHandler
 
     fun start() {
         server = embeddedServer(CIO, port = port) {
@@ -117,8 +120,17 @@ class P2PApiServer(
                 post("/chat-message") {
                     try {
                         val message = call.receive<ChatMessage>()
-                        // Will be handled by GlobalChatHandler
-                        call.respond(HttpStatusCode.OK, "Message received")
+
+                        // Forward to GlobalChatHandler if available
+                        val handler = globalChatHandler
+                        if (handler != null && handler is GlobalChatHandlerInterface) {
+                            launch {
+                                handler.receiveP2PMessage(message)
+                            }
+                            call.respond(HttpStatusCode.OK, "Message received")
+                        } else {
+                            call.respond(HttpStatusCode.ServiceUnavailable, "Chat handler not available")
+                        }
                     } catch (e: Exception) {
                         call.respond(HttpStatusCode.BadRequest, "Invalid message: ${e.message}")
                     }
@@ -167,6 +179,10 @@ class P2PApiServer(
         localPlayerCount = count
     }
 
+    fun setGlobalChatHandler(handler: Any) {
+        globalChatHandler = handler
+    }
+
     @Serializable
     data class HealthResponse(
         val healthy: Boolean,
@@ -194,4 +210,11 @@ class P2PApiServer(
     data class ProfileUpdateNotification(
         val playerId: String
     )
+
+    /**
+     * Interface for chat handler to avoid circular dependencies
+     */
+    interface GlobalChatHandlerInterface {
+        suspend fun receiveP2PMessage(message: ChatMessage)
+    }
 }
