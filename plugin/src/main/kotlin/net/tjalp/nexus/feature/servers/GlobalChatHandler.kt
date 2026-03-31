@@ -38,7 +38,7 @@ class GlobalChatHandler(
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
-                    prettyPrint = true
+                    prettyPrint = false
                 })
             }
             engine {

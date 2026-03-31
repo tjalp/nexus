@@ -137,7 +137,8 @@ class ServersFeature : Feature(SERVERS), Listener {
         val p2pPlayerRegistry = P2PPlayerRegistry(
             serverRegistry = p2pServerRegistry,
             localServerId = serverInfo.id,
-            scope = scheduler
+            scope = scheduler,
+            apiPort = config.p2p.apiPort
         )
         playerRegistry = p2pPlayerRegistry
 
@@ -191,7 +192,7 @@ class ServersFeature : Feature(SERVERS), Listener {
     }
 
     /**
-     * Start sending heartbeats to Redis
+     * Start sending heartbeats to update server status
      */
     private fun startHeartbeat(intervalSeconds: Long, ttl: Long) {
         heartbeatJob = scheduler.launch(Dispatchers.Default) {

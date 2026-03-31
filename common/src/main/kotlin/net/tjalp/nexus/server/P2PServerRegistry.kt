@@ -53,7 +53,7 @@ class P2PServerRegistry(
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
-                prettyPrint = true
+                prettyPrint = false
             })
         }
         engine {
@@ -199,6 +199,8 @@ class P2PServerRegistry(
 
                     delay(10.seconds)
                 } catch (e: Exception) {
+                    // Log unexpected errors during discovery polling
+                    println("Error during discovery polling: ${e.message}")
                     if (isActive) {
                         delay(5.seconds)
                     }
@@ -237,7 +239,7 @@ class P2PServerRegistry(
                 }
             }
         } catch (e: Exception) {
-            // Server not reachable, will retry on next poll
+            // Server not reachable, will retry on next poll - this is expected during normal operation
         }
     }
 
@@ -262,7 +264,7 @@ class P2PServerRegistry(
                 }
             }
         } catch (e: Exception) {
-            // Peer query failed, continue
+            // Peer query failed, continue - this is expected during normal operation
         }
     }
 
@@ -275,7 +277,7 @@ class P2PServerRegistry(
                 // Simply polling the server will make them aware of us via their /servers endpoint
                 discoverServer(serverUrl)
             } catch (e: Exception) {
-                // Continue with other servers
+                // Continue with other servers - errors are already handled in discoverServer
             }
         }
     }

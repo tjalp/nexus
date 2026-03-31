@@ -29,12 +29,14 @@ import kotlin.time.ExperimentalTime
  * @param serverRegistry The P2P server registry for server-to-server communication
  * @param localServerId The ID of the local server
  * @param scope Coroutine scope for launching async operations
+ * @param apiPort The HTTP API port for server-to-server communication
  */
 @OptIn(ExperimentalTime::class)
 class P2PPlayerRegistry(
     private val serverRegistry: P2PServerRegistry,
     private val localServerId: String,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val apiPort: Int = 8080
 ) : PlayerRegistry {
 
     private val _playerOnlineEvents = MutableSharedFlow<PlayerOnlineEvent>()
@@ -55,7 +57,7 @@ class P2PPlayerRegistry(
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
-                prettyPrint = true
+                prettyPrint = false
             })
         }
         engine {
@@ -237,17 +239,18 @@ class P2PPlayerRegistry(
         val servers = serverRegistry.getOnlineServers()
 
         for (server in servers) {
-            try {
-                val state = (serverRegistry as? P2PServerRegistry)?.let {
-                    // Access internal server state if possible
-                    null
-                } ?: continue
+            if (server.id == localServerId) continue
 
-                // Try to query this server for the player
-                // This would require the server to expose a player query endpoint
-                // For now, return null as we don't have the player
+            try {
+                val response = httpClient.get("http://${server.host}:${apiPort}/player/${playerId}")
+                if (response.status == HttpStatusCode.OK) {
+                    val playerInfo: PlayerInfo = response.body()
+                    // Cache the player info locally
+                    players[playerId] = playerInfo
+                    return playerInfo
+                }
             } catch (e: Exception) {
-                continue
+                // Server not reachable or player not found, continue checking other servers
             }
         }
 
@@ -258,12 +261,12 @@ class P2PPlayerRegistry(
         val server = serverRegistry.getServer(serverId) ?: return emptyList()
 
         try {
-            val response = httpClient.get("http://${server.host}:8080/players")
+            val response = httpClient.get("http://${server.host}:${apiPort}/players")
             if (response.status == HttpStatusCode.OK) {
                 return response.body()
             }
         } catch (e: Exception) {
-            // Server not reachable
+            // Server not reachable - this is expected during normal operation
         }
 
         return emptyList()
@@ -287,12 +290,12 @@ class P2PPlayerRegistry(
 
             scope.launch {
                 try {
-                    httpClient.post("http://${server.host}:8080/player-event") {
+                    httpClient.post("http://${server.host}:${apiPort}/player-event") {
                         contentType(ContentType.Application.Json)
                         setBody(event)
                     }
                 } catch (e: Exception) {
-                    // Failed to notify this server, they'll discover on next query
+                    // Failed to notify this server, they'll discover on next query - this is expected during normal operation
                 }
             }
         }

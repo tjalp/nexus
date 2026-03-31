@@ -42,14 +42,14 @@ class P2PApiServer(
 
     private var server: EmbeddedServer<*, *>? = null
     private var localPlayerCount: Int = 0
-    private var globalChatHandler: Any? = null // Will be set by GlobalChatHandler
+    private var globalChatHandler: GlobalChatHandlerInterface? = null
 
     fun start() {
         server = embeddedServer(CIO, port = port) {
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
-                    prettyPrint = true
+                    prettyPrint = false
                 })
             }
 
@@ -87,7 +87,7 @@ class P2PApiServer(
                 get("/player/{id}") {
                     val playerId = call.parameters["id"]
                     if (playerId == null) {
-                        call.respond(HttpStatusCode.BadRequest, "Missing player ID")
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Missing player ID"))
                         return@get
                     }
 
@@ -98,10 +98,10 @@ class P2PApiServer(
                         if (player != null) {
                             call.respond(HttpStatusCode.OK, player)
                         } else {
-                            call.respond(HttpStatusCode.NotFound, "Player not found")
+                            call.respond(HttpStatusCode.NotFound, ErrorResponse("Player not found"))
                         }
                     } catch (e: IllegalArgumentException) {
-                        call.respond(HttpStatusCode.BadRequest, "Invalid UUID format")
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid UUID format"))
                     }
                 }
 
@@ -110,9 +110,9 @@ class P2PApiServer(
                     try {
                         val event = call.receive<P2PPlayerRegistry.PlayerEventMessage>()
                         playerRegistry.handlePlayerEvent(event)
-                        call.respond(HttpStatusCode.OK, "Event received")
+                        call.respond(HttpStatusCode.OK, SuccessResponse("Event received"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, "Invalid event: ${e.message}")
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid event: ${e.message}"))
                     }
                 }
 
@@ -121,18 +121,17 @@ class P2PApiServer(
                     try {
                         val message = call.receive<ChatMessage>()
 
-                        // Forward to GlobalChatHandler if available
                         val handler = globalChatHandler
-                        if (handler != null && handler is GlobalChatHandlerInterface) {
+                        if (handler != null) {
                             launch {
                                 handler.receiveP2PMessage(message)
                             }
-                            call.respond(HttpStatusCode.OK, "Message received")
+                            call.respond(HttpStatusCode.OK, SuccessResponse("Message received"))
                         } else {
-                            call.respond(HttpStatusCode.ServiceUnavailable, "Chat handler not available")
+                            call.respond(HttpStatusCode.ServiceUnavailable, ErrorResponse("Chat handler not available"))
                         }
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, "Invalid message: ${e.message}")
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid message: ${e.message}"))
                     }
                 }
 
@@ -162,9 +161,9 @@ class P2PApiServer(
                     try {
                         val notification = call.receive<ProfileUpdateNotification>()
                         // Will be handled by profile service to invalidate cache
-                        call.respond(HttpStatusCode.OK, "Notification received")
+                        call.respond(HttpStatusCode.OK, SuccessResponse("Notification received"))
                     } catch (e: Exception) {
-                        call.respond(HttpStatusCode.BadRequest, "Invalid notification: ${e.message}")
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid notification: ${e.message}"))
                     }
                 }
             }
@@ -179,9 +178,19 @@ class P2PApiServer(
         localPlayerCount = count
     }
 
-    fun setGlobalChatHandler(handler: Any) {
+    fun setGlobalChatHandler(handler: GlobalChatHandlerInterface) {
         globalChatHandler = handler
     }
+
+    @Serializable
+    data class ErrorResponse(
+        val error: String
+    )
+
+    @Serializable
+    data class SuccessResponse(
+        val message: String
+    )
 
     @Serializable
     data class HealthResponse(
