@@ -16,6 +16,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.servers.TransferStatus
 import net.tjalp.nexus.server.ServerType
 import org.bukkit.entity.Player
 import java.util.concurrent.CompletableFuture
@@ -147,10 +148,10 @@ object ServerCommand {
                             .append(Component.text("...", NamedTextColor.GRAY))
                     )
 
-                    val success = serversFeature.transferPlayer(player, targetServer.id)
+                    val response = serversFeature.transferPlayer(player, targetServer.id)
 
-                    if (!success) {
-                        player.sendMessage(Component.text("Failed to transfer to server", NamedTextColor.RED))
+                    if (response.status != TransferStatus.SUCCESS) {
+                        player.sendMessage(Component.text("Failed to transfer to server: ${response.status}", NamedTextColor.RED))
                     }
                 }
             }

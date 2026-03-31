@@ -6,13 +6,13 @@ import kotlinx.coroutines.*
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.format.NamedTextColor.RED
-import net.kyori.adventure.text.format.NamedTextColor.GOLD
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.config.ServersConfig
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
+import net.tjalp.nexus.player.P2PPlayerRegistry
 import net.tjalp.nexus.player.PlayerRegistry
 import net.tjalp.nexus.player.PlayerStatus
-import net.tjalp.nexus.player.P2PPlayerRegistry
 import net.tjalp.nexus.server.P2PServerRegistry
 import net.tjalp.nexus.server.ServerInfo
 import net.tjalp.nexus.server.ServerRegistry
@@ -125,7 +125,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         globalChat = GlobalChatHandler(this)
     }
 
-    private fun initializeP2PMode(config: net.tjalp.nexus.config.ServersConfig) {
+    private fun initializeP2PMode(config: ServersConfig) {
         val p2pServerRegistry = P2PServerRegistry(
             localServer = serverInfo,
             scope = scheduler,
@@ -292,22 +292,16 @@ class ServersFeature : Feature(SERVERS), Listener {
      * @param serverId The ID of the target server
      * @return True if transfer was initiated successfully, false otherwise
      */
-    suspend fun transferPlayer(player: Player, serverId: String): Boolean {
-        val targetServer = serverRegistry.getServer(serverId)
+    suspend fun transferPlayer(player: Player, serverId: String): TransferResponse {
+        val targetServer =
+            serverRegistry.getServer(serverId) ?: return TransferResponse(TransferStatus.SERVER_NOT_FOUND)
 
-        if (targetServer == null) {
-            player.sendActionBar(text("Target server is offline or not found", RED))
-            return false
-        }
+        if (targetServer.id == serverInfo.id) return TransferResponse(TransferStatus.ALREADY_ON_SERVER)
 
         // Check server availability before transfer
         val availability = (serverRegistry as P2PServerRegistry).checkServerAvailability(serverId)
 
-        if (!availability.available) {
-            player.sendActionBar(text("Cannot transfer: ${availability.reason}", RED))
-            NexusPlugin.logger.warning("Transfer blocked for ${player.name} to $serverId: ${availability.reason}")
-            return false
-        }
+        if (!availability.available) return TransferResponse(TransferStatus.UNAVAILABLE)
 
         NexusPlugin.logger.info("Server $serverId is available (${availability.playerCount} players)")
 
@@ -315,11 +309,9 @@ class ServersFeature : Feature(SERVERS), Listener {
         // This prevents onPlayerQuit from fully removing them from the registry.
         playerRegistry.markTransferring(player.uniqueId, heartbeatTtl)
 
-        player.sendActionBar(text("Transferring to ${targetServer.name}...", GOLD))
-
         try {
             player.transfer(targetServer.host, targetServer.port)
-            return true
+            return TransferResponse(TransferStatus.SUCCESS)
         } catch (e: Exception) {
             // Transfer initiation failed
             NexusPlugin.logger.warning("Failed to initiate transfer for ${player.name}: ${e.message}")
@@ -333,7 +325,7 @@ class ServersFeature : Feature(SERVERS), Listener {
                 ttl = heartbeatTtl
             )
 
-            return false
+            return TransferResponse(TransferStatus.UNKNOWN)
         }
     }
 
