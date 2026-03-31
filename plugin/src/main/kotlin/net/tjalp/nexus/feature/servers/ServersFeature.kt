@@ -143,8 +143,6 @@ class ServersFeature : Feature(SERVERS), Listener {
             localServer = serverInfo,
             scope = scheduler,
             apiPort = config.p2p.apiPort,
-            multicastGroup = config.p2p.multicastGroup,
-            multicastPort = config.p2p.multicastPort,
             staticServers = config.p2p.staticServers
         )
         serverRegistry = p2pServerRegistry

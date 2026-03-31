@@ -2,21 +2,19 @@
 
 ## Overview
 
-Nexus now supports two modes for multi-server networking:
-
-1. **Redis Mode** (default): Uses Redis for centralized coordination
-2. **P2P Mode** (new): Fully decentralized peer-to-peer networking without Redis
+Nexus supports peer-to-peer (P2P) networking for multi-server coordination without external dependencies like Redis. P2P mode is the recommended approach for all network sizes and works seamlessly over the internet and in Docker environments.
 
 ## Why P2P Mode?
 
-P2P mode eliminates Redis as a single point of failure and provides:
+P2P mode provides:
 
-- **True decentralization**: No central coordination server required
-- **Automatic discovery**: Servers find each other via UDP multicast
+- **True decentralization**: No central coordination server required (no Redis dependency)
+- **Zero external dependencies**: Only requires HTTP connectivity between servers
+- **Docker & internet compatible**: Works across Docker networks and over the internet
 - **Enhanced reliability**: Players never lose connection during transfers
 - **Pre-transfer validation**: Health checks ensure target server is available before transferring
-- **Scalability**: Works for 1-10 servers and beyond
-- **Resilience**: Automatic crash detection and recovery
+- **Universal scalability**: Same configuration works for 1 server or 100+ servers
+- **Automatic crash detection**: Servers detect and handle peer failures gracefully
 
 ## Configuration
 
@@ -28,11 +26,11 @@ Edit your `config.yml`:
 features:
   servers:
     enable: true
-    mode: "p2p"  # Change from "redis" to "p2p"
+    mode: "p2p"  # P2P is now the default mode
     serverId: "survival-1"
     serverName: "Survival Server 1"
     serverType: "SURVIVAL"
-    host: "192.168.1.100"  # Your server's IP address
+    host: "192.168.1.100"  # Your server's IP address or hostname
     port: 25565
     maxPlayers: 100
     heartbeatIntervalSeconds: 5
@@ -41,32 +39,55 @@ features:
     # P2P specific settings
     p2p:
       apiPort: 8080  # HTTP API port for server-to-server communication
-      multicastGroup: "239.255.42.99"  # Multicast group for discovery
-      multicastPort: 9999  # Multicast port for discovery
-      staticServers: []  # Fallback list of servers (optional)
+      staticServers:  # List of initial servers to connect to
+        - "http://192.168.1.100:8080"
+        - "http://192.168.1.101:8080"
 ```
 
-### Network Configuration
+### Docker Configuration
 
-#### Automatic Discovery (Multicast)
-
-For automatic server discovery to work, ensure:
-
-1. **Firewall rules**: Allow UDP traffic on multicast port (default: 9999)
-2. **Network support**: Your network must support multicast (most LANs do)
-3. **Same subnet**: All servers should be on the same network segment
-
-#### Static Server List (Optional)
-
-If multicast doesn't work in your environment, you can manually specify servers:
+For Docker deployments, use service names or host networking:
 
 ```yaml
-p2p:
-  apiPort: 8080
-  staticServers:
-    - "http://192.168.1.100:8080"
-    - "http://192.168.1.101:8080"
-    - "http://192.168.1.102:8080"
+features:
+  servers:
+    enable: true
+    mode: "p2p"
+    serverId: "survival-1"
+    serverName: "Survival Server 1"
+    serverType: "SURVIVAL"
+    host: "mc-survival-1"  # Docker service name
+    port: 25565
+
+    p2p:
+      apiPort: 8080
+      staticServers:
+        - "http://mc-survival-1:8080"
+        - "http://mc-survival-2:8080"
+        - "http://mc-creative-1:8080"
+```
+
+### Internet/WAN Configuration
+
+For servers across the internet, use public IPs or hostnames:
+
+```yaml
+features:
+  servers:
+    enable: true
+    mode: "p2p"
+    serverId: "us-east-1"
+    serverName: "US East Server"
+    serverType: "SURVIVAL"
+    host: "us-east.example.com"  # Public hostname
+    port: 25565
+
+    p2p:
+      apiPort: 8080
+      staticServers:
+        - "http://us-east.example.com:8080"
+        - "http://eu-west.example.com:8080"
+        - "http://ap-south.example.com:8080"
 ```
 
 ## Firewall Requirements
@@ -74,8 +95,7 @@ p2p:
 Open these ports on each server:
 
 - **25565** (or your Minecraft port): For players to connect
-- **8080** (or your configured apiPort): For HTTP server-to-server communication
-- **9999 UDP** (or your configured multicastPort): For multicast discovery (if using)
+- **8080** (or your configured apiPort): For HTTP server-to-server communication (TCP)
 
 Example iptables rules:
 
@@ -85,10 +105,38 @@ iptables -A INPUT -p tcp --dport 25565 -j ACCEPT
 
 # P2P API port
 iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
-
-# Multicast discovery
-iptables -A INPUT -p udp --dport 9999 -j ACCEPT
 ```
+
+## How P2P Discovery Works
+
+P2P mode uses HTTP-based discovery with a gossip protocol:
+
+1. **Startup**: Each server starts by contacting servers in its `staticServers` list
+2. **Initial Discovery**: Server fetches `/server-info` from each static server to learn about them
+3. **Gossip Protocol**: Servers poll `/servers` endpoint of known peers to discover their peers
+4. **Continuous Polling**: Every 10 seconds, servers poll all known peers to:
+   - Verify they're still online
+   - Discover new servers they know about
+5. **Health Monitoring**: Servers are marked offline if they stop responding
+
+### Discovery Example
+
+```
+Server A starts with staticServers: [B]
+  → A contacts B at /server-info
+  → A learns about B
+  → A polls B at /servers
+  → A learns B knows about C
+  → A contacts C at /server-info
+  → A now knows about B and C
+  → Network discovery complete!
+```
+
+This gossip-based approach means:
+- You only need to configure 1-2 static servers
+- New servers automatically discover the entire network
+- Works across Docker networks, NAT, and the internet
+- No multicast or broadcast (which don't work over internet/Docker)
 
 ## Features
 
@@ -107,7 +155,7 @@ P2P mode adds:
 
 ### Global Chat
 
-Chat messages are broadcast across all servers in real-time. Works the same in both Redis and P2P modes.
+Chat messages are broadcast across all servers in real-time using HTTP POST requests to `/chat-message` endpoint.
 
 ### Server Status API
 
@@ -119,6 +167,7 @@ P2P mode exposes HTTP endpoints for monitoring:
 - `GET /players` - List players on this server
 - `GET /player/{uuid}` - Get specific player information
 - `GET /stats` - Network-wide statistics
+- `POST /chat-message` - Receive global chat messages from other servers
 
 Example:
 ```bash
@@ -135,13 +184,6 @@ Response:
 ```
 
 ## Architecture
-
-### How P2P Discovery Works
-
-1. **Startup**: Each server broadcasts its presence via UDP multicast
-2. **Heartbeat**: Servers send periodic heartbeats (every 10 seconds)
-3. **Discovery**: Other servers receive broadcasts and add to their registry
-4. **Health Monitoring**: Servers are marked offline if heartbeats stop (30-second timeout)
 
 ### Data Flow
 
@@ -161,44 +203,29 @@ Player Transfer Request
 
 If a server crashes:
 
-1. Heartbeats stop
-2. Other servers detect timeout (30 seconds)
+1. HTTP requests to that server start failing
+2. Other servers detect timeouts during polling
 3. Crashed server marked as offline
 4. Players on crashed server removed from network registry
-5. When server restarts, it re-announces and rejoins network
-
-## Comparison: Redis vs P2P
-
-| Feature | Redis Mode | P2P Mode |
-|---------|-----------|----------|
-| External Dependencies | Requires Redis | None |
-| Discovery | Manual configuration | Automatic (multicast) or static |
-| Single Point of Failure | Yes (Redis) | No |
-| Network Overhead | Low (central hub) | Medium (peer-to-peer) |
-| Setup Complexity | Medium | Low |
-| Transfer Health Checks | No | Yes |
-| Scalability | Excellent | Good (100+ servers) |
+5. When server restarts, it re-announces and rejoins network via gossip protocol
 
 ## Troubleshooting
 
 ### Servers not discovering each other
 
-1. **Check multicast support**:
+1. **Check static server URLs are correct**:
    ```bash
-   # On Linux
-   ip link show | grep MULTICAST
+   curl http://192.168.1.100:8080/server-info
    ```
 
-2. **Test multicast**:
-   ```bash
-   # Terminal 1 (receiver)
-   socat - UDP4-RECV:9999,reuseaddr,ip-add-membership=239.255.42.99:0.0.0.0
+2. **Verify at least one server is reachable** from the `staticServers` list
 
-   # Terminal 2 (sender)
-   echo "test" | socat - UDP4-DATAGRAM:239.255.42.99:9999,broadcast
+3. **Check server logs** for discovery attempts:
+   ```
+   [INFO] Discovered server 'Survival-2' via HTTP
    ```
 
-3. **Use static server list** as fallback if multicast doesn't work
+4. **Ensure network connectivity** between servers (ping, telnet to port 8080)
 
 ### HTTP API not responding
 
@@ -212,62 +239,69 @@ If a server crashes:
    curl http://localhost:8080/health
    ```
 
-3. Check firewall rules
+3. Check firewall rules allow TCP traffic on apiPort
 
 ### Player transfers failing
 
 Check server logs for specific error messages:
 
-- "Target server is offline" - Server not in registry
-- "Server health check failed" - HTTP API not accessible
-- "Server is full" - Target server at max capacity
+- "Target server is offline or not found" - Server not in registry or unreachable
+- "Cannot transfer: Server health check failed" - HTTP API not accessible
+- "Cannot transfer: Server is at capacity" - Target server is full
 - "Failed to reach server" - Network connectivity issue
+
+### Docker-specific issues
+
+1. **Container-to-container communication**: Ensure containers are on the same Docker network or use host networking
+2. **Port mapping**: Make sure apiPort is exposed: `-p 8080:8080`
+3. **Service names**: Use Docker service names in `staticServers` and `host` fields
+4. **DNS resolution**: Verify containers can resolve each other's hostnames
 
 ## Migrating from Redis to P2P
 
 1. **Backup your data**: Database (PostgreSQL) contains player profiles
 2. **Update config**: Change `mode` from "redis" to "p2p"
-3. **Configure P2P settings**: Set `host`, `apiPort`, etc.
-4. **Open firewall ports**: Allow traffic on API and multicast ports
+3. **Configure P2P settings**:
+   - Set `host` to your server's reachable IP/hostname
+   - Set `apiPort` (default: 8080)
+   - Add at least one other server to `staticServers`
+4. **Open firewall ports**: Allow TCP traffic on apiPort
 5. **Restart servers**: All servers in your network
 6. **Verify**: Check logs for "Registered server in P2P mode"
 
 ## Best Practices
 
-1. **Use static IPs**: Avoid DHCP for server hosts in production
-2. **Monitor health endpoints**: Set up external monitoring of `/health`
-3. **Keep clocks synced**: Use NTP to ensure consistent timestamps
-4. **Plan capacity**: Configure `maxPlayers` appropriately
-5. **Test transfers**: Verify transfers work before production use
+1. **Use static IPs or hostnames**: Avoid DHCP for server hosts in production
+2. **Configure multiple static servers**: Add 2-3 servers to `staticServers` for redundancy
+3. **Monitor health endpoints**: Set up external monitoring of `/health`
+4. **Keep clocks synced**: Use NTP to ensure consistent timestamps
+5. **Plan capacity**: Configure `maxPlayers` appropriately
+6. **Test transfers**: Verify transfers work before production use
+7. **Use DNS for internet deployments**: Easier to update IPs without config changes
 
 ## Performance Tuning
 
-### For Small Networks (1-10 servers)
-
-Default settings work well. Consider:
+The same settings work well for all network sizes:
 
 ```yaml
-heartbeatIntervalSeconds: 5  # Check health often
-heartbeatTimeoutSeconds: 20  # Quick failure detection
+heartbeatIntervalSeconds: 5  # Local server player count updates
+heartbeatTimeoutSeconds: 20  # TTL for player records
 ```
 
-### For Larger Networks (10+ servers)
-
-Reduce overhead:
-
-```yaml
-heartbeatIntervalSeconds: 10  # Less frequent checks
-heartbeatTimeoutSeconds: 30  # More tolerance for network jitter
-```
+P2P discovery polling is fixed at 10-second intervals, which provides good balance between:
+- Quick discovery of new servers
+- Low network overhead
+- Responsive failure detection
 
 ## Support
 
 For issues or questions:
 
 1. Check server logs for error messages
-2. Verify network configuration (firewall, multicast)
-3. Test with static server list as fallback
-4. Report bugs with full logs and network topology
+2. Verify network configuration (firewall, connectivity between servers)
+3. Test HTTP endpoints manually with curl
+4. Ensure at least one server in `staticServers` is reachable
+5. Report bugs with full logs and network topology
 
 ## Future Enhancements
 
@@ -276,6 +310,5 @@ Planned features for P2P mode:
 - [ ] Encryption for server-to-server communication (TLS)
 - [ ] Authentication tokens for API endpoints
 - [ ] Load balancing and player distribution
-- [ ] Gossip protocol for large networks (100+ servers)
 - [ ] WebSocket support for real-time updates
 - [ ] Metrics and monitoring dashboard

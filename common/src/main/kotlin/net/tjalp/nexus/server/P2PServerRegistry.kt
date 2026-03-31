@@ -13,30 +13,30 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.net.DatagramPacket
-import java.net.InetAddress
-import java.net.MulticastSocket
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * P2P-based implementation of ServerRegistry using UDP multicast for discovery
- * and HTTP for server-to-server communication.
+ * P2P-based implementation of ServerRegistry using HTTP for discovery
+ * and server-to-server communication.
  *
  * This implementation is fully decentralized and doesn't require Redis.
+ * It works over the internet and in Docker containers.
+ *
+ * Discovery methods:
+ * 1. Static server list (primary) - configured list of known servers
+ * 2. HTTP polling - each server exposes /servers endpoint listing known peers
+ * 3. Gossip protocol - servers share their known peers with each other
  *
  * @param localServer The local server information
  * @param scope Coroutine scope for launching async operations
  * @param apiPort The HTTP API port for server-to-server communication
- * @param multicastGroup The multicast group address for server discovery
- * @param multicastPort The multicast port for server discovery
+ * @param staticServers List of known server URLs to connect to
  */
 class P2PServerRegistry(
     private val localServer: ServerInfo,
     private val scope: CoroutineScope,
     private val apiPort: Int = 8080,
-    private val multicastGroup: String = "239.255.42.99",
-    private val multicastPort: Int = 9999,
     private val staticServers: List<String> = emptyList()
 ) : ServerRegistry {
 
@@ -63,7 +63,6 @@ class P2PServerRegistry(
 
     private var discoveryJob: Job? = null
     private var heartbeatMonitorJob: Job? = null
-    private var broadcastJob: Job? = null
 
     @Serializable
     private data class ServerState(
@@ -77,37 +76,12 @@ class P2PServerRegistry(
         }
     }
 
-    @Serializable
-    data class DiscoveryMessage(
-        val server: ServerInfo,
-        val apiPort: Int,
-        val messageType: MessageType
-    )
-
-    @Serializable
-    enum class MessageType {
-        ANNOUNCE,
-        HEARTBEAT,
-        SHUTDOWN
-    }
-
     init {
-        // Start listening for multicast discovery messages
-        startDiscoveryListener()
+        // Start polling known servers for discovery
+        startDiscoveryPolling()
 
         // Start monitoring server health
         startHeartbeatMonitor()
-
-        // Initialize static servers if provided
-        scope.launch {
-            for (serverUrl in staticServers) {
-                try {
-                    discoverStaticServer(serverUrl)
-                } catch (e: Exception) {
-                    // Ignore, will retry later
-                }
-            }
-        }
     }
 
     override suspend fun getServer(serverId: String): ServerInfo? {
@@ -132,19 +106,15 @@ class P2PServerRegistry(
             apiUrl = apiUrl
         )
 
-        // Broadcast this server to the network
-        startBroadcasting()
-
         _serverOnlineEvents.emit(ServerOnlineEvent(server.copy(online = true)))
+
+        // Announce ourselves to all static servers
+        announceToStaticServers()
     }
 
     override suspend fun unregisterServer(serverId: String) {
         val state = servers.remove(serverId)
         if (state != null) {
-            // Broadcast shutdown message
-            if (serverId == localServer.id) {
-                broadcastMessage(MessageType.SHUTDOWN)
-            }
             _serverOfflineEvents.emit(ServerOfflineEvent(serverId))
         }
     }
@@ -156,11 +126,6 @@ class P2PServerRegistry(
                 lastHeartbeat = System.currentTimeMillis(),
                 playerCount = playerCount
             )
-
-            // Broadcast heartbeat if this is the local server
-            if (serverId == localServer.id) {
-                broadcastMessage(MessageType.HEARTBEAT)
-            }
         }
     }
 
@@ -212,79 +177,26 @@ class P2PServerRegistry(
         val maxPlayers: Int
     )
 
-    private fun startDiscoveryListener() {
-        discoveryJob = scope.launch(Dispatchers.IO) {
-            try {
-                val multicastSocket = MulticastSocket(multicastPort)
-                val group = InetAddress.getByName(multicastGroup)
-                multicastSocket.joinGroup(group)
-
-                val buffer = ByteArray(4096)
-
-                while (isActive) {
-                    try {
-                        val packet = DatagramPacket(buffer, buffer.size)
-                        multicastSocket.receive(packet)
-
-                        val message = String(packet.data, 0, packet.length)
-                        val discovery = Json.decodeFromString<DiscoveryMessage>(message)
-
-                        // Don't process our own messages
-                        if (discovery.server.id == localServer.id) continue
-
-                        handleDiscoveryMessage(discovery)
-                    } catch (e: Exception) {
-                        if (isActive) {
-                            // Log error but continue listening
-                        }
-                    }
-                }
-
-                multicastSocket.leaveGroup(group)
-                multicastSocket.close()
-            } catch (e: Exception) {
-                // Failed to start multicast, fall back to static servers only
-            }
-        }
-    }
-
-    private suspend fun handleDiscoveryMessage(discovery: DiscoveryMessage) {
-        val serverId = discovery.server.id
-        val apiUrl = buildApiUrl(discovery.server.host, discovery.apiPort)
-
-        when (discovery.messageType) {
-            MessageType.ANNOUNCE, MessageType.HEARTBEAT -> {
-                val existingState = servers[serverId]
-                val newState = ServerState(
-                    info = discovery.server,
-                    lastHeartbeat = System.currentTimeMillis(),
-                    apiUrl = apiUrl
-                )
-
-                if (existingState == null) {
-                    servers[serverId] = newState
-                    _serverOnlineEvents.emit(ServerOnlineEvent(discovery.server.copy(online = true)))
-                } else {
-                    servers[serverId] = existingState.copy(
-                        info = discovery.server,
-                        lastHeartbeat = System.currentTimeMillis()
-                    )
-                }
-            }
-            MessageType.SHUTDOWN -> {
-                servers.remove(serverId)
-                _serverOfflineEvents.emit(ServerOfflineEvent(serverId))
-            }
-        }
-    }
-
-    private fun startBroadcasting() {
-        if (broadcastJob?.isActive == true) return
-
-        broadcastJob = scope.launch(Dispatchers.IO) {
+    /**
+     * Start polling static servers and discovered peers for network discovery
+     */
+    private fun startDiscoveryPolling() {
+        discoveryJob = scope.launch {
             while (isActive) {
                 try {
-                    broadcastMessage(MessageType.ANNOUNCE)
+                    // Poll static servers
+                    for (serverUrl in staticServers) {
+                        discoverServer(serverUrl)
+                    }
+
+                    // Poll known servers for their peer lists (gossip protocol)
+                    val knownServers = servers.values.toList()
+                    for (state in knownServers) {
+                        if (state.info.id != localServer.id) {
+                            pollServerPeers(state.apiUrl)
+                        }
+                    }
+
                     delay(10.seconds)
                 } catch (e: Exception) {
                     if (isActive) {
@@ -295,24 +207,76 @@ class P2PServerRegistry(
         }
     }
 
-    private fun broadcastMessage(type: MessageType) {
+    /**
+     * Discover a server at the given URL
+     */
+    private suspend fun discoverServer(serverUrl: String) {
         try {
-            val message = DiscoveryMessage(
-                server = localServer,
-                apiPort = apiPort,
-                messageType = type
-            )
+            val response = httpClient.get("$serverUrl/server-info")
+            if (response.status == HttpStatusCode.OK) {
+                val serverInfo: ServerInfo = response.body()
 
-            val json = Json.encodeToString(DiscoveryMessage.serializer(), message)
-            val data = json.toByteArray()
+                // Don't add ourselves
+                if (serverInfo.id == localServer.id) return
 
-            val socket = MulticastSocket()
-            val group = InetAddress.getByName(multicastGroup)
-            val packet = DatagramPacket(data, data.length, group, multicastPort)
-            socket.send(packet)
-            socket.close()
+                val existingState = servers[serverInfo.id]
+                val newState = ServerState(
+                    info = serverInfo,
+                    lastHeartbeat = System.currentTimeMillis(),
+                    apiUrl = serverUrl
+                )
+
+                if (existingState == null) {
+                    servers[serverInfo.id] = newState
+                    _serverOnlineEvents.emit(ServerOnlineEvent(serverInfo.copy(online = true)))
+                } else {
+                    servers[serverInfo.id] = existingState.copy(
+                        info = serverInfo,
+                        lastHeartbeat = System.currentTimeMillis()
+                    )
+                }
+            }
         } catch (e: Exception) {
-            // Broadcast failed, but we can still operate with static servers
+            // Server not reachable, will retry on next poll
+        }
+    }
+
+    /**
+     * Poll a server for its list of known peers (gossip protocol)
+     */
+    private suspend fun pollServerPeers(serverUrl: String) {
+        try {
+            val response = httpClient.get("$serverUrl/servers")
+            if (response.status == HttpStatusCode.OK) {
+                val peerServers: List<ServerInfo> = response.body()
+
+                for (peerInfo in peerServers) {
+                    // Don't add ourselves
+                    if (peerInfo.id == localServer.id) continue
+
+                    // Try to discover this peer if we don't know about it
+                    if (!servers.containsKey(peerInfo.id)) {
+                        val peerUrl = buildApiUrl(peerInfo.host, apiPort)
+                        discoverServer(peerUrl)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Peer query failed, continue
+        }
+    }
+
+    /**
+     * Announce our presence to all static servers
+     */
+    private suspend fun announceToStaticServers() {
+        for (serverUrl in staticServers) {
+            try {
+                // Simply polling the server will make them aware of us via their /servers endpoint
+                discoverServer(serverUrl)
+            } catch (e: Exception) {
+                // Continue with other servers
+            }
         }
     }
 
@@ -332,24 +296,6 @@ class P2PServerRegistry(
         }
     }
 
-    private suspend fun discoverStaticServer(serverUrl: String) {
-        try {
-            val response = httpClient.get("$serverUrl/server-info")
-            if (response.status == HttpStatusCode.OK) {
-                val serverInfo: ServerInfo = response.body()
-                val state = ServerState(
-                    info = serverInfo,
-                    lastHeartbeat = System.currentTimeMillis(),
-                    apiUrl = serverUrl
-                )
-                servers[serverInfo.id] = state
-                _serverOnlineEvents.emit(ServerOnlineEvent(serverInfo.copy(online = true)))
-            }
-        } catch (e: Exception) {
-            // Server not reachable, will retry later
-        }
-    }
-
     private fun buildApiUrl(host: String, port: Int): String {
         return "http://$host:$port"
     }
@@ -357,7 +303,6 @@ class P2PServerRegistry(
     fun dispose() {
         discoveryJob?.cancel()
         heartbeatMonitorJob?.cancel()
-        broadcastJob?.cancel()
         httpClient.close()
     }
 }

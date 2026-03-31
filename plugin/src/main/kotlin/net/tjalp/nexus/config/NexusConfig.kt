@@ -202,7 +202,7 @@ data class SeasonWinterConfig(
 @ConfigSerializable
 data class ServersConfig(
     val enable: Boolean = false,
-    val mode: String = "redis", // "redis" or "p2p"
+    val mode: String = "p2p", // "redis" or "p2p" (p2p is recommended)
     val serverId: String = "server-1",
     val serverName: String = "Server 1",
     val serverType: String = "SURVIVAL",
@@ -218,8 +218,6 @@ data class ServersConfig(
 @ConfigSerializable
 data class P2PConfig(
     val apiPort: Int = 8080,
-    val multicastGroup: String = "239.255.42.99",
-    val multicastPort: Int = 9999,
     val staticServers: List<String> = emptyList() // e.g., ["http://server1:8080", "http://server2:8080"]
 )
 
