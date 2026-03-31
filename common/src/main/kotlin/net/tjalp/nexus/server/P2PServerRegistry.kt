@@ -91,7 +91,7 @@ class P2PServerRegistry(
     override suspend fun getOnlineServers(): Collection<ServerInfo> {
         return servers.values
             .filter { it.isAlive() }
-            .map { it.info.copy(online = true) }
+            .map { it.info }
     }
 
     override suspend fun getServersByType(type: ServerType): Collection<ServerInfo> {
@@ -106,7 +106,7 @@ class P2PServerRegistry(
             apiUrl = apiUrl
         )
 
-        _serverOnlineEvents.emit(ServerOnlineEvent(server.copy(online = true)))
+        _serverOnlineEvents.emit(ServerOnlineEvent(server))
 
         // Announce ourselves to all static servers
         announceToStaticServers()
@@ -228,7 +228,7 @@ class P2PServerRegistry(
 
                 if (existingState == null) {
                     servers[serverInfo.id] = newState
-                    _serverOnlineEvents.emit(ServerOnlineEvent(serverInfo.copy(online = true)))
+                    _serverOnlineEvents.emit(ServerOnlineEvent(serverInfo))
                 } else {
                     servers[serverInfo.id] = existingState.copy(
                         info = serverInfo,

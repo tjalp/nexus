@@ -294,7 +294,7 @@ class ServersFeature : Feature(SERVERS), Listener {
     suspend fun transferPlayer(player: Player, serverId: String): Boolean {
         val targetServer = serverRegistry.getServer(serverId)
 
-        if (targetServer == null || !targetServer.online) {
+        if (targetServer == null) {
             player.sendActionBar(text("Target server is offline or not found", RED))
             return false
         }

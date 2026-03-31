@@ -23,8 +23,7 @@ enum class ServerType {
  * @property type The type of server (creative, survival, etc.)
  * @property host Hostname or IP address
  * @property port Server port
- * @property maxPlayers Maximum number of players allowed
- * @property online Whether the server is currently online
+ * @property maxPlayers Maximum number of players allowed (negative means unlimited)
  */
 @Serializable
 data class ServerInfo(
@@ -33,8 +32,7 @@ data class ServerInfo(
     val type: ServerType,
     val host: String,
     val port: Int,
-    val maxPlayers: Int = -1,
-    @Transient val online: Boolean = false
+    val maxPlayers: Int = -1
 )
 
 /**
