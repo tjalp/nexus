@@ -12,10 +12,7 @@ import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
 import net.tjalp.nexus.player.PlayerRegistry
 import net.tjalp.nexus.player.PlayerStatus
-import net.tjalp.nexus.player.RedisPlayerRegistry
 import net.tjalp.nexus.player.P2PPlayerRegistry
-import net.tjalp.nexus.redis.RedisConfig
-import net.tjalp.nexus.server.RedisServerRegistry
 import net.tjalp.nexus.server.P2PServerRegistry
 import net.tjalp.nexus.server.ServerInfo
 import net.tjalp.nexus.server.ServerRegistry
@@ -32,7 +29,7 @@ import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Feature for managing multiserver infrastructure with Redis or P2P
+ * Feature for managing multiserver infrastructure with P2P networking
  */
 class ServersFeature : Feature(SERVERS), Listener {
 
@@ -53,8 +50,6 @@ class ServersFeature : Feature(SERVERS), Listener {
 
     var p2pApiServer: P2PApiServer? = null
         internal set
-
-    private var useP2PMode: Boolean = false
 
     override fun onEnable() {
         val config = NexusPlugin.configuration.features.servers
@@ -78,16 +73,8 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         heartbeatTtl = config.heartbeatTimeoutSeconds
 
-        // Determine which mode to use
-        useP2PMode = config.mode.lowercase() == "p2p"
-
-        if (useP2PMode) {
-            NexusPlugin.logger.info("Initializing P2P mode for server networking...")
-            initializeP2PMode(config)
-        } else {
-            NexusPlugin.logger.info("Initializing Redis mode for server networking...")
-            initializeRedisMode()
-        }
+        NexusPlugin.logger.info("Initializing P2P mode for server networking...")
+        initializeP2PMode(config)
 
         startHeartbeat(config.heartbeatIntervalSeconds, config.heartbeatTimeoutSeconds)
 
@@ -175,33 +162,6 @@ class ServersFeature : Feature(SERVERS), Listener {
         }
     }
 
-    private fun initializeRedisMode() {
-        serverRegistry = RedisServerRegistry(NexusPlugin.redis, scheduler)
-        playerRegistry = RedisPlayerRegistry(NexusPlugin.redis, scheduler)
-
-        // Configure Redis for keyspace notifications (needed for crash detection)
-        scheduler.launch {
-            try {
-                NexusPlugin.logger.info("Configuring Redis for Nexus network...")
-                RedisConfig.enableKeyspaceNotifications(NexusPlugin.redis)
-                RedisConfig.validateConfiguration(NexusPlugin.redis)
-            } catch (e: Exception) {
-                NexusPlugin.logger.warning("Failed to configure Redis: ${e.message}")
-            }
-        }
-
-        // Register this server as online
-        scheduler.launch {
-            try {
-                serverRegistry.registerServer(serverInfo)
-                NexusPlugin.logger.info("Registered server '${serverInfo.name}' (${serverInfo.id}) as online")
-            } catch (e: Exception) {
-                NexusPlugin.logger.severe("Failed to register server: ${e.message}")
-                e.printStackTrace()
-            }
-        }
-    }
-
     override fun onDisposed() {
         globalChat?.dispose()
         this.unregister()
@@ -226,10 +186,8 @@ class ServersFeature : Feature(SERVERS), Listener {
         }
 
         // Dispose P2P resources
-        if (useP2PMode) {
-            (serverRegistry as? P2PServerRegistry)?.dispose()
-            (playerRegistry as? P2PPlayerRegistry)?.dispose()
-        }
+        (serverRegistry as? P2PServerRegistry)?.dispose()
+        (playerRegistry as? P2PPlayerRegistry)?.dispose()
     }
 
     /**
@@ -341,18 +299,16 @@ class ServersFeature : Feature(SERVERS), Listener {
             return false
         }
 
-        // P2P mode: Check server availability before transfer
-        if (useP2PMode && serverRegistry is P2PServerRegistry) {
-            val availability = (serverRegistry as P2PServerRegistry).checkServerAvailability(serverId)
+        // Check server availability before transfer
+        val availability = (serverRegistry as P2PServerRegistry).checkServerAvailability(serverId)
 
-            if (!availability.available) {
-                player.sendActionBar(text("Cannot transfer: ${availability.reason}", RED))
-                NexusPlugin.logger.warning("Transfer blocked for ${player.name} to $serverId: ${availability.reason}")
-                return false
-            }
-
-            NexusPlugin.logger.info("Server $serverId is available (${availability.playerCount} players)")
+        if (!availability.available) {
+            player.sendActionBar(text("Cannot transfer: ${availability.reason}", RED))
+            NexusPlugin.logger.warning("Transfer blocked for ${player.name} to $serverId: ${availability.reason}")
+            return false
         }
+
+        NexusPlugin.logger.info("Server $serverId is available (${availability.playerCount} players)")
 
         // Mark the player as transferring BEFORE initiating the transfer.
         // This prevents onPlayerQuit from fully removing them from the registry.

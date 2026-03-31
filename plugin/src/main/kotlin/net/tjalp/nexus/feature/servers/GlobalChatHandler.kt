@@ -12,9 +12,6 @@ import kotlinx.serialization.json.Json
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.chat.ChatMessageSignal
-import net.tjalp.nexus.redis.Signals
-import net.tjalp.nexus.server.P2PServerRegistry
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.event.EventHandler
@@ -22,67 +19,39 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.spongepowered.configurate.reactive.Disposable
 
+/**
+ * Handles global chat broadcasting across all servers in the P2P network.
+ * Messages are sent to all servers via HTTP POST to /chat-message endpoint.
+ */
 class GlobalChatHandler(
     private val feature: ServersFeature
 ) : Disposable, Listener, P2PApiServer.GlobalChatHandlerInterface {
 
     val scheduler = feature.scheduler.fork("global_chat")
-    private val useP2PMode: Boolean
-    private var httpClient: HttpClient? = null
+    private val httpClient: HttpClient
 
     init {
         register()
 
-        // Determine mode based on feature's registry type
-        useP2PMode = feature.serverRegistry is P2PServerRegistry
-
-        if (useP2PMode) {
-            // Initialize HTTP client for P2P mode
-            httpClient = HttpClient(CIO) {
-                install(ContentNegotiation) {
-                    json(Json {
-                        ignoreUnknownKeys = true
-                        prettyPrint = true
-                    })
-                }
-                engine {
-                    requestTimeout = 5000
-                }
+        // Initialize HTTP client for P2P communication
+        httpClient = HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                    prettyPrint = true
+                })
             }
-
-            // Register with P2P API server to receive chat messages
-            (feature as? ServersFeature)?.let { sf ->
-                sf.p2pApiServer?.setGlobalChatHandler(this)
-            }
-        } else {
-            // Subscribe to Redis messages
-            scheduler.launch {
-                NexusPlugin.redis.subscribe(Signals.CHAT_MESSAGE).collect(::receiveMessage)
+            engine {
+                requestTimeout = 5000
             }
         }
-    }
 
-    fun receiveMessage(signal: ChatMessageSignal) {
-        val message = try {
-            GsonComponentSerializer.gson().deserialize(signal.message)
-        } catch (e: Exception) {
-            NexusPlugin.logger.warning("Error while parsing message: ${e.message}")
-            e.printStackTrace()
-
-            text(signal.message)
-        }
-
-        NexusPlugin.server.broadcast(textOfChildren(
-            text(signal.origin.name),
-            space(),
-            text(signal.playerName),
-            space(),
-            message
-        ))
+        // Register with P2P API server to receive chat messages
+        feature.p2pApiServer?.setGlobalChatHandler(this)
     }
 
     /**
-     * Receive P2P chat message from another server
+     * Receive chat message from another server via P2P
      */
     override suspend fun receiveP2PMessage(message: P2PApiServer.ChatMessage) {
         val component = try {
@@ -104,26 +73,14 @@ class GlobalChatHandler(
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     fun on(event: AsyncChatEvent) {
         scheduler.launch {
-            if (useP2PMode) {
-                broadcastP2PMessage(event)
-            } else {
-                broadcastRedisMessage(event)
-            }
+            broadcastMessage(event)
         }
     }
 
-    private suspend fun broadcastRedisMessage(event: AsyncChatEvent) {
-        val signal = ChatMessageSignal(
-            origin = feature.serverInfo,
-            playerId = event.player.uniqueId,
-            playerName = event.player.name,
-            message = GsonComponentSerializer.gson().serialize(event.message())
-        )
-
-        NexusPlugin.redis.publish(Signals.CHAT_MESSAGE, signal)
-    }
-
-    private suspend fun broadcastP2PMessage(event: AsyncChatEvent) {
+    /**
+     * Broadcast chat message to all other servers in the P2P network
+     */
+    private suspend fun broadcastMessage(event: AsyncChatEvent) {
         val message = P2PApiServer.ChatMessage(
             senderId = event.player.uniqueId.toString(),
             senderName = event.player.name,
@@ -134,17 +91,18 @@ class GlobalChatHandler(
 
         // Broadcast to all other servers
         val servers = feature.serverRegistry.getOnlineServers()
+        val apiPort = NexusPlugin.configuration.features.servers.p2p.apiPort
 
         for (server in servers) {
             if (server.id == feature.serverInfo.id) continue
 
             try {
-                httpClient?.post("http://${server.host}:8080/chat-message") {
+                httpClient.post("http://${server.host}:${apiPort}/chat-message") {
                     contentType(ContentType.Application.Json)
                     setBody(message)
                 }
             } catch (e: Exception) {
-                // Failed to send to this server, continue
+                // Failed to send to this server, log and continue
                 NexusPlugin.logger.warning("Failed to send chat message to ${server.name}: ${e.message}")
             }
         }
@@ -152,7 +110,7 @@ class GlobalChatHandler(
 
     override fun dispose() {
         unregister()
-        httpClient?.close()
+        httpClient.close()
         scheduler.dispose()
     }
 }

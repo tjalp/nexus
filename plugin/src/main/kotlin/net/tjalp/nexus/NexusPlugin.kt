@@ -23,7 +23,6 @@ import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.GeneralAttachmentProvider
 import net.tjalp.nexus.profile.service.ExposedProfilesService
-import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.scheduler.Scheduler
 import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.register
@@ -37,7 +36,6 @@ object NexusPlugin : JavaPlugin() {
 
     lateinit var profiles: ProfilesService; private set
     lateinit var database: Database; private set
-    lateinit var redis: RedisController; private set
     lateinit var scheduler: Scheduler; private set
     lateinit var configuration: NexusConfig; private set
     lateinit var features: FeatureManager; private set
@@ -71,12 +69,7 @@ object NexusPlugin : JavaPlugin() {
             password = configuration.database.password
         )
         runMigrations()
-        redis = RedisController(
-            host = configuration.redis.host,
-            port = configuration.redis.port,
-            password = configuration.redis.password
-        )
-        profiles = ExposedProfilesService(db = database, redis = redis, scope = scheduler)
+        profiles = ExposedProfilesService(db = database, redis = null, scope = scheduler)
         PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }
 

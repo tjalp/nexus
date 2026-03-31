@@ -40,7 +40,7 @@ class P2PApiServer(
     private val port: Int = 8080
 ) {
 
-    private var server: ApplicationEngine? = null
+    private var server: EmbeddedServer<*, *>? = null
     private var localPlayerCount: Int = 0
     private var globalChatHandler: Any? = null // Will be set by GlobalChatHandler
 
