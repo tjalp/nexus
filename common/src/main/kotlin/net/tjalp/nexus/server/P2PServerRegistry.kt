@@ -25,20 +25,23 @@ import kotlin.time.Duration.Companion.seconds
  * It works over the internet and in Docker containers.
  *
  * Discovery methods:
- * 1. Static server list (primary) - configured list of known servers
- * 2. HTTP polling - each server exposes /servers endpoint listing known peers
- * 3. Gossip protocol - servers share their known peers with each other
+ * 1. Discovery service (optional) - centralized endpoint returning server list
+ * 2. Static server list (fallback) - configured list of known servers
+ * 3. HTTP polling - each server exposes /servers endpoint listing known peers
+ * 4. Gossip protocol - servers share their known peers with each other
  *
  * @param localServer The local server information
  * @param scope Coroutine scope for launching async operations
  * @param apiPort The HTTP API port for server-to-server communication
  * @param staticServers List of known server URLs to connect to
+ * @param discoveryUrl Optional URL to fetch server list from a centralized discovery service
  */
 class P2PServerRegistry(
     private val localServer: ServerInfo,
     private val scope: CoroutineScope,
     private val apiPort: Int = 8080,
-    private val staticServers: List<String> = emptyList()
+    private val staticServers: List<String> = emptyList(),
+    private val discoveryUrl: String = ""
 ) : ServerRegistry {
 
     private val _serverOnlineEvents = MutableSharedFlow<ServerOnlineEvent>()
@@ -64,6 +67,7 @@ class P2PServerRegistry(
 
     private var discoveryJob: Job? = null
     private var heartbeatMonitorJob: Job? = null
+    private var discoveryService: ServerDiscoveryService? = null
 
     @Serializable
     private data class ServerState(
@@ -78,6 +82,11 @@ class P2PServerRegistry(
     }
 
     init {
+        // Initialize discovery service if URL is provided
+        if (discoveryUrl.isNotBlank()) {
+            discoveryService = ServerDiscoveryService(httpClient, discoveryUrl)
+        }
+
         // Start polling known servers for discovery
         startDiscoveryPolling()
 
@@ -185,8 +194,14 @@ class P2PServerRegistry(
         discoveryJob = scope.launch {
             while (isActive) {
                 try {
-                    // Poll static servers
-                    for (serverUrl in staticServers) {
+                    // Fetch servers from discovery service if available
+                    val discoveredServers = discoveryService?.fetchServerList() ?: emptyList()
+
+                    // Combine discovery service servers with static servers
+                    val serversToDiscover = (discoveredServers + staticServers).distinct()
+
+                    // Poll all known servers (from both discovery and static config)
+                    for (serverUrl in serversToDiscover) {
                         discoverServer(serverUrl)
                     }
 

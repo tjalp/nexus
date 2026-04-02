@@ -209,7 +209,8 @@ data class ServersConfig(
 @ConfigSerializable
 data class P2PConfig(
     val apiPort: Int = 8080,
-    val staticServers: List<String> = emptyList() // e.g., ["http://server1:8080", "http://server2:8080"]
+    val staticServers: List<String> = emptyList(), // e.g., ["http://server1:8080", "http://server2:8080"]
+    val discoveryUrl: String = "" // Optional: URL to fetch server list from (e.g., "http://discovery:8080/servers.json")
 )
 
 @ConfigSerializable

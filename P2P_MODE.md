@@ -26,7 +26,6 @@ Edit your `config.yml`:
 features:
   servers:
     enable: true
-    mode: "p2p"  # P2P is now the default mode
     serverId: "survival-1"
     serverName: "Survival Server 1"
     serverType: "SURVIVAL"
@@ -39,20 +38,109 @@ features:
     # P2P specific settings
     p2p:
       apiPort: 8080  # HTTP API port for server-to-server communication
+
+      # Option 1: Use discovery service (recommended for Docker/large networks)
+      discoveryUrl: "http://discovery-server:8080/servers.json"
+
+      # Option 2: List static servers manually (fallback or standalone)
       staticServers:  # List of initial servers to connect to
         - "http://192.168.1.100:8080"
         - "http://192.168.1.101:8080"
 ```
 
+**Discovery Service vs Static Servers:**
+- **discoveryUrl**: Single source of truth - all servers query this URL for the server list. Ideal for Docker and large networks.
+- **staticServers**: Manual list configuration. Used as fallback if discoveryUrl fails, or when discovery service is not available.
+- Both can be used together: servers from both sources are combined.
+
+### Centralized Discovery Service (Recommended)
+
+For easier management, especially in Docker environments, use a centralized discovery service:
+
+**1. Create a simple JSON file (`servers.json`):**
+```json
+["http://server1:8080", "http://server2:8080", "http://server3:8080"]
+```
+
+Or use object format:
+```json
+{
+  "servers": [
+    "http://server1:8080",
+    "http://server2:8080",
+    "http://server3:8080"
+  ]
+}
+```
+
+**2. Serve it via HTTP (example with nginx):**
+```nginx
+server {
+    listen 8080;
+    location /servers.json {
+        root /var/www;
+        add_header Content-Type application/json;
+    }
+}
+```
+
+**3. Configure all servers to use it:**
+```yaml
+p2p:
+  apiPort: 8080
+  discoveryUrl: "http://nginx:8080/servers.json"
+```
+
+**Benefits:**
+- Single source of truth - update one file to add/remove servers
+- No need to reconfigure every server
+- Perfect for Docker Compose or Kubernetes deployments
+- Servers automatically discover changes on next poll (every 10 seconds)
+
 ### Docker Configuration
 
-For Docker deployments, use service names or host networking:
+**Option 1: Using Discovery Service (Recommended)**
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+services:
+  discovery:
+    image: nginx:alpine
+    volumes:
+      - ./servers.json:/usr/share/nginx/html/servers.json:ro
+    networks:
+      - minecraft
+
+  mc-survival-1:
+    image: your-minecraft-image
+    environment:
+      - NEXUS_DISCOVERY_URL=http://discovery/servers.json
+    networks:
+      - minecraft
+
+  mc-survival-2:
+    image: your-minecraft-image
+    environment:
+      - NEXUS_DISCOVERY_URL=http://discovery/servers.json
+    networks:
+      - minecraft
+```
+
+Then create `servers.json`:
+```json
+["http://mc-survival-1:8080", "http://mc-survival-2:8080"]
+```
+
+**Option 2: Using Static Servers**
+
+For Docker deployments without discovery service, use service names:
 
 ```yaml
 features:
   servers:
     enable: true
-    mode: "p2p"
     serverId: "survival-1"
     serverName: "Survival Server 1"
     serverType: "SURVIVAL"
@@ -69,13 +157,29 @@ features:
 
 ### Internet/WAN Configuration
 
-For servers across the internet, use public IPs or hostnames:
+For servers across the internet, use public IPs or hostnames with discovery service:
 
+**With Discovery Service:**
 ```yaml
 features:
   servers:
     enable: true
-    mode: "p2p"
+    serverId: "us-east-1"
+    serverName: "US East Server"
+    serverType: "SURVIVAL"
+    host: "us-east.example.com"  # Public hostname
+    port: 25565
+
+    p2p:
+      apiPort: 8080
+      discoveryUrl: "https://discovery.example.com/nexus/servers.json"
+```
+
+**Without Discovery Service:**
+```yaml
+features:
+  servers:
+    enable: true
     serverId: "us-east-1"
     serverName: "US East Server"
     serverType: "SURVIVAL"
@@ -89,6 +193,21 @@ features:
         - "http://eu-west.example.com:8080"
         - "http://ap-south.example.com:8080"
 ```
+
+### Environment Variable Override
+
+You can override the discovery URL using the `NEXUS_DISCOVERY_URL` environment variable:
+
+```bash
+export NEXUS_DISCOVERY_URL="http://discovery-server:8080/servers.json"
+# This takes precedence over the config.yml setting
+```
+
+This is particularly useful for:
+- Docker containers
+- Kubernetes deployments
+- CI/CD pipelines
+- Different environments (dev/staging/production)
 
 ## Firewall Requirements
 
@@ -109,34 +228,40 @@ iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 
 ## How P2P Discovery Works
 
-P2P mode uses HTTP-based discovery with a gossip protocol:
+P2P mode uses HTTP-based discovery with multiple methods:
 
-1. **Startup**: Each server starts by contacting servers in its `staticServers` list
-2. **Initial Discovery**: Server fetches `/server-info` from each static server to learn about them
-3. **Gossip Protocol**: Servers poll `/servers` endpoint of known peers to discover their peers
-4. **Continuous Polling**: Every 10 seconds, servers poll all known peers to:
-   - Verify they're still online
-   - Discover new servers they know about
-5. **Health Monitoring**: Servers are marked offline if they stop responding
+1. **Discovery Service (optional)**: Fetch server list from centralized URL
+2. **Static Servers**: Fallback to configured server list
+3. **Gossip Protocol**: Servers share their known peers
 
-### Discovery Example
+### Discovery Flow
 
 ```
-Server A starts with staticServers: [B]
-  → A contacts B at /server-info
-  → A learns about B
+Server A starts with discoveryUrl configured
+  → A fetches server list from discovery URL: [B, C, D]
+  → A contacts B, C, D at /server-info
+  → A learns about servers B, C, D
   → A polls B at /servers
-  → A learns B knows about C
-  → A contacts C at /server-info
-  → A now knows about B and C
+  → A learns B knows about E
+  → A contacts E at /server-info
+  → A now knows about B, C, D, and E
   → Network discovery complete!
 ```
 
-This gossip-based approach means:
-- You only need to configure 1-2 static servers
-- New servers automatically discover the entire network
+### Polling Behavior
+
+Every 10 seconds, each server:
+1. Fetches updated server list from discovery URL (if configured)
+2. Merges with static servers configuration
+3. Contacts all servers to verify they're online
+4. Polls known peers for their server lists (gossip)
+5. Updates health status
+
+This approach means:
+- Discovery URL changes take effect within 10 seconds
+- New servers automatically join the network
+- Failed servers are detected quickly
 - Works across Docker networks, NAT, and the internet
-- No multicast or broadcast (which don't work over internet/Docker)
 
 ## Features
 
@@ -213,19 +338,31 @@ If a server crashes:
 
 ### Servers not discovering each other
 
-1. **Check static server URLs are correct**:
+1. **Check discovery service is reachable** (if using discoveryUrl):
+   ```bash
+   curl http://discovery-server:8080/servers.json
+   ```
+   Should return JSON array of server URLs
+
+2. **Check static server URLs are correct**:
    ```bash
    curl http://192.168.1.100:8080/server-info
    ```
 
-2. **Verify at least one server is reachable** from the `staticServers` list
+3. **Verify at least one server is reachable** from either discovery service or `staticServers` list
 
-3. **Check server logs** for discovery attempts:
+4. **Check server logs** for discovery attempts:
    ```
+   [INFO] Registered server in P2P mode with discovery URL: http://discovery:8080/servers.json
    [INFO] Discovered server 'Survival-2' via HTTP
    ```
 
-4. **Ensure network connectivity** between servers (ping, telnet to port 8080)
+5. **Ensure network connectivity** between servers (ping, telnet to port 8080)
+
+6. **Verify environment variable** (if using NEXUS_DISCOVERY_URL):
+   ```bash
+   echo $NEXUS_DISCOVERY_URL
+   ```
 
 ### HTTP API not responding
 
@@ -271,13 +408,15 @@ Check server logs for specific error messages:
 
 ## Best Practices
 
-1. **Use static IPs or hostnames**: Avoid DHCP for server hosts in production
-2. **Configure multiple static servers**: Add 2-3 servers to `staticServers` for redundancy
-3. **Monitor health endpoints**: Set up external monitoring of `/health`
-4. **Keep clocks synced**: Use NTP to ensure consistent timestamps
-5. **Plan capacity**: Configure `maxPlayers` appropriately
-6. **Test transfers**: Verify transfers work before production use
-7. **Use DNS for internet deployments**: Easier to update IPs without config changes
+1. **Use discovery service for Docker/Kubernetes**: Centralized server list is easier to manage
+2. **Set NEXUS_DISCOVERY_URL environment variable**: Override config per environment
+3. **Combine discovery + static servers**: Use discovery as primary, static servers as fallback
+4. **Use static IPs or hostnames**: Avoid DHCP for server hosts in production
+5. **Monitor health endpoints**: Set up external monitoring of `/health`
+6. **Keep clocks synced**: Use NTP to ensure consistent timestamps
+7. **Plan capacity**: Configure `maxPlayers` appropriately
+8. **Test transfers**: Verify transfers work before production use
+9. **Use DNS for internet deployments**: Easier to update IPs without config changes
 
 ## Performance Tuning
 

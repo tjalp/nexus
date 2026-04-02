@@ -126,11 +126,16 @@ class ServersFeature : Feature(SERVERS), Listener {
     }
 
     private fun initializeP2PMode(config: ServersConfig) {
+        // Support environment variable override for discovery URL (useful in Docker)
+        val discoveryUrl = System.getenv("NEXUS_DISCOVERY_URL")?.takeIf { it.isNotBlank() }
+            ?: config.p2p.discoveryUrl
+
         val p2pServerRegistry = P2PServerRegistry(
             localServer = serverInfo,
             scope = scheduler,
             apiPort = config.p2p.apiPort,
-            staticServers = config.p2p.staticServers
+            staticServers = config.p2p.staticServers,
+            discoveryUrl = discoveryUrl
         )
         serverRegistry = p2pServerRegistry
 
@@ -155,7 +160,8 @@ class ServersFeature : Feature(SERVERS), Listener {
         scheduler.launch {
             try {
                 serverRegistry.registerServer(serverInfo)
-                NexusPlugin.logger.info("Registered server '${serverInfo.name}' (${serverInfo.id}) in P2P mode")
+                val discoveryInfo = if (discoveryUrl.isNotBlank()) " with discovery URL: $discoveryUrl" else ""
+                NexusPlugin.logger.info("Registered server '${serverInfo.name}' (${serverInfo.id}) in P2P mode$discoveryInfo")
             } catch (e: Exception) {
                 NexusPlugin.logger.severe("Failed to register server: ${e.message}")
                 e.printStackTrace()
