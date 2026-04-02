@@ -1,22 +1,32 @@
 name: "nexus"
 services:
-#  survival:
-#    image: itzg/minecraft-server
-#    restart: unless-stopped
-#    tty: true
-#    stdin_open: true
-#    ports:
-#      - "25565:25565"
-#      - "19132:19132/udp"
-#    environment:
-#      EULA: "TRUE"
-#      MEMORY: "2G"
-#      TYPE: "PAPER"
-#      VERSION: "1.21.11"
-#      USE_AIKAR_FLAGS: "true"
-#      TZ: "Europe/Amsterdam"
-#    volumes:
-#      - survival-data:/data
+  discovery:
+    image: nginx:alpine
+    ports:
+      - "8282:80"
+    volumes:
+      - ./servers.json:/usr/share/nginx/html/servers.json:ro
+  survival:
+    image: itzg/minecraft-server
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+      - "5005:5005" # Dev debugging and reloading
+      - "19132:19132/udp"
+    environment:
+      EULA: "TRUE"
+      MEMORY: "2G"
+      TYPE: "PAPER"
+      VERSION: "1.21.11"
+      USE_AIKAR_FLAGS: "true"
+      TZ: "Europe/Amsterdam"
+      NEXUS_DISCOVERY_URL: "http://discovery/servers.json"
+    volumes:
+      #      - survival-data:/data
+      - ./plugins:/plugins
+      - ./survival-server-data:/data
   creative:
     image: itzg/minecraft-server
     restart: unless-stopped
@@ -24,6 +34,7 @@ services:
     stdin_open: true
     ports:
       - "25566:25565"
+      - "5006:5005" # Dev debugging and reloading
       - "19133:19132/udp"
     environment:
       EULA: "TRUE"
@@ -32,6 +43,7 @@ services:
       VERSION: "1.21.11"
       USE_AIKAR_FLAGS: "true"
       TZ: "Europe/Amsterdam"
+      NEXUS_DISCOVERY_URL: "http://discovery/servers.json"
     volumes:
 #      - creative-data:/data
       - ./plugins:/plugins
