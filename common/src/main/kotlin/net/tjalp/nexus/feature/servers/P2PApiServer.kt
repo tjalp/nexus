@@ -166,6 +166,19 @@ class P2PApiServer(
                         call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid notification: ${e.message}"))
                     }
                 }
+
+                // Server shutdown notification
+                post("/server-offline") {
+                    try {
+                        val notification = call.receive<ServerOfflineNotification>()
+                        launch {
+                            serverRegistry.handleServerOffline(notification.serverId)
+                        }
+                        call.respond(HttpStatusCode.OK, SuccessResponse("Server offline notification received"))
+                    } catch (e: Exception) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid notification: ${e.message}"))
+                    }
+                }
             }
         }.start(wait = false)
     }
@@ -218,6 +231,11 @@ class P2PApiServer(
     @Serializable
     data class ProfileUpdateNotification(
         val playerId: String
+    )
+
+    @Serializable
+    data class ServerOfflineNotification(
+        val serverId: String
     )
 
     /**

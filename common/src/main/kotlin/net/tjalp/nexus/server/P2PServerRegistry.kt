@@ -123,6 +123,9 @@ class P2PServerRegistry(
     }
 
     override suspend fun unregisterServer(serverId: String) {
+        // Broadcast shutdown notification to all peers before removing from local registry
+        broadcastShutdown(serverId)
+
         val state = servers.remove(serverId)
         if (state != null) {
             _serverOfflineEvents.emit(ServerOfflineEvent(serverId))
@@ -316,6 +319,41 @@ class P2PServerRegistry(
 
     private fun buildApiUrl(host: String, port: Int): String {
         return "http://$host:$port"
+    }
+
+    /**
+     * Broadcast server shutdown notification to all known peers.
+     * This allows other servers to immediately remove this server from their registry
+     * instead of waiting for heartbeat timeout (30 seconds).
+     */
+    suspend fun broadcastShutdown(serverId: String) {
+        val knownServers = servers.values.toList()
+
+        for (serverState in knownServers) {
+            if (serverState.info.id == serverId) continue
+
+            scope.launch {
+                try {
+                    httpClient.post("${serverState.apiUrl}/server-offline") {
+                        contentType(ContentType.Application.Json)
+                        setBody(mapOf("serverId" to serverId))
+                    }
+                } catch (e: Exception) {
+                    // Failed to notify this server - they'll detect via heartbeat timeout
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle server offline notification from another server.
+     * Immediately removes the server from the registry.
+     */
+    suspend fun handleServerOffline(serverId: String) {
+        val state = servers.remove(serverId)
+        if (state != null) {
+            _serverOfflineEvents.emit(ServerOfflineEvent(serverId))
+        }
     }
 
     fun dispose() {

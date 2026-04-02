@@ -293,6 +293,8 @@ P2P mode exposes HTTP endpoints for monitoring:
 - `GET /player/{uuid}` - Get specific player information
 - `GET /stats` - Network-wide statistics
 - `POST /chat-message` - Receive global chat messages from other servers
+- `POST /player-event` - Receive player status updates from other servers
+- `POST /server-offline` - Receive immediate shutdown notifications from other servers
 
 Example:
 ```bash
@@ -326,13 +328,28 @@ Player Transfer Request
 
 ### Crash Recovery
 
-If a server crashes:
+**Graceful Shutdown:**
+
+When a server stops gracefully (normal shutdown):
+
+1. Server calls `unregisterServer()` during shutdown
+2. Broadcasts immediate shutdown notification to all known peers via POST `/server-offline`
+3. Other servers receive notification and remove the server instantly
+4. Network state updates in real-time (no 30-second delay)
+5. Players are immediately prevented from transferring to the stopped server
+
+**Ungraceful Shutdown (Crash):**
+
+If a server crashes without graceful shutdown:
 
 1. HTTP requests to that server start failing
-2. Other servers detect timeouts during polling
-3. Crashed server marked as offline
-4. Players on crashed server removed from network registry
-5. When server restarts, it re-announces and rejoins network via gossip protocol
+2. Other servers detect timeouts during polling (every 10 seconds)
+3. Heartbeat expires after 30 seconds of inactivity
+4. Crashed server automatically marked as offline
+5. Players on crashed server removed from network registry
+6. When server restarts, it re-announces and rejoins network via gossip protocol
+
+The dual approach (immediate notification + heartbeat timeout) ensures network consistency in both scenarios.
 
 ## Troubleshooting
 
