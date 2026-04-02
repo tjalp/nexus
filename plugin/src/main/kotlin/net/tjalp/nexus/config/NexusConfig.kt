@@ -12,7 +12,6 @@ import java.nio.file.Path
 @ConfigSerializable
 data class NexusConfig(
     val database: DatabaseConfig,
-    val redis: RedisConfig,
     val features: FeaturesConfig
 ) {
 
@@ -54,13 +53,6 @@ data class DatabaseConfig(
     val driver: String = "org.postgresql.Driver",
     val user: String = "postgres",
     val password: String = "postgres",
-)
-
-@ConfigSerializable
-data class RedisConfig(
-    val host: String = "localhost",
-    val port: Int = 6379,
-    val password: String = "",
 )
 
 @ConfigSerializable
@@ -209,7 +201,16 @@ data class ServersConfig(
     val port: Int = 25565,
     val maxPlayers: Int = -1,
     val heartbeatIntervalSeconds: Long = 5,
-    val heartbeatTimeoutSeconds: Long = 20
+    val heartbeatTimeoutSeconds: Long = 20,
+    // P2P mode settings
+    val p2p: P2PConfig = P2PConfig()
+)
+
+@ConfigSerializable
+data class P2PConfig(
+    val apiPort: Int = 8080,
+    val staticServers: List<String> = emptyList(), // e.g., ["http://server1:8080", "http://server2:8080"]
+    val discoveryUrl: String = "" // Optional: URL to fetch server list from (e.g., "http://discovery:8080/servers.json")
 )
 
 @ConfigSerializable

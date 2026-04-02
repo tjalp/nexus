@@ -144,8 +144,8 @@ class PlayerRegistryExamples(
     suspend fun findLeastPopulatedServer(serverType: net.tjalp.nexus.server.ServerType): String? {
         val servers = serverRegistry.getServersByType(serverType)
 
+        // getServersByType already returns only online servers
         return servers
-            .filter { it.online }
             .map { server ->
                 val playerCount = playerRegistry.getPlayersByServer(server.id).size
                 server.id to playerCount

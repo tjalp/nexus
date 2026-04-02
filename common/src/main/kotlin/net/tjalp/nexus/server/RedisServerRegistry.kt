@@ -60,7 +60,7 @@ class RedisServerRegistry(
     override suspend fun getServer(serverId: String): ServerInfo? {
         val json = redis.query.get(SERVER_INFO_PREFIX + serverId) ?: return null
         return try {
-            Json.decodeFromString<ServerInfo>(json).copy(online = true)
+            Json.decodeFromString<ServerInfo>(json)
         } catch (_: Exception) {
             null
         }
@@ -91,13 +91,12 @@ class RedisServerRegistry(
     }
 
     override suspend fun registerServer(server: ServerInfo) {
-        val onlineServer = server.copy(online = true)
-        val json = Json.encodeToString(onlineServer)
+        val json = Json.encodeToString(server)
 
         // Store server info with 60 second TTL - will expire if heartbeat stops
         redis.query.setex(SERVER_INFO_PREFIX + server.id, 60, json)
 
-        redis.publish(Signals.SERVER_ONLINE, ServerOnlineEvent(onlineServer))
+        redis.publish(Signals.SERVER_ONLINE, ServerOnlineEvent(server))
     }
 
     override suspend fun unregisterServer(serverId: String) {
@@ -114,8 +113,7 @@ class RedisServerRegistry(
 
     override suspend fun updateHeartbeat(serverId: String, playerCount: Int, ttl: Long) {
         val server = getServer(serverId) ?: return
-        val updatedServer = server.copy(online = true)
-        val json = Json.encodeToString(updatedServer)
+        val json = Json.encodeToString(server)
 
         // Refresh server info with TTL
         // If server stops sending heartbeats, this key will expire and server will be automatically removed
