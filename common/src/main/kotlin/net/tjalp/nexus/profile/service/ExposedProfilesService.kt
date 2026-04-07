@@ -99,7 +99,7 @@ class ExposedProfilesService(
 
         if (redis != null && scope != null) {
             scope.launch {
-                redis.publish(Signals.PROFILE_UPDATE, profile.id)
+                redis?.publish(Signals.PROFILE_UPDATE, profile.id)
             }
         }
 

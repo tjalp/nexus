@@ -281,7 +281,7 @@ class ServersFeature : Feature(SERVERS), Listener {
      * Background loop that periodically attempts to re-establish Redis connectivity
      * while in [NetworkState.DEGRADED].
      */
-    private suspend fun reconnectLoop(reconnectIntervalSeconds: Long) {
+    private suspend fun reconnectLoop(reconnectIntervalSeconds: Long) = coroutineScope {
         while (isActive) {
             delay(reconnectIntervalSeconds.seconds)
             if (networkState == NetworkState.DEGRADED) {
