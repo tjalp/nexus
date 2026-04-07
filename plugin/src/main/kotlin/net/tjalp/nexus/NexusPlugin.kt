@@ -37,13 +37,7 @@ object NexusPlugin : JavaPlugin() {
 
     lateinit var profiles: ProfilesService; private set
     lateinit var database: Database; private set
-    var redis: RedisController? = null
-        internal set(value) {
-            field = value
-            if (value != null && ::profiles.isInitialized) {
-                profiles.connectRedis(value)
-            }
-        }
+    var redis: RedisController? = null; internal set
     lateinit var scheduler: Scheduler; private set
     lateinit var configuration: NexusConfig; private set
     lateinit var features: FeatureManager; private set
@@ -128,6 +122,17 @@ object NexusPlugin : JavaPlugin() {
      */
     fun reloadConfiguration() {
         configuration = NexusConfig.reload(dataPath)
+    }
+
+    /**
+     * Propagates a newly-available [redis] controller to all components that depend on it:
+     * the profiles service and all enabled features via [Feature.onRedisConnected].
+     * Call this whenever a Redis connection is (re-)established.
+     */
+    internal fun onRedisConnected(redis: RedisController) {
+        this.redis = redis
+        if (::profiles.isInitialized) profiles.connectRedis(redis)
+        if (::features.isInitialized) features.notifyRedisConnected(redis)
     }
 
     override fun onDisable() {

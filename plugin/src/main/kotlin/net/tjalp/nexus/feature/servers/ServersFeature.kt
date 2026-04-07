@@ -230,7 +230,7 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         // Bring up global chat
         if (globalChat == null) {
-            globalChat = GlobalChatHandler(this)
+            globalChat = GlobalChatHandler(this, redis)
         }
 
         NexusPlugin.logger.info("[Servers] Network state: ONLINE")
@@ -302,8 +302,8 @@ class ServersFeature : Feature(SERVERS), Listener {
             return // still unavailable
         }
 
-        // Store the new connection on NexusPlugin so other components (profiles) can benefit
-        NexusPlugin.redis = redis
+        // Propagate the new connection to all Redis-aware components (profiles, features, etc.)
+        NexusPlugin.onRedisConnected(redis)
         goOnline(redis)
     }
 

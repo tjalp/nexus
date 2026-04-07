@@ -1,5 +1,6 @@
 package net.tjalp.nexus
 
+import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.scheduler.Scheduler
 import org.spongepowered.configurate.reactive.Disposable
 
@@ -36,6 +37,12 @@ abstract class Feature(
      * Called when the feature is enabled, allowing for setup of resources.
      */
     open fun onEnable() {}
+
+    /**
+     * Called when a new Redis controller becomes available (e.g. on reconnect).
+     * Override to refresh subscriptions or re-wire any Redis-dependent state.
+     */
+    open fun onRedisConnected(redis: RedisController) {}
 
     /**
      * Called when the feature is disposed, allowing for cleanup of resources.
