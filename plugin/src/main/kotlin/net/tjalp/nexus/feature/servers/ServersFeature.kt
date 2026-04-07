@@ -1,6 +1,5 @@
 package net.tjalp.nexus.feature.servers
 
-import io.papermc.paper.connection.PlayerConfigurationConnection
 import io.papermc.paper.connection.PlayerLoginConnection
 import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent
 import kotlinx.coroutines.*
@@ -404,68 +403,52 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         val reg = playerRegistry ?: return
 
-        when (conn) {
-            is PlayerLoginConnection -> {
-                // First stage: profile lookup. Check for duplicate sessions.
-                runBlocking {
-                    val id = conn.authenticatedProfile?.id ?: run {
-                        event.kickMessage(text("Failed to verify your profile, please try again later", RED))
-                        return@runBlocking
-                    }
-
-                    val existingPlayer = try {
-                        reg.getPlayer(id)
-                    } catch (_: Exception) {
-                        return@runBlocking // Redis error – allow rather than blocking
-                    }
-
-                    if (existingPlayer != null
-                        && existingPlayer.status != PlayerStatus.TRANSFERRING
-                        && existingPlayer.serverId != null
-                        && existingPlayer.serverId != serverInfo.id
-                    ) {
-                        event.kickMessage(translatable("multiserver.kick.already_online", RED))
-                    }
+        if (conn is PlayerLoginConnection) {
+            // First stage: profile lookup. Check for duplicate sessions.
+            runBlocking {
+                val id = conn.authenticatedProfile?.id ?: run {
+                    event.kickMessage(text("Failed to verify your profile, please try again later", RED))
+                    return@runBlocking
                 }
-            }
 
-            is PlayerConfigurationConnection -> {
-                // Configuration stage: validate transfer cookie for transferring players.
-                runBlocking {
-                    val id = conn.profile.id ?: return@runBlocking
+                val existingPlayer = try {
+                    reg.getPlayer(id)
+                } catch (_: Exception) {
+                    return@runBlocking // Redis error – allow rather than blocking
+                }
 
-                    val existingPlayer = try {
-                        reg.getPlayer(id)
-                    } catch (_: Exception) {
-                        return@runBlocking // Redis error – allow rather than blocking
-                    }
+                if (existingPlayer != null
+                    && existingPlayer.status != PlayerStatus.TRANSFERRING
+                    && existingPlayer.serverId != null
+                    && existingPlayer.serverId != serverInfo.id
+                ) {
+                    event.kickMessage(translatable("multiserver.kick.already_online", RED))
+                    return@runBlocking
+                }
+                else if (existingPlayer == null
+                    || existingPlayer.serverId == serverInfo.id
+                    || existingPlayer.status != PlayerStatus.TRANSFERRING
+                ) {
+                    return@runBlocking
+                }
 
-                    // Only require cookie if player is TRANSFERRING to this specific server.
-                    if (existingPlayer == null
-                        || existingPlayer.status != PlayerStatus.TRANSFERRING
-                        || existingPlayer.serverId == serverInfo.id
-                    ) {
-                        return@runBlocking
-                    }
+                // Retrieve the transfer cookie asynchronously then validate synchronously.
+                val cookieBytes: ByteArray? = try {
+                    conn.retrieveCookie(transferCookieKey).await()
+                } catch (_: Exception) {
+                    null
+                }
 
-                    // Retrieve the transfer cookie asynchronously then validate synchronously.
-                    val cookieBytes: ByteArray? = try {
-                        conn.retrieveCookie(transferCookieKey).await()
-                    } catch (_: Exception) {
-                        null
-                    }
+                val token = tokenSigner.decode(
+                    cookieBytes = cookieBytes,
+                    expectedPlayerId = id.toString(),
+                    expectedToServerId = serverInfo.id
+                )
 
-                    val token = tokenSigner.decode(
-                        cookieBytes = cookieBytes,
-                        expectedPlayerId = id.toString(),
-                        expectedToServerId = serverInfo.id
+                if (token == null) {
+                    event.kickMessage(
+                        text("Transfer validation failed: missing or invalid transfer token. Please try again.", RED)
                     )
-
-                    if (token == null) {
-                        event.kickMessage(
-                            text("Transfer validation failed: missing or invalid transfer token. Please try again.", RED)
-                        )
-                    }
                 }
             }
         }
