@@ -75,11 +75,17 @@ class ServersFeature : Feature(SERVERS), Listener {
     private var heartbeatJob: Job? = null
     private var initialConnectJob: Job? = null
     private var redisConnectionEventsJob: Job? = null
+    private var pendingOnlineTransitionJob: Job? = null
+    private var pendingDegradedTransitionJob: Job? = null
     private val registryEventJobs = mutableListOf<Job>()
     private val networkTransitionInProgress = AtomicBoolean(false)
     private var heartbeatTtl: Long = 60
     private lateinit var tokenSigner: TransferTokenSigner
     private lateinit var transferCookieKey: NamespacedKey
+
+    companion object {
+        private val CONNECTION_STATE_STABILIZATION_DELAY = 1.seconds
+    }
 
     override fun onEnable() {
         val config = NexusPlugin.configuration.features.servers
@@ -138,6 +144,10 @@ class ServersFeature : Feature(SERVERS), Listener {
         initialConnectJob = null
         redisConnectionEventsJob?.cancel()
         redisConnectionEventsJob = null
+        pendingOnlineTransitionJob?.cancel()
+        pendingOnlineTransitionJob = null
+        pendingDegradedTransitionJob?.cancel()
+        pendingDegradedTransitionJob = null
 
         if (networkState == NetworkState.ONLINE) {
             runBlocking { shutdownNetwork() }
@@ -330,11 +340,29 @@ class ServersFeature : Feature(SERVERS), Listener {
                     redis.connectionStates().collect { state ->
                         when (state) {
                             RedisController.ConnectionState.CONNECTED -> {
-                                goOnline(redis)
+                                pendingDegradedTransitionJob?.cancel()
+                                pendingDegradedTransitionJob = null
+
+                                pendingOnlineTransitionJob?.cancel()
+                                pendingOnlineTransitionJob = scheduler.launch(Dispatchers.Default) {
+                                    delay(CONNECTION_STATE_STABILIZATION_DELAY)
+                                    if (redis.isReachable()) {
+                                        goOnline(redis)
+                                    }
+                                }
                             }
 
                             RedisController.ConnectionState.DISCONNECTED -> {
-                                goDegraded()
+                                pendingOnlineTransitionJob?.cancel()
+                                pendingOnlineTransitionJob = null
+
+                                pendingDegradedTransitionJob?.cancel()
+                                pendingDegradedTransitionJob = scheduler.launch(Dispatchers.Default) {
+                                    delay(CONNECTION_STATE_STABILIZATION_DELAY)
+                                    if (!redis.isReachable()) {
+                                        goDegraded()
+                                    }
+                                }
                             }
                         }
                     }

@@ -72,6 +72,15 @@ class RedisController(
     }
 
     /**
+     * Returns whether Redis appears reachable from this controller at the moment.
+     */
+    suspend fun isReachable(): Boolean = try {
+        query.ping()?.equals("PONG", ignoreCase = true) == true
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
      * Publishes a message to a Redis channel corresponding to the given signal key.
      *
      * @param key The signal key representing the channel to publish to.
