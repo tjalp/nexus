@@ -73,7 +73,9 @@ class ServersFeature : Feature(SERVERS), Listener {
     // ── Private state ─────────────────────────────────────────────────────────
 
     private var heartbeatJob: Job? = null
-    private var reconnectJob: Job? = null
+    private var initialConnectJob: Job? = null
+    private var redisConnectionEventsJob: Job? = null
+    private val registryEventJobs = mutableListOf<Job>()
     private var heartbeatTtl: Long = 60
     private lateinit var tokenSigner: TransferTokenSigner
     private lateinit var transferCookieKey: NamespacedKey
@@ -112,34 +114,35 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         this.register()
 
-        // Attempt an immediate bring-up if Redis is already available
+        // Attempt immediate bring-up with the existing controller.
         val currentRedis = NexusPlugin.redis
         if (currentRedis != null) {
+            watchRedisConnection(currentRedis)
             scheduler.launch { goOnline(currentRedis) }
         } else {
             NexusPlugin.logger.info(
                 "[Servers] Redis unavailable at startup – network state: DEGRADED. " +
                 "Retrying every ${config.redisReconnectIntervalSeconds}s."
             )
-        }
-
-        // Start the reconnect/watchdog loop
-        reconnectJob = scheduler.launch(Dispatchers.Default) {
-            reconnectLoop(config.redisReconnectIntervalSeconds)
+            initialConnectJob = scheduler.launch(Dispatchers.Default) {
+                initialConnectLoop(config.redisReconnectIntervalSeconds)
+            }
         }
     }
 
     override fun onDisposed() {
-        globalChat?.dispose()
-        globalChat = null
         this.unregister()
 
-        reconnectJob?.cancel()
-        reconnectJob = null
+        initialConnectJob?.cancel()
+        initialConnectJob = null
+        redisConnectionEventsJob?.cancel()
+        redisConnectionEventsJob = null
 
         if (networkState == NetworkState.ONLINE) {
             runBlocking { shutdownNetwork() }
         }
+
+        goDegraded()
     }
 
     // ── Network lifecycle ──────────────────────────────────────────────────────
@@ -150,6 +153,8 @@ class ServersFeature : Feature(SERVERS), Listener {
      * and starts the heartbeat.
      */
     private suspend fun goOnline(redis: RedisController) {
+        if (networkState == NetworkState.ONLINE) return
+
         NexusPlugin.logger.info("[Servers] Connecting to Redis...")
 
         try {
@@ -182,8 +187,10 @@ class ServersFeature : Feature(SERVERS), Listener {
             }
         }
 
+        cancelRegistryEventJobs()
+
         // Subscribe to registry events
-        scheduler.launch {
+        registryEventJobs += scheduler.launch {
             newServerRegistry.serverOnlineEvents.collect { event ->
                 if (event.server.id != serverInfo.id) {
                     NexusPlugin.logger.info("[Servers] Server '${event.server.name}' (${event.server.id}) came online")
@@ -191,7 +198,7 @@ class ServersFeature : Feature(SERVERS), Listener {
             }
         }
 
-        scheduler.launch {
+        registryEventJobs += scheduler.launch {
             newServerRegistry.serverOfflineEvents.collect { event ->
                 if (event.serverId != serverInfo.id) {
                     NexusPlugin.logger.info("[Servers] Server '${event.serverId}' went offline")
@@ -204,19 +211,19 @@ class ServersFeature : Feature(SERVERS), Listener {
             }
         }
 
-        scheduler.launch {
+        registryEventJobs += scheduler.launch {
             newPlayerRegistry.playerOfflineEvents.collect { event ->
                 NexusPlugin.logger.info("[Servers] Player ${event.playerId} went offline from ${event.lastServerId}")
             }
         }
 
-        scheduler.launch {
+        registryEventJobs += scheduler.launch {
             newPlayerRegistry.playerOnlineEvents.collect { event ->
                 NexusPlugin.logger.info("[Servers] Player ${event.player.username} came online on ${event.player.serverId}")
             }
         }
 
-        scheduler.launch {
+        registryEventJobs += scheduler.launch {
             newPlayerRegistry.playerChangeServerEvents.collect { event ->
                 NexusPlugin.logger.info("[Servers] Player ${event.playerId} transferred from ${event.fromServerId} to ${event.toServerId}")
             }
@@ -247,6 +254,7 @@ class ServersFeature : Feature(SERVERS), Listener {
 
         heartbeatJob?.cancel()
         heartbeatJob = null
+        cancelRegistryEventJobs()
 
         serverRegistry = null
         playerRegistry = null
@@ -278,33 +286,51 @@ class ServersFeature : Feature(SERVERS), Listener {
     }
 
     /**
-     * Background loop that periodically attempts to re-establish Redis connectivity
-     * while in [NetworkState.DEGRADED].
+     * Retry loop used only until the first Redis controller is established.
+     * Runtime disconnect/reconnect is handled by Lettuce auto-reconnect + event bus.
      */
-    private suspend fun reconnectLoop(reconnectIntervalSeconds: Long) = coroutineScope {
-        while (isActive) {
-            delay(reconnectIntervalSeconds.seconds)
-            if (networkState == NetworkState.DEGRADED) {
-                attemptReconnect()
+    private suspend fun initialConnectLoop(reconnectIntervalSeconds: Long) = coroutineScope {
+        val conf = NexusPlugin.configuration.redis
+        while (isActive && NexusPlugin.redis == null) {
+            val redis = try {
+                RedisController(
+                    host = conf.host,
+                    port = conf.port,
+                    password = conf.password
+                )
+            } catch (_: Exception) {
+                delay(reconnectIntervalSeconds.seconds)
+                continue
+            }
+
+            NexusPlugin.redis = redis
+            NexusPlugin.profiles.connectRedis(redis)
+            watchRedisConnection(redis)
+            goOnline(redis)
+            return@coroutineScope
+        }
+    }
+
+    private fun watchRedisConnection(redis: RedisController) {
+        redisConnectionEventsJob?.cancel()
+        redisConnectionEventsJob = scheduler.launch(Dispatchers.Default) {
+            redis.connectionStates().collect { state ->
+                when (state) {
+                    RedisController.ConnectionState.CONNECTED -> {
+                        if (networkState == NetworkState.DEGRADED) goOnline(redis)
+                    }
+
+                    RedisController.ConnectionState.DISCONNECTED -> {
+                        goDegraded()
+                    }
+                }
             }
         }
     }
 
-    private suspend fun attemptReconnect() {
-        val conf = NexusPlugin.configuration.redis
-        val redis = try {
-            RedisController(
-                host = conf.host,
-                port = conf.port,
-                password = conf.password
-            )
-        } catch (_: Exception) {
-            return // still unavailable
-        }
-
-        // Propagate the new connection to all Redis-aware components (profiles, features, etc.)
-        NexusPlugin.onRedisConnected(redis)
-        goOnline(redis)
+    private fun cancelRegistryEventJobs() {
+        registryEventJobs.forEach { it.cancel() }
+        registryEventJobs.clear()
     }
 
     // ── Heartbeat ─────────────────────────────────────────────────────────────

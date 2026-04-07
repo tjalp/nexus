@@ -124,17 +124,6 @@ object NexusPlugin : JavaPlugin() {
         configuration = NexusConfig.reload(dataPath)
     }
 
-    /**
-     * Propagates a newly-available [redis] controller to all components that depend on it:
-     * the profiles service and all enabled features via [Feature.onRedisConnected].
-     * Call this whenever a Redis connection is (re-)established.
-     */
-    internal fun onRedisConnected(redis: RedisController) {
-        this.redis = redis
-        if (::profiles.isInitialized) profiles.connectRedis(redis)
-        if (::features.isInitialized) features.notifyRedisConnected(redis)
-    }
-
     override fun onDisable() {
         features.disposeAll()
         listeners.forEach { it.unregister() }

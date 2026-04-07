@@ -2,7 +2,6 @@ package net.tjalp.nexus.feature
 
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.redis.RedisController
 import kotlin.reflect.KClass
 
 /**
@@ -85,24 +84,6 @@ class FeatureManager {
         } catch (e: Exception) {
             NexusPlugin.logger.severe("Failed to enable feature '${definition.featureClass.simpleName}': ${e.message}")
             e.printStackTrace()
-        }
-    }
-
-    /**
-     * Notifies all currently enabled features that a new Redis controller is available.
-     * Each feature's [Feature.onRedisConnected] hook is called so they can refresh
-     * subscriptions or re-wire Redis-dependent state without requiring plugin-level knowledge.
-     *
-     * @param redis The new [RedisController] that has become available.
-     */
-    fun notifyRedisConnected(redis: RedisController) {
-        _features.values.filter { it.isEnabled }.forEach { feature ->
-            try {
-                feature.onRedisConnected(redis)
-            } catch (e: Exception) {
-                NexusPlugin.logger.severe("Failed to notify feature '${feature.id}' of Redis reconnect: ${e.message}")
-                e.printStackTrace()
-            }
         }
     }
 

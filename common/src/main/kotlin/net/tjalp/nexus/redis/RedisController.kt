@@ -5,9 +5,12 @@ import io.lettuce.core.RedisClient
 import io.lettuce.core.RedisURI
 import io.lettuce.core.api.coroutines
 import io.lettuce.core.api.coroutines.RedisCoroutinesCommands
+import io.lettuce.core.event.connection.ConnectedEvent
+import io.lettuce.core.event.connection.DisconnectedEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.serialization.json.Json
 
@@ -20,6 +23,10 @@ import kotlinx.serialization.json.Json
 class RedisController(
     uri: RedisURI
 ) {
+    enum class ConnectionState {
+        CONNECTED,
+        DISCONNECTED
+    }
 
     /**
      * A controller for managing Redis connections and pub/sub operations.
@@ -47,6 +54,22 @@ class RedisController(
      * The Redis commands interface for executing commands on the Redis server.
      */
     val query: RedisCoroutinesCommands<String, String> get() = connection.coroutines()
+
+    /**
+     * A flow of Redis transport connection state transitions from Lettuce's event bus.
+     *
+     * This can be used to observe disconnect/reconnect events without replacing this controller
+     * instance, because Lettuce handles automatic reconnection internally.
+     */
+    fun connectionStates(): Flow<ConnectionState> {
+        return client.resources.eventBus().get().asFlow().mapNotNull { event ->
+            when (event) {
+                is ConnectedEvent -> ConnectionState.CONNECTED
+                is DisconnectedEvent -> ConnectionState.DISCONNECTED
+                else -> null
+            }
+        }
+    }
 
     /**
      * Publishes a message to a Redis channel corresponding to the given signal key.
