@@ -42,7 +42,7 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
 
     init {
         NexusPlugin.scheduler.launch {
-            NexusPlugin.redis.subscribe(Signals.PROFILE_UPDATE).collect { id ->
+            NexusPlugin.redis?.subscribe(Signals.PROFILE_UPDATE)?.collect { id ->
                 profiles.get(id, bypassCache = true)
             }
         }

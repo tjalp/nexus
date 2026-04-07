@@ -123,6 +123,13 @@ object ServerCommand {
             return Command.SINGLE_SUCCESS
         }
 
+        if (serversFeature.networkState == net.tjalp.nexus.feature.servers.NetworkState.DEGRADED) {
+            sender.sendMessage(
+                Component.text("Transfers are currently disabled: network is in DEGRADED mode (Redis unavailable).", NamedTextColor.RED)
+            )
+            return Command.SINGLE_SUCCESS
+        }
+
         serversFeature.scheduler.launch {
             val servers = serversFeature.getOnlineServers()
             val targetServer = servers.find {

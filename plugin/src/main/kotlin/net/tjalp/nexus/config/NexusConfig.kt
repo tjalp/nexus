@@ -209,7 +209,13 @@ data class ServersConfig(
     val port: Int = 25565,
     val maxPlayers: Int = -1,
     val heartbeatIntervalSeconds: Long = 5,
-    val heartbeatTimeoutSeconds: Long = 20
+    val heartbeatTimeoutSeconds: Long = 20,
+    /** Shared HMAC-SHA256 secret used to sign transfer cookies. Must be identical across all servers. */
+    @Setting("transfer_cookie_secret") val transferCookieSecret: String = "change-me-in-config",
+    /** Lifetime of a transfer token in seconds (default 15 s). */
+    @Setting("token_ttl_seconds") val tokenTtlSeconds: Long = 15,
+    /** How often (in seconds) to retry the Redis connection while in DEGRADED mode. */
+    @Setting("redis_reconnect_interval_seconds") val redisReconnectIntervalSeconds: Long = 10
 )
 
 @ConfigSerializable

@@ -24,7 +24,7 @@ class GlobalChatHandler(
         register()
 
         scheduler.launch {
-            NexusPlugin.redis.subscribe(Signals.CHAT_MESSAGE).collect(::receiveMessage)
+            NexusPlugin.redis?.subscribe(Signals.CHAT_MESSAGE)?.collect(::receiveMessage)
         }
     }
 
@@ -50,6 +50,7 @@ class GlobalChatHandler(
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     fun on(event: AsyncChatEvent) {
         scheduler.launch {
+            val redis = NexusPlugin.redis ?: return@launch
             val signal = ChatMessageSignal(
                 origin = feature.serverInfo,
                 playerId = event.player.uniqueId,
@@ -57,7 +58,7 @@ class GlobalChatHandler(
                 message = GsonComponentSerializer.gson().serialize(event.message())
             )
 
-            NexusPlugin.redis.publish(Signals.CHAT_MESSAGE, signal)
+            redis.publish(Signals.CHAT_MESSAGE, signal)
         }
     }
 

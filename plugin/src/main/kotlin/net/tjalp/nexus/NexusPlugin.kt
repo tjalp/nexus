@@ -37,7 +37,7 @@ object NexusPlugin : JavaPlugin() {
 
     lateinit var profiles: ProfilesService; private set
     lateinit var database: Database; private set
-    lateinit var redis: RedisController; private set
+    var redis: RedisController? = null; internal set
     lateinit var scheduler: Scheduler; private set
     lateinit var configuration: NexusConfig; private set
     lateinit var features: FeatureManager; private set
@@ -71,11 +71,16 @@ object NexusPlugin : JavaPlugin() {
             password = configuration.database.password
         )
         runMigrations()
-        redis = RedisController(
-            host = configuration.redis.host,
-            port = configuration.redis.port,
-            password = configuration.redis.password
-        )
+        redis = try {
+            RedisController(
+                host = configuration.redis.host,
+                port = configuration.redis.port,
+                password = configuration.redis.password
+            )
+        } catch (e: Exception) {
+            logger.warning("Failed to connect to Redis on startup: ${e.message}. Network features will be unavailable until Redis is reachable.")
+            null
+        }
         profiles = ExposedProfilesService(db = database, redis = redis, scope = scheduler)
         PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }
