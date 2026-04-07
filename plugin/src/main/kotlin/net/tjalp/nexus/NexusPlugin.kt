@@ -37,7 +37,13 @@ object NexusPlugin : JavaPlugin() {
 
     lateinit var profiles: ProfilesService; private set
     lateinit var database: Database; private set
-    var redis: RedisController? = null; internal set
+    var redis: RedisController? = null
+        internal set(value) {
+            field = value
+            if (value != null && ::profiles.isInitialized) {
+                profiles.connectRedis(value)
+            }
+        }
     lateinit var scheduler: Scheduler; private set
     lateinit var configuration: NexusConfig; private set
     lateinit var features: FeatureManager; private set

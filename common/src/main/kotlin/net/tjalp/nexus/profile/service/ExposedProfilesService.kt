@@ -1,6 +1,7 @@
 package net.tjalp.nexus.profile.service
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -22,7 +23,7 @@ import kotlin.time.ExperimentalTime
 
 class ExposedProfilesService(
     private val db: Database,
-    private val redis: RedisController? = null,
+    redis: RedisController? = null,
     private val scope: CoroutineScope? = null
 ) : ProfilesService {
 
@@ -30,14 +31,19 @@ class ExposedProfilesService(
     override val updates: SharedFlow<ProfileEvent.Updated> = _updates.asSharedFlow()
 
     private val profileCache = hashMapOf<UUID, ProfileSnapshot>()
+    private var redis: RedisController? = null
+    private var redisSubscriptionJob: Job? = null
 
     init {
-        // Listen for profile update signals
-        if (redis != null && scope != null) {
-            scope.launch {
-                redis.subscribe(Signals.PROFILE_UPDATE).collect { id ->
-                    get(id)
-                }
+        if (redis != null) connectRedis(redis)
+    }
+
+    override fun connectRedis(redis: RedisController) {
+        this.redis = redis
+        redisSubscriptionJob?.cancel()
+        redisSubscriptionJob = scope?.launch {
+            redis.subscribe(Signals.PROFILE_UPDATE).collect { id ->
+                get(id, bypassCache = true)
             }
         }
     }

@@ -27,7 +27,6 @@ import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.attachment.GeneralAttachment
 import net.tjalp.nexus.profile.model.ProfileSnapshot
-import net.tjalp.nexus.redis.Signals
 import net.tjalp.nexus.util.profile
 import net.tjalp.nexus.util.translate
 import org.bukkit.event.EventHandler
@@ -39,14 +38,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
 
 class ProfileListener(private val profiles: ProfilesService) : Listener {
-
-    init {
-        NexusPlugin.scheduler.launch {
-            NexusPlugin.redis?.subscribe(Signals.PROFILE_UPDATE)?.collect { id ->
-                profiles.get(id, bypassCache = true)
-            }
-        }
-    }
 
     @OptIn(ExperimentalTime::class)
     @Suppress("UnstableApiUsage")
