@@ -345,9 +345,13 @@ class ServersFeature : Feature(SERVERS), Listener {
 
                                 pendingOnlineTransitionJob?.cancel()
                                 pendingOnlineTransitionJob = scheduler.launch(Dispatchers.Default) {
-                                    delay(CONNECTION_STATE_STABILIZATION_DELAY)
-                                    if (redis.isReachable()) {
-                                        goOnline(redis)
+                                    try {
+                                        delay(CONNECTION_STATE_STABILIZATION_DELAY)
+                                        if (redis.isReachable()) {
+                                            goOnline(redis)
+                                        }
+                                    } catch (_: CancellationException) {
+                                        return@launch
                                     }
                                 }
                             }
@@ -358,9 +362,13 @@ class ServersFeature : Feature(SERVERS), Listener {
 
                                 pendingDegradedTransitionJob?.cancel()
                                 pendingDegradedTransitionJob = scheduler.launch(Dispatchers.Default) {
-                                    delay(CONNECTION_STATE_STABILIZATION_DELAY)
-                                    if (!redis.isReachable()) {
-                                        goDegraded()
+                                    try {
+                                        delay(CONNECTION_STATE_STABILIZATION_DELAY)
+                                        if (!redis.isReachable()) {
+                                            goDegraded()
+                                        }
+                                    } catch (_: CancellationException) {
+                                        return@launch
                                     }
                                 }
                             }
