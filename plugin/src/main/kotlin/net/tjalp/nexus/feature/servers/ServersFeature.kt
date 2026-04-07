@@ -32,6 +32,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -76,6 +77,7 @@ class ServersFeature : Feature(SERVERS), Listener {
     private var initialConnectJob: Job? = null
     private var redisConnectionEventsJob: Job? = null
     private val registryEventJobs = mutableListOf<Job>()
+    private val networkTransitionInProgress = AtomicBoolean(false)
     private var heartbeatTtl: Long = 60
     private lateinit var tokenSigner: TransferTokenSigner
     private lateinit var transferCookieKey: NamespacedKey
@@ -153,94 +155,99 @@ class ServersFeature : Feature(SERVERS), Listener {
      * and starts the heartbeat.
      */
     private suspend fun goOnline(redis: RedisController) {
-        if (networkState == NetworkState.ONLINE) return
-
-        NexusPlugin.logger.info("[Servers] Connecting to Redis...")
-
+        if (!networkTransitionInProgress.compareAndSet(false, true)) return
         try {
-            RedisConfig.enableKeyspaceNotifications(redis)
-            RedisConfig.validateConfiguration(redis)
-        } catch (e: Exception) {
-            NexusPlugin.logger.warning("[Servers] Failed to configure Redis: ${e.message}")
-        }
+            if (networkState == NetworkState.ONLINE) return
 
-        val newServerRegistry = RedisServerRegistry(redis, scheduler)
-        val newPlayerRegistry = RedisPlayerRegistry(redis, scheduler)
+            NexusPlugin.logger.info("[Servers] Connecting to Redis...")
 
-        serverRegistry = newServerRegistry
-        playerRegistry = newPlayerRegistry
+            cancelRegistryEventJobs()
 
-        // Register this server
-        try {
-            newServerRegistry.registerServer(serverInfo)
-            NexusPlugin.logger.info("[Servers] Registered server '${serverInfo.name}' (${serverInfo.id}) as online")
-        } catch (e: Exception) {
-            NexusPlugin.logger.severe("[Servers] Failed to register server: ${e.message}")
-        }
-
-        // Resync currently-online players into Redis
-        for (player in NexusPlugin.server.onlinePlayers) {
             try {
-                newPlayerRegistry.registerPlayer(player.uniqueId, player.name, serverInfo.id, heartbeatTtl)
+                RedisConfig.enableKeyspaceNotifications(redis)
+                RedisConfig.validateConfiguration(redis)
             } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Servers] Failed to resync player ${player.name}: ${e.message}")
+                NexusPlugin.logger.warning("[Servers] Failed to configure Redis: ${e.message}")
             }
-        }
 
-        cancelRegistryEventJobs()
+            val newServerRegistry = RedisServerRegistry(redis, scheduler)
+            val newPlayerRegistry = RedisPlayerRegistry(redis, scheduler)
 
-        // Subscribe to registry events
-        registryEventJobs += scheduler.launch {
-            newServerRegistry.serverOnlineEvents.collect { event ->
-                if (event.server.id != serverInfo.id) {
-                    NexusPlugin.logger.info("[Servers] Server '${event.server.name}' (${event.server.id}) came online")
+            serverRegistry = newServerRegistry
+            playerRegistry = newPlayerRegistry
+
+            // Register this server
+            try {
+                newServerRegistry.registerServer(serverInfo)
+                NexusPlugin.logger.info("[Servers] Registered server '${serverInfo.name}' (${serverInfo.id}) as online")
+            } catch (e: Exception) {
+                NexusPlugin.logger.severe("[Servers] Failed to register server: ${e.message}")
+            }
+
+            // Resync currently-online players into Redis
+            for (player in NexusPlugin.server.onlinePlayers) {
+                try {
+                    newPlayerRegistry.registerPlayer(player.uniqueId, player.name, serverInfo.id, heartbeatTtl)
+                } catch (e: Exception) {
+                    NexusPlugin.logger.warning("[Servers] Failed to resync player ${player.name}: ${e.message}")
                 }
             }
-        }
 
-        registryEventJobs += scheduler.launch {
-            newServerRegistry.serverOfflineEvents.collect { event ->
-                if (event.serverId != serverInfo.id) {
-                    NexusPlugin.logger.info("[Servers] Server '${event.serverId}' went offline")
-                    try {
-                        newPlayerRegistry.cleanupServerPlayers(event.serverId)
-                    } catch (e: Exception) {
-                        NexusPlugin.logger.warning("[Servers] Failed to cleanup players from ${event.serverId}: ${e.message}")
+            // Subscribe to registry events
+            registryEventJobs += scheduler.launch {
+                newServerRegistry.serverOnlineEvents.collect { event ->
+                    if (event.server.id != serverInfo.id) {
+                        NexusPlugin.logger.info("[Servers] Server '${event.server.name}' (${event.server.id}) came online")
                     }
                 }
             }
-        }
 
-        registryEventJobs += scheduler.launch {
-            newPlayerRegistry.playerOfflineEvents.collect { event ->
-                NexusPlugin.logger.info("[Servers] Player ${event.playerId} went offline from ${event.lastServerId}")
+            registryEventJobs += scheduler.launch {
+                newServerRegistry.serverOfflineEvents.collect { event ->
+                    if (event.serverId != serverInfo.id) {
+                        NexusPlugin.logger.info("[Servers] Server '${event.serverId}' went offline")
+                        try {
+                            newPlayerRegistry.cleanupServerPlayers(event.serverId)
+                        } catch (e: Exception) {
+                            NexusPlugin.logger.warning("[Servers] Failed to cleanup players from ${event.serverId}: ${e.message}")
+                        }
+                    }
+                }
             }
-        }
 
-        registryEventJobs += scheduler.launch {
-            newPlayerRegistry.playerOnlineEvents.collect { event ->
-                NexusPlugin.logger.info("[Servers] Player ${event.player.username} came online on ${event.player.serverId}")
+            registryEventJobs += scheduler.launch {
+                newPlayerRegistry.playerOfflineEvents.collect { event ->
+                    NexusPlugin.logger.info("[Servers] Player ${event.playerId} went offline from ${event.lastServerId}")
+                }
             }
-        }
 
-        registryEventJobs += scheduler.launch {
-            newPlayerRegistry.playerChangeServerEvents.collect { event ->
-                NexusPlugin.logger.info("[Servers] Player ${event.playerId} transferred from ${event.fromServerId} to ${event.toServerId}")
+            registryEventJobs += scheduler.launch {
+                newPlayerRegistry.playerOnlineEvents.collect { event ->
+                    NexusPlugin.logger.info("[Servers] Player ${event.player.username} came online on ${event.player.serverId}")
+                }
             }
+
+            registryEventJobs += scheduler.launch {
+                newPlayerRegistry.playerChangeServerEvents.collect { event ->
+                    NexusPlugin.logger.info("[Servers] Player ${event.playerId} transferred from ${event.fromServerId} to ${event.toServerId}")
+                }
+            }
+
+            networkState = NetworkState.ONLINE
+
+            // Start heartbeat
+            val config = NexusPlugin.configuration.features.servers
+            startHeartbeat(config.heartbeatIntervalSeconds, config.heartbeatTimeoutSeconds)
+
+            // Bring up global chat
+            if (globalChat == null) {
+                globalChat = GlobalChatHandler(this, redis)
+            }
+
+            NexusPlugin.logger.info("[Servers] Network state: ONLINE")
+        } finally {
+            networkTransitionInProgress.set(false)
         }
-
-        networkState = NetworkState.ONLINE
-
-        // Start heartbeat
-        val config = NexusPlugin.configuration.features.servers
-        startHeartbeat(config.heartbeatIntervalSeconds, config.heartbeatTimeoutSeconds)
-
-        // Bring up global chat
-        if (globalChat == null) {
-            globalChat = GlobalChatHandler(this, redis)
-        }
-
-        NexusPlugin.logger.info("[Servers] Network state: ONLINE")
     }
 
     /**
@@ -249,20 +256,25 @@ class ServersFeature : Feature(SERVERS), Listener {
      * Does **not** unregister from Redis (the TTL will expire naturally).
      */
     private fun goDegraded() {
-        if (networkState == NetworkState.DEGRADED) return
-        networkState = NetworkState.DEGRADED
+        if (!networkTransitionInProgress.compareAndSet(false, true)) return
+        try {
+            if (networkState == NetworkState.DEGRADED) return
+            networkState = NetworkState.DEGRADED
 
-        heartbeatJob?.cancel()
-        heartbeatJob = null
-        cancelRegistryEventJobs()
+            heartbeatJob?.cancel()
+            heartbeatJob = null
+            cancelRegistryEventJobs()
 
-        serverRegistry = null
-        playerRegistry = null
+            serverRegistry = null
+            playerRegistry = null
 
-        globalChat?.dispose()
-        globalChat = null
+            globalChat?.dispose()
+            globalChat = null
 
-        NexusPlugin.logger.warning("[Servers] Network state: DEGRADED (Redis unreachable). Transfers disabled.")
+            NexusPlugin.logger.warning("[Servers] Network state: DEGRADED (Redis unreachable). Transfers disabled.")
+        } finally {
+            networkTransitionInProgress.set(false)
+        }
     }
 
     /**
@@ -314,15 +326,23 @@ class ServersFeature : Feature(SERVERS), Listener {
     private fun watchRedisConnection(redis: RedisController) {
         redisConnectionEventsJob?.cancel()
         redisConnectionEventsJob = scheduler.launch(Dispatchers.Default) {
-            redis.connectionStates().collect { state ->
-                when (state) {
-                    RedisController.ConnectionState.CONNECTED -> {
-                        if (networkState == NetworkState.DEGRADED) goOnline(redis)
-                    }
+            while (isActive) {
+                try {
+                    redis.connectionStates().collect { state ->
+                        when (state) {
+                            RedisController.ConnectionState.CONNECTED -> {
+                                goOnline(redis)
+                            }
 
-                    RedisController.ConnectionState.DISCONNECTED -> {
-                        goDegraded()
+                            RedisController.ConnectionState.DISCONNECTED -> {
+                                goDegraded()
+                            }
+                        }
                     }
+                    break
+                } catch (e: Exception) {
+                    NexusPlugin.logger.warning("[Servers] Redis connection event stream failed: ${e.message}")
+                    delay(1.seconds)
                 }
             }
         }
