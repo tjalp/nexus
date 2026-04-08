@@ -7,7 +7,8 @@ import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
-import io.papermc.paper.command.brigadier.Commands.*
+import io.papermc.paper.command.brigadier.Commands.argument
+import io.papermc.paper.command.brigadier.Commands.literal
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver
 import kotlinx.coroutines.future.future
@@ -26,7 +27,7 @@ object ServerCommand {
 
     fun create(): LiteralCommandNode<CommandSourceStack> {
         return literal("server")
-            .requires(restricted { it.sender.hasPermission("nexus.command.server") && NexusPlugin.servers != null })
+            .requires { it.sender.hasPermission("nexus.command.server") && NexusPlugin.servers != null }
             .then(literal("list")
                 .executes { context -> listServers(context.source) })
             .then(literal("transfer")
@@ -42,11 +43,10 @@ object ServerCommand {
                                 context.getArgument("server",String::class.java)
                             )
                         })
-                    .requires { it.executor is Player }
                     .executes { context ->
                         transfer(
                             context,
-                            setOf(context.source.executor as Player),
+                            setOf(context.source.executor as? Player ?: return@executes 0), // todo actual error
                             context.getArgument("server", String::class.java)
                         )
                     }))

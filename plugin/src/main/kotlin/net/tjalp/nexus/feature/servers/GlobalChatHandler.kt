@@ -2,10 +2,12 @@ package net.tjalp.nexus.feature.servers
 
 import io.papermc.paper.event.player.AsyncChatEvent
 import kotlinx.coroutines.launch
-import net.kyori.adventure.text.Component.*
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.chat.ChatMessageSignal
+import net.tjalp.nexus.feature.chat.NexusChatRenderer
 import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.redis.Signals
 import net.tjalp.nexus.util.register
@@ -31,6 +33,8 @@ class GlobalChatHandler(
     }
 
     fun receiveMessage(signal: ChatMessageSignal) {
+        if (signal.origin.id == feature.serverInfo.id) return
+
         val message = try {
             GsonComponentSerializer.gson().deserialize(signal.message)
         } catch (e: Exception) {
@@ -40,13 +44,18 @@ class GlobalChatHandler(
             text(signal.message)
         }
 
-        NexusPlugin.server.broadcast(textOfChildren(
-            text(signal.origin.name),
-            space(),
-            text(signal.playerName),
-            space(),
-            message
-        ))
+        NexusPlugin.server.forEachAudience { audience ->
+            val message = NexusChatRenderer.render(
+                NexusPlugin.configuration.features.chat.format,
+                text(signal.playerName)
+                    .clickEvent(ClickEvent.suggestCommand("/tell ${signal.playerName} ")),
+                message,
+                audience,
+                serverInfo = signal.origin
+            )
+
+            audience.sendMessage(message)
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
