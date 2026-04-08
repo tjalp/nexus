@@ -527,8 +527,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         val reg = serverRegistry ?: return false
         val playerReg = playerRegistry ?: return false
 
-        val targetServer = reg.getServer(serverId)
-        if (targetServer == null || !targetServer.online) return false
+        val targetServer = reg.getServer(serverId) ?: return false
 
         // Mark transferring BEFORE storing the cookie so the quit handler doesn't remove the entry.
         playerReg.markTransferring(player.uniqueId, heartbeatTtl)

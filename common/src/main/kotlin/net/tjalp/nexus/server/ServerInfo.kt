@@ -1,7 +1,6 @@
 package net.tjalp.nexus.server
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 /**
  * Represents the type of Minecraft server
@@ -24,7 +23,6 @@ enum class ServerType {
  * @property host Hostname or IP address
  * @property port Server port
  * @property maxPlayers Maximum number of players allowed
- * @property online Whether the server is currently online
  */
 @Serializable
 data class ServerInfo(
@@ -33,8 +31,7 @@ data class ServerInfo(
     val type: ServerType,
     val host: String,
     val port: Int,
-    val maxPlayers: Int = -1,
-    @Transient val online: Boolean = false
+    val maxPlayers: Int = -1
 )
 
 /**
