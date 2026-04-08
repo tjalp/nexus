@@ -13,9 +13,11 @@ import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSele
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.servers.NetworkState
 import net.tjalp.nexus.server.ServerType
 import org.bukkit.entity.Player
 import java.util.concurrent.CompletableFuture
@@ -123,6 +125,13 @@ object ServerCommand {
             return Command.SINGLE_SUCCESS
         }
 
+        if (serversFeature.networkState == NetworkState.DEGRADED) {
+            sender.sendMessage(
+                Component.text("Transfers are currently disabled: network is in DEGRADED mode (Redis unavailable).", NamedTextColor.RED)
+            )
+            return Command.SINGLE_SUCCESS
+        }
+
         serversFeature.scheduler.launch {
             val servers = serversFeature.getOnlineServers()
             val targetServer = servers.find {
@@ -135,6 +144,14 @@ object ServerCommand {
                     Component.text("Server '", NamedTextColor.RED)
                         .append(Component.text(serverIdOrName, NamedTextColor.YELLOW))
                         .append(Component.text("' not found or is offline", NamedTextColor.RED))
+                )
+                return@launch
+            }
+
+            if (targetServer.id == serversFeature.serverInfo.id) {
+                sender.sendMessage(
+                    text("You are already on server ", NamedTextColor.RED)
+                        .append(text(targetServer.name, PRIMARY_COLOR))
                 )
                 return@launch
             }

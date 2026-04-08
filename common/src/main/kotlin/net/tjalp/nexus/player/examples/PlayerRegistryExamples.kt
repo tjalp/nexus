@@ -145,7 +145,6 @@ class PlayerRegistryExamples(
         val servers = serverRegistry.getServersByType(serverType)
 
         return servers
-            .filter { it.online }
             .map { server ->
                 val playerCount = playerRegistry.getPlayersByServer(server.id).size
                 server.id to playerCount

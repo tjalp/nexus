@@ -2,6 +2,7 @@ package net.tjalp.nexus.profile
 
 import kotlinx.coroutines.flow.SharedFlow
 import net.tjalp.nexus.profile.model.ProfileSnapshot
+import net.tjalp.nexus.redis.RedisController
 import java.util.*
 
 /**
@@ -67,4 +68,12 @@ interface ProfilesService {
      * @return The uncached [ProfileSnapshot] if it was present in the cache, otherwise null
      */
     fun uncache(id: UUID): ProfileSnapshot?
+
+    /**
+     * Connects (or reconnects) to Redis and sets up subscriptions.
+     * Call this whenever the Redis controller becomes available or changes.
+     *
+     * @param redis The new [RedisController] to use.
+     */
+    fun connectRedis(redis: RedisController)
 }

@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.chat.ChatMessageSignal
+import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.redis.Signals
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
@@ -15,7 +16,8 @@ import org.bukkit.event.Listener
 import org.spongepowered.configurate.reactive.Disposable
 
 class GlobalChatHandler(
-    private val feature: ServersFeature
+    private val feature: ServersFeature,
+    private val redis: RedisController
 ) : Disposable, Listener {
 
     val scheduler = feature.scheduler.fork("global_chat")
@@ -24,7 +26,7 @@ class GlobalChatHandler(
         register()
 
         scheduler.launch {
-            NexusPlugin.redis.subscribe(Signals.CHAT_MESSAGE).collect(::receiveMessage)
+            redis.subscribe(Signals.CHAT_MESSAGE).collect(::receiveMessage)
         }
     }
 
@@ -57,7 +59,7 @@ class GlobalChatHandler(
                 message = GsonComponentSerializer.gson().serialize(event.message())
             )
 
-            NexusPlugin.redis.publish(Signals.CHAT_MESSAGE, signal)
+            redis.publish(Signals.CHAT_MESSAGE, signal)
         }
     }
 
