@@ -36,6 +36,13 @@ interface PlayerRegistry {
     suspend fun getPlayersByServer(serverId: String): Collection<PlayerInfo>
 
     /**
+     * Get the global player count
+     *
+     * @return Number of players currently online across the network
+     */
+    suspend fun getPlayerCount(): Int
+
+    /**
      * Get the number of players on a specific server
      *
      * @param serverId The ID of the server

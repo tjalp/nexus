@@ -1,18 +1,16 @@
 package net.tjalp.nexus.feature.servers
 
-import io.papermc.paper.connection.PlayerLoginConnection
-import io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent
 import kotlinx.coroutines.*
-import kotlinx.coroutines.future.await
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
-import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
+import net.tjalp.nexus.feature.chat.listener.ChatListener
 import net.tjalp.nexus.player.PlayerRegistry
-import net.tjalp.nexus.player.PlayerStatus
 import net.tjalp.nexus.player.RedisPlayerRegistry
+import net.tjalp.nexus.profile.attachment.GeneralAttachment
 import net.tjalp.nexus.redis.RedisConfig
 import net.tjalp.nexus.redis.RedisController
 import net.tjalp.nexus.server.RedisServerRegistry
@@ -21,15 +19,12 @@ import net.tjalp.nexus.server.ServerRegistry
 import net.tjalp.nexus.server.ServerType
 import net.tjalp.nexus.transfer.TransferToken
 import net.tjalp.nexus.transfer.TransferTokenSigner
+import net.tjalp.nexus.util.miniMessage
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
-import org.bukkit.event.EventHandler
-import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.event.player.PlayerQuitEvent
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
@@ -79,9 +74,10 @@ class ServersFeature : Feature(SERVERS), Listener {
     private var pendingDegradedTransitionJob: Job? = null
     private val registryEventJobs = mutableListOf<Job>()
     private val networkTransitionInProgress = AtomicBoolean(false)
-    private var heartbeatTtl: Long = 60
-    private lateinit var tokenSigner: TransferTokenSigner
-    private lateinit var transferCookieKey: NamespacedKey
+    var heartbeatTtl: Long = 60; private set
+    lateinit var tokenSigner: TransferTokenSigner; private set
+    lateinit var transferCookieKey: NamespacedKey; private set
+    private lateinit var listener: ServersListener
 
     companion object {
         private val CONNECTION_STATE_STABILIZATION_DELAY = 1.seconds
@@ -94,7 +90,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         if (config.transferCookieSecret == TransferTokenSigner.DEFAULT_SECRET) {
             NexusPlugin.logger.warning(
                 "[Servers] transfer_cookie_secret is set to the default value! " +
-                "Change it in config.yml to a unique shared secret for your network."
+                        "Change it in config.yml to a unique shared secret for your network."
             )
         }
 
@@ -119,7 +115,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         tokenSigner = TransferTokenSigner(config.transferCookieSecret)
         transferCookieKey = NamespacedKey(NexusPlugin, "transfer_token")
 
-        this.register()
+        listener = ServersListener(this).also { it.register() }
 
         // Attempt immediate bring-up with the existing controller.
         val currentRedis = NexusPlugin.redis
@@ -129,7 +125,7 @@ class ServersFeature : Feature(SERVERS), Listener {
         } else {
             NexusPlugin.logger.info(
                 "[Servers] Redis unavailable at startup – network state: DEGRADED. " +
-                "Retrying every ${config.redisReconnectIntervalSeconds}s."
+                        "Retrying every ${config.redisReconnectIntervalSeconds}s."
             )
             initialConnectJob = scheduler.launch(Dispatchers.Default) {
                 initialConnectLoop(config.redisReconnectIntervalSeconds)
@@ -138,7 +134,7 @@ class ServersFeature : Feature(SERVERS), Listener {
     }
 
     override fun onDisposed() {
-        this.unregister()
+        listener.unregister()
 
         initialConnectJob?.cancel()
         initialConnectJob = null
@@ -207,6 +203,14 @@ class ServersFeature : Feature(SERVERS), Listener {
                 newServerRegistry.serverOnlineEvents.collect { event ->
                     if (event.server.id != serverInfo.id) {
                         NexusPlugin.logger.info("[Servers] Server '${event.server.name}' (${event.server.id}) came online")
+
+                        val message = miniMessage.deserialize(
+                            NexusPlugin.configuration.features.servers.serverOnlineMessage,
+                            Placeholder.parsed("server_name", event.server.name),
+                            Placeholder.unparsed("server_id", event.server.id)
+                        )
+
+                        NexusPlugin.server.sendMessage(message)
                     }
                 }
             }
@@ -215,11 +219,20 @@ class ServersFeature : Feature(SERVERS), Listener {
                 newServerRegistry.serverOfflineEvents.collect { event ->
                     if (event.serverId != serverInfo.id) {
                         NexusPlugin.logger.info("[Servers] Server '${event.serverId}' went offline")
+
                         try {
                             newPlayerRegistry.cleanupServerPlayers(event.serverId)
                         } catch (e: Exception) {
                             NexusPlugin.logger.warning("[Servers] Failed to cleanup players from ${event.serverId}: ${e.message}")
                         }
+
+                        val message = miniMessage.deserialize(
+                            NexusPlugin.configuration.features.servers.serverOfflineMessage,
+                            Placeholder.parsed("server_name", event.serverId),
+                            Placeholder.unparsed("server_id", event.serverId)
+                        )
+
+                        NexusPlugin.server.sendMessage(message)
                     }
                 }
             }
@@ -227,18 +240,53 @@ class ServersFeature : Feature(SERVERS), Listener {
             registryEventJobs += scheduler.launch {
                 newPlayerRegistry.playerOfflineEvents.collect { event ->
                     NexusPlugin.logger.info("[Servers] Player ${event.playerId} went offline from ${event.lastServerId}")
+
+                    val profile = NexusPlugin.profiles.get(UUID.fromString(event.playerId))
+                    val lastKnownName = profile?.attachmentOf<GeneralAttachment>()?.lastKnownName ?: return@collect
+
+                    NexusPlugin.server.sendMessage(
+                        ChatListener.eventMessage(
+                            NexusPlugin.configuration.features.chat.quitMessage,
+                            translatable("multiplayer.player.left", text(lastKnownName)),
+                            text(lastKnownName)
+                        )
+                    )
                 }
             }
 
             registryEventJobs += scheduler.launch {
                 newPlayerRegistry.playerOnlineEvents.collect { event ->
                     NexusPlugin.logger.info("[Servers] Player ${event.player.username} came online on ${event.player.serverId}")
+
+                    NexusPlugin.server.sendMessage(
+                        ChatListener.eventMessage(
+                            NexusPlugin.configuration.features.chat.joinMessage,
+                            translatable("multiplayer.player.joined", text(event.player.username)),
+                            text(event.player.username)
+                        )
+                    )
                 }
             }
 
             registryEventJobs += scheduler.launch {
                 newPlayerRegistry.playerChangeServerEvents.collect { event ->
                     NexusPlugin.logger.info("[Servers] Player ${event.playerId} transferred from ${event.fromServerId} to ${event.toServerId}")
+
+                    val playerName = async {
+                        NexusPlugin.profiles.get(UUID.fromString(event.playerId))
+                            ?.attachmentOf<GeneralAttachment>()?.lastKnownName ?: "unknown"
+                    }
+                    val from = async { event.fromServerId?.let { serverRegistry?.getServer(it)?.name } ?: "unknown" }
+                    val to = async { event.toServerId?.let { serverRegistry?.getServer(it)?.name } ?: "unknown" }
+
+                    val message = miniMessage.deserialize(
+                        NexusPlugin.configuration.features.servers.playerTransferredMessage,
+                        Placeholder.unparsed("player_name", playerName.await()),
+                        Placeholder.parsed("from_server_name", from.await()),
+                        Placeholder.unparsed("to_server_name", to.await())
+                    )
+
+                    NexusPlugin.server.sendMessage(message)
                 }
             }
 
@@ -407,100 +455,6 @@ class ServersFeature : Feature(SERVERS), Listener {
                     goDegraded()
                     break
                 }
-            }
-        }
-    }
-
-    // ── Bukkit event handlers ─────────────────────────────────────────────────
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    fun onPlayerJoin(event: PlayerJoinEvent) {
-        val reg = playerRegistry ?: return
-        scheduler.launch {
-            try {
-                reg.registerPlayer(
-                    playerId = event.player.uniqueId,
-                    username = event.player.name,
-                    serverId = serverInfo.id,
-                    ttl = heartbeatTtl
-                )
-            } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Servers] Failed to track player join: ${e.message}")
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOW)
-    fun onConnectionValidate(event: PlayerConnectionValidateLoginEvent) {
-        val conn = event.connection
-
-        // DEGRADED – skip all network enforcement; local-only mode
-        if (networkState == NetworkState.DEGRADED) return
-
-        val reg = playerRegistry ?: return
-
-        if (conn is PlayerLoginConnection) {
-            // First stage: profile lookup. Check for duplicate sessions.
-            runBlocking {
-                val id = conn.authenticatedProfile?.id ?: run {
-                    event.kickMessage(text("Failed to verify your profile, please try again later", RED))
-                    return@runBlocking
-                }
-
-                val existingPlayer = try {
-                    reg.getPlayer(id)
-                } catch (_: Exception) {
-                    return@runBlocking // Redis error – allow rather than blocking
-                }
-
-                if (existingPlayer != null
-                    && existingPlayer.status != PlayerStatus.TRANSFERRING
-                    && existingPlayer.serverId != null
-                    && existingPlayer.serverId != serverInfo.id
-                ) {
-                    event.kickMessage(translatable("multiserver.kick.already_online", RED))
-                    return@runBlocking
-                }
-                else if (existingPlayer == null
-                    || existingPlayer.serverId == serverInfo.id
-                    || existingPlayer.status != PlayerStatus.TRANSFERRING
-                ) {
-                    return@runBlocking
-                }
-
-                // Retrieve the transfer cookie asynchronously then validate synchronously.
-                val cookieBytes: ByteArray? = try {
-                    conn.retrieveCookie(transferCookieKey).await()
-                } catch (_: Exception) {
-                    null
-                }
-
-                val token = tokenSigner.decode(
-                    cookieBytes = cookieBytes,
-                    expectedPlayerId = id.toString(),
-                    expectedToServerId = serverInfo.id
-                )
-
-                if (token == null) {
-                    event.kickMessage(
-                        text("Transfer validation failed: missing or invalid transfer token. Please try again.", RED)
-                    )
-                }
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    fun onPlayerQuit(event: PlayerQuitEvent) {
-        val reg = playerRegistry ?: return
-        scheduler.launch {
-            try {
-                // Don't remove transferring players – the target or TTL will handle them.
-                val player = reg.getPlayer(event.player.uniqueId)
-                if (player != null && player.status == PlayerStatus.TRANSFERRING) return@launch
-                reg.removePlayer(event.player.uniqueId)
-            } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Servers] Failed to track player quit: ${e.message}")
             }
         }
     }

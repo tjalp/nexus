@@ -215,7 +215,10 @@ data class ServersConfig(
     /** Lifetime of a transfer token in seconds (default 15 s). */
     val tokenTtlSeconds: Long = 15,
     /** How often (in seconds) to retry the Redis connection while in DEGRADED mode. */
-    val redisReconnectIntervalSeconds: Long = 10
+    val redisReconnectIntervalSeconds: Long = 10,
+    val serverOnlineMessage: String = "<server_name> (<server_id>) came online",
+    val serverOfflineMessage: String = "<server_name> (<server_id>) went offline",
+    val playerTransferredMessage: String = "<player_name> went to <to_server_name>"
 )
 
 @ConfigSerializable

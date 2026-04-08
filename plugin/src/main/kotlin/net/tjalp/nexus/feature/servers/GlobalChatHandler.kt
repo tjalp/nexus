@@ -1,7 +1,9 @@
 package net.tjalp.nexus.feature.servers
 
+import com.destroystokyo.paper.event.server.PaperServerListPingEvent
 import io.papermc.paper.event.player.AsyncChatEvent
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
@@ -69,6 +71,19 @@ class GlobalChatHandler(
             )
 
             redis.publish(Signals.CHAT_MESSAGE, signal)
+        }
+    }
+
+    @EventHandler
+    fun on(event: PaperServerListPingEvent) {
+        val players = runBlocking { feature.playerRegistry?.getOnlinePlayers() }
+
+        players?.let {
+            event.numPlayers = it.size
+            event.listedPlayers.clear()
+            event.listedPlayers += it.map { player ->
+                PaperServerListPingEvent.ListedPlayerInfo(player.username, player.id)
+            }
         }
     }
 

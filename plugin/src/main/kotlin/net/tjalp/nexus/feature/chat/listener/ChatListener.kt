@@ -109,19 +109,22 @@ class ChatListener(private val feature: ChatFeature) : Listener {
         event.deathMessage(newDeathMessage)
     }
 
-    /**
-     * Generates a new event message based on the provided format, original message, and player name.
-     *
-     * @param messageFormat The format string for the event message.
-     * @param original The original message component.
-     * @param name The player's name component.
-     * @return A new Component representing the formatted event message.
-     */
-    private fun eventMessage(messageFormat: String, original: ComponentLike, name: ComponentLike): Component {
-        return miniMessage.deserialize(
-            messageFormat,
-            Placeholder.component("message", original.asComponent()),
-            Placeholder.component("name", name.asComponent())
-        )
+    companion object {
+
+        /**
+         * Generates a new event message based on the provided format, original message, and player name.
+         *
+         * @param messageFormat The format string for the event message.
+         * @param original The original message component.
+         * @param name The player's name component.
+         * @return A new Component representing the formatted event message.
+         */
+        fun eventMessage(messageFormat: String, original: ComponentLike, name: ComponentLike): Component {
+            return miniMessage.deserialize(
+                messageFormat,
+                Placeholder.component("message", original.asComponent()),
+                Placeholder.component("name", name.asComponent())
+            )
+        }
     }
 }

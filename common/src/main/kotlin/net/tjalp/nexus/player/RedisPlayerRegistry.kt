@@ -119,6 +119,20 @@ class RedisPlayerRegistry(
         return players
     }
 
+    override suspend fun getPlayerCount(): Int {
+        var count = 0
+        val scanArgs = ScanArgs.Builder.matches(PLAYER_INFO_PREFIX + "*").limit(100)
+        var cursor = redis.query.scan(scanArgs)
+
+        while (cursor != null) {
+            count += cursor.keys.size
+            if (cursor.isFinished) break
+            cursor = redis.query.scan(ScanCursor.of(cursor.cursor), scanArgs)
+        }
+
+        return count
+    }
+
     override suspend fun getPlayersByServer(serverId: String): Collection<PlayerInfo> {
         val players = mutableListOf<PlayerInfo>()
 
