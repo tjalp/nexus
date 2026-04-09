@@ -102,6 +102,7 @@ object NexusPlugin : JavaPlugin() {
                 register(BodyCommand.create(), "Body management commands")
                 register(DisguiseCommand.create(this@NexusPlugin), "Disguise management commands")
                 register(GameCommand.create(), "Game management commands")
+                register(GlobalListCommand.create(), "Show global player list", GlobalListCommand.aliases)
                 register(LanguageCommand.create(), "Language management commands", LanguageCommand.aliases)
                 register(NexusCommand.create(), "Nexus-specific commands")
                 register(ProfileCommand.create(), "Profile management commands")
