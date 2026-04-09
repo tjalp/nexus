@@ -4,9 +4,14 @@ import io.papermc.paper.event.player.AsyncChatCommandDecorateEvent
 import io.papermc.paper.event.player.AsyncChatDecorateEvent
 import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.ComponentLike
 import net.kyori.adventure.text.TranslatableComponent
+import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.minimessage.tag.Tag
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
+import net.kyori.adventure.text.minimessage.tag.standard.StandardTags
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.NexusPlugin
@@ -48,13 +53,26 @@ class ChatListener(private val feature: ChatFeature) : Listener {
     @Suppress("UnstableApiUsage")
     fun processDecorateEvent(event: AsyncChatDecorateEvent) {
         val canDecorate = event.player()?.hasPermission("nexus.chat.decorate") ?: false
+        val serialized = PlainTextComponentSerializer.plainText().serialize(event.originalMessage())
+        val mm = MiniMessage.builder()
+            .tags(
+                TagResolver.builder()
+                    .tag(
+                        "item",
+                        Tag.selfClosingInserting(
+                            event.player()?.inventory?.itemInMainHand?.displayName() ?: text("???")
+                        )
+                    )
+                    .build()
+            )
 
-        if (!canDecorate) return
+        if (canDecorate) {
+            mm.editTags {
+                it.resolver(StandardTags.defaults())
+            }
+        }
 
-        val plainMessage = PlainTextComponentSerializer.plainText().serialize(event.originalMessage())
-        val decorated = feature.chatService.decorate(plainMessage)
-
-        event.result(decorated)
+        event.result(mm.build().deserialize(serialized))
     }
 
     @EventHandler

@@ -21,13 +21,13 @@ object NexusChatRenderer {
     fun renderer(
         format: String,
         signedMessage: SignedMessage
-    ): ChatRenderer = ChatRenderer { source, displayName, message, viewer ->
+    ): ChatRenderer = ChatRenderer { source, _, message, viewer ->
         val base = render(
             format,
             source.teamDisplayName(),
             message,
             viewer,
-            serverInfo = NexusPlugin.servers?.serverInfo
+            serverInfo = NexusPlugin.servers?.serverInfo,
         )
 
         return@ChatRenderer base // temporary because I don't want to handle deleting messages anymore, lol
