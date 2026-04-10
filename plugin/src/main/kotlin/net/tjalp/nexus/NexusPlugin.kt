@@ -13,8 +13,8 @@ import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
+import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
-import net.tjalp.nexus.feature.servers.ServersFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.feature.waypoints.WaypointsFeature
 import net.tjalp.nexus.lang.Lang
@@ -57,6 +57,7 @@ object NexusPlugin : JavaPlugin() {
     val servers: ServersFeature? get() = features.getFeature()
     val teleportRequests: TeleportRequestsFeature? get() = features.getFeature()
     val waypoints: WaypointsFeature? get() = features.getFeature()
+    val parkour: ParkourFeature? get() = features.getFeature()
 
     // ** End Features **
 
@@ -114,6 +115,7 @@ object NexusPlugin : JavaPlugin() {
                 register(TeleportRequestCommand.create(), "Teleport request commands", TeleportRequestCommand.aliases)
                 register(TimeZoneCommand.create(), "Time zone management commands")
                 register(WaypointCommand.create(), "Waypoint management commands")
+                register(ParkourCommand.create(), "Parkour management commands")
             }
         }
     }

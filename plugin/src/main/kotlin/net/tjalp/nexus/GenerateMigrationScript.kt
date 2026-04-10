@@ -3,6 +3,8 @@
 package net.tjalp.nexus
 
 import net.tjalp.nexus.auth.UsersTable
+import net.tjalp.nexus.parkour.ParkourAttachmentTable
+import net.tjalp.nexus.parkour.ParkourResultsTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.attachment.NoticesTable
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
@@ -45,7 +47,9 @@ fun generateMigrationScript() {
         PunishmentsTable,
         NoticesTable,
         UsersTable,
+        ParkourResultsTable,
+        ParkourAttachmentTable,
         scriptDirectory = "src/main/resources/db/migration",
-        scriptName = "V6__add_web_tables_and_users"
+        scriptName = "V7__add_parkour_feature"
     )
 }

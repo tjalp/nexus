@@ -75,7 +75,8 @@ data class FeaturesConfig(
     val seasons: SeasonsConfig,
     val servers: ServersConfig,
     @Setting("teleport_requests") val teleportRequests: TeleportRequestsConfig,
-    val waypoints: WaypointsConfig
+    val waypoints: WaypointsConfig,
+    val parkour: ParkourConfig
 )
 
 @ConfigSerializable
@@ -229,5 +230,10 @@ data class TeleportRequestsConfig(
 
 @ConfigSerializable
 data class WaypointsConfig(
+    val enable: Boolean = true
+)
+
+@ConfigSerializable
+data class ParkourConfig(
     val enable: Boolean = true
 )

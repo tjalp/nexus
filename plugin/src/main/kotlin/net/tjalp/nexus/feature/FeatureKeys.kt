@@ -15,4 +15,5 @@ object FeatureKeys {
     const val SERVERS = "servers"
     const val TELEPORT_REQUESTS = "teleport_requests"
     const val WAYPOINTS = "waypoints"
+    const val PARKOUR = "parkour"
 }

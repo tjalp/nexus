@@ -1,0 +1,47 @@
+package net.tjalp.nexus.feature.parkour
+
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import net.tjalp.nexus.Feature
+import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.FeatureKeys.PARKOUR
+import net.tjalp.nexus.parkour.ParkourAttachmentProvider
+import net.tjalp.nexus.profile.attachment.AttachmentRegistry
+import net.tjalp.nexus.util.register
+import net.tjalp.nexus.util.unregister
+
+/**
+ * The Parkour feature manages parkour definitions (graph of nodes/edges stored
+ * via Configurate) and runtime player sessions (start/stop tracking, action-bar
+ * splits, and pinned-route auto-finish with DB result persistence).
+ */
+class ParkourFeature : Feature(PARKOUR) {
+
+    lateinit var definitions: ParkourDefinitionsRepository; private set
+    lateinit var runtime: ParkourRuntimeService; private set
+    private lateinit var listener: ParkourListener
+
+    override fun onEnable() {
+        definitions = ParkourDefinitionsRepository(NexusPlugin.dataPath)
+        runtime = ParkourRuntimeService(this)
+        runtime.rebuildIndex()
+
+        listener = ParkourListener(runtime)
+        listener.register()
+
+        AttachmentRegistry.register(ParkourAttachmentProvider)
+
+        // Tick live action bar every second for active sessions
+        scheduler.launch {
+            while (true) {
+                delay(500L)
+                runtime.tickActionBars()
+            }
+        }
+    }
+
+    override fun onDisposed() {
+        listener.unregister()
+        AttachmentRegistry.unregister(ParkourAttachmentProvider)
+    }
+}

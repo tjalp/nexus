@@ -8,6 +8,7 @@ import net.tjalp.nexus.feature.FeatureKeys.DISGUISES
 import net.tjalp.nexus.feature.FeatureKeys.GAMERULES
 import net.tjalp.nexus.feature.FeatureKeys.GAMES
 import net.tjalp.nexus.feature.FeatureKeys.NOTICES
+import net.tjalp.nexus.feature.FeatureKeys.PARKOUR
 import net.tjalp.nexus.feature.FeatureKeys.PHYSICAL_SPECTATOR
 import net.tjalp.nexus.feature.FeatureKeys.PUNISHMENTS
 import net.tjalp.nexus.feature.FeatureKeys.SEASONS
@@ -19,6 +20,7 @@ import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.notices.NoticesFeature
+import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
@@ -101,6 +103,12 @@ object FeatureRegistry {
             WaypointsFeature::class,
             { WaypointsFeature() },
             { it.waypoints.enable }
+        ),
+        FeatureDefinition(
+            PARKOUR,
+            ParkourFeature::class,
+            { ParkourFeature() },
+            { it.parkour.enable }
         )
     )
 }
