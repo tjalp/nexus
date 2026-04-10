@@ -15,6 +15,7 @@ import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
+import net.tjalp.nexus.feature.servers.ServersFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
 import net.tjalp.nexus.feature.waypoints.WaypointsFeature
 import net.tjalp.nexus.lang.Lang
