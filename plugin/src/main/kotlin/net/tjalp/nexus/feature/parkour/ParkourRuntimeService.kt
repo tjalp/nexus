@@ -7,13 +7,16 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.parkour.ParkourAttachment
+import net.tjalp.nexus.parkour.ParkourAttachmentTable
 import net.tjalp.nexus.parkour.ParkourResultsTable
-import net.tjalp.nexus.parkour.PinnedRoute
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.upsert
 import java.security.MessageDigest
 import java.util.*
 import kotlin.time.ExperimentalTime
@@ -255,18 +258,18 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     fun pinRoute(player: Player, parkourId: UUID, entryNodeId: UUID, nodeIds: List<UUID>): String {
         val routeKey = computeRouteKey(parkourId, nodeIds)
         val nodeIdStrings = nodeIds.map { it.toString() }
-        val pinnedRoute = PinnedRoute(
-            entryNodeId = entryNodeId.toString(),
-            routeKey = routeKey,
-            nodeIds = nodeIdStrings
-        )
 
         val profileId = player.profile().id
 
         feature.scheduler.launch {
             try {
                 transaction(NexusPlugin.database) {
-                    ParkourAttachment(emptyMap()).also { it.id = profileId }.pin(entryNodeId, pinnedRoute)
+                    ParkourAttachmentTable.upsert {
+                        it[ParkourAttachmentTable.profileId] = profileId
+                        it[ParkourAttachmentTable.entryNodeId] = entryNodeId
+                        it[ParkourAttachmentTable.routeKey] = routeKey
+                        it[ParkourAttachmentTable.routeSequence] = Json.encodeToString(nodeIdStrings)
+                    }
                 }
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("[Parkour] Failed to pin route: ${e.message}")
@@ -283,7 +286,10 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         feature.scheduler.launch {
             try {
                 transaction(NexusPlugin.database) {
-                    ParkourAttachment(emptyMap()).also { it.id = profileId }.unpin(entryNodeId)
+                    ParkourAttachmentTable.deleteWhere {
+                        (ParkourAttachmentTable.profileId eq profileId) and
+                                (ParkourAttachmentTable.entryNodeId eq entryNodeId)
+                    }
                 }
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("[Parkour] Failed to unpin route: ${e.message}")

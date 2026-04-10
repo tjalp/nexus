@@ -31,7 +31,7 @@ class ParkourFeature : Feature(PARKOUR) {
 
         AttachmentRegistry.register(ParkourAttachmentProvider)
 
-        // Tick live action bar every second for active sessions
+        // Tick live action bar twice per second for active sessions
         scheduler.launch {
             while (true) {
                 delay(500L)

@@ -18,6 +18,8 @@ import net.tjalp.nexus.feature.parkour.ParkourDefinition
 import net.tjalp.nexus.feature.parkour.ParkourEdge
 import net.tjalp.nexus.feature.parkour.ParkourNode
 import net.tjalp.nexus.feature.parkour.ParkourRegion
+import net.tjalp.nexus.parkour.ParkourAttachment
+import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
 import java.util.*
 
@@ -306,7 +308,7 @@ object ParkourCommand {
 
     private fun listPins(player: Player): Int {
         val attachment = try {
-            player.profile().attachmentOf<net.tjalp.nexus.parkour.ParkourAttachment>()
+            player.profile().attachmentOf<ParkourAttachment>()
         } catch (e: Exception) {
             null
         }
