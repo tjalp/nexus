@@ -199,7 +199,9 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         val durationMs = finishedAt - session.runStartMs
 
         val routeKey = session.activeRouteKey
-        val routeSequenceJson = Json.encodeToString(session.path.map { it.toString() })
+        val routeSequenceJson = Json.encodeToString(
+            session.activeRouteSequence?.map { it.toString() } ?: session.path.map { it.toString() }
+        )
 
         if (routeKey != null) {
             val profileId = try {
