@@ -199,11 +199,11 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         val durationMs = finishedAt - session.runStartMs
 
         val routeKey = session.activeRouteKey
-        val routeSequenceJson = Json.encodeToString(
-            session.activeRouteSequence?.map { it.toString() } ?: session.path.map { it.toString() }
-        )
 
         if (routeKey != null) {
+            val routeSequenceJson = Json.encodeToString(
+                session.activeRouteSequence?.map { it.toString() } ?: emptyList()
+            )
             val profileId = try {
                 player.profile().id
             } catch (e: IllegalStateException) {
