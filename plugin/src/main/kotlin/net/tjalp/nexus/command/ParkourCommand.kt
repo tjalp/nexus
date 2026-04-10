@@ -13,15 +13,10 @@ import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.feature.parkour.NodeType
-import net.tjalp.nexus.feature.parkour.ParkourDefinition
-import net.tjalp.nexus.feature.parkour.ParkourEdge
-import net.tjalp.nexus.feature.parkour.ParkourNode
-import net.tjalp.nexus.feature.parkour.ParkourRegion
-import net.tjalp.nexus.parkour.ParkourAttachment
+import net.tjalp.nexus.feature.parkour.*
+import net.tjalp.nexus.profile.attachment.ParkourAttachment
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
-import java.util.*
 
 object ParkourCommand {
 
@@ -81,7 +76,7 @@ object ParkourCommand {
                                     val typeStr = StringArgumentType.getString(ctx, "type")
                                     val nodeName = StringArgumentType.getString(ctx, "name")
                                     addNode(player, parkourName, typeStr, nodeName)
-                                }))))
+                                })))))
                 .then(literal("region")
                     .then(argument("parkour", StringArgumentType.word())
                         .then(argument("node", StringArgumentType.word())
@@ -102,7 +97,7 @@ object ParkourCommand {
                                                         val y2 = StringArgumentType.getString(ctx, "y2").toIntOrNull() ?: 0
                                                         val z2 = StringArgumentType.getString(ctx, "z2").toIntOrNull() ?: 0
                                                         setNodeRegion(player, parkourName, nodeName, x1, y1, z1, x2, y2, z2)
-                                                    })))))))))))
+                                                    })))))))))
             // ---- edge ----
             .then(literal("edge")
                 .then(literal("add")

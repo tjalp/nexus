@@ -1,18 +1,11 @@
-package net.tjalp.nexus.parkour
+package net.tjalp.nexus.profile.attachment
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import net.tjalp.nexus.profile.attachment.ProfileAttachment
-import net.tjalp.nexus.profile.attachment.AttachmentProvider
 import net.tjalp.nexus.profile.model.ProfilesTable
-import org.jetbrains.exposed.v1.core.ReferenceOption
-import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.Table
-import org.jetbrains.exposed.v1.core.and
-import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll

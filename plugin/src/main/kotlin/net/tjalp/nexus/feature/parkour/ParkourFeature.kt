@@ -5,7 +5,7 @@ import kotlinx.coroutines.launch
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.PARKOUR
-import net.tjalp.nexus.parkour.ParkourAttachmentProvider
+import net.tjalp.nexus.profile.attachment.ParkourAttachmentProvider
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister

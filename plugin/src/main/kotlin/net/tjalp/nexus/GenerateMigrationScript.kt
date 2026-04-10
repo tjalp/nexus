@@ -3,10 +3,10 @@
 package net.tjalp.nexus
 
 import net.tjalp.nexus.auth.UsersTable
-import net.tjalp.nexus.parkour.ParkourAttachmentTable
 import net.tjalp.nexus.parkour.ParkourResultsTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.attachment.NoticesTable
+import net.tjalp.nexus.profile.attachment.ParkourAttachmentTable
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.flywaydb.core.Flyway

@@ -2,7 +2,6 @@ package net.tjalp.nexus.feature.parkour
 
 import net.tjalp.nexus.NexusPlugin
 import org.spongepowered.configurate.kotlin.extensions.get
-import org.spongepowered.configurate.kotlin.extensions.set
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
@@ -57,7 +56,7 @@ class ParkourDefinitionsRepository(dataPath: Path) {
     fun save() {
         try {
             val root = loader.load()
-            root.node("parkours").set<List<ParkourDefinition>>(_parkours.values.toList())
+            root.node("parkours").setList(ParkourDefinition::class.java, _parkours.values.toList())
             loader.save(root)
         } catch (e: Exception) {
             NexusPlugin.logger.warning("[Parkour] Failed to save parkours.yml: ${e.message}")

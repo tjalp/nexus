@@ -1,14 +1,15 @@
 package net.tjalp.nexus.feature.parkour
 
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.parkour.ParkourAttachmentTable
 import net.tjalp.nexus.parkour.ParkourResultsTable
+import net.tjalp.nexus.profile.attachment.ParkourAttachment
+import net.tjalp.nexus.profile.attachment.ParkourAttachmentTable
+import net.tjalp.nexus.profile.attachment.PinnedRoute
 import net.tjalp.nexus.util.profile
 import org.bukkit.entity.Player
 import org.jetbrains.exposed.v1.core.and
