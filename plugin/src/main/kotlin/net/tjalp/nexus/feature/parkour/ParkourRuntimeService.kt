@@ -171,10 +171,19 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
         session.currentNodeId = node.id
 
-        // Check if we should auto-finish (only when the pinned route is complete)
-        if (session.hasActiveRoute && session.isRouteComplete && node.type == NodeType.FINISH) {
-            finishSession(player, session, parkour)
-            return
+        // Auto-finish when:
+        // - pinned route is active and complete at FINISH
+        // - no pinned route is active and a FINISH node is reached
+        if (node.type == NodeType.FINISH) {
+            if (session.hasActiveRoute) {
+                if (session.isRouteComplete) {
+                    finishSession(player, session, parkour)
+                    return
+                }
+            } else {
+                finishSession(player, session, parkour)
+                return
+            }
         }
 
         // If not finishing, just show updated split info
@@ -189,31 +198,37 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         val finishedAt = System.currentTimeMillis()
         val durationMs = finishedAt - session.runStartMs
 
-        val routeKey = session.activeRouteKey ?: return
+        val routeKey = session.activeRouteKey
         val routeSequenceJson = Json.encodeToString(session.path.map { it.toString() })
 
-        val profileId = try {
-            player.profile().id
-        } catch (e: IllegalStateException) {
-            NexusPlugin.logger.warning("[Parkour] No profile for ${player.name}, result not saved.")
-            return
-        }
+        if (routeKey != null) {
+            val profileId = try {
+                player.profile().id
+            } catch (e: IllegalStateException) {
+                NexusPlugin.logger.warning("[Parkour] No profile for ${player.name}, result not saved.")
+                player.sendActionBar(Component.empty())
+                player.sendMessage(
+                    text("Parkour finished! Time: ${formatDuration(durationMs)}", NamedTextColor.GOLD)
+                )
+                return
+            }
 
-        feature.scheduler.launch {
-            try {
-                transaction(NexusPlugin.database) {
-                    ParkourResultsTable.insert {
-                        it[ParkourResultsTable.profileId] = profileId
-                        it[ParkourResultsTable.parkourId] = parkour.id
-                        it[ParkourResultsTable.routeKey] = routeKey
-                        it[ParkourResultsTable.routeSequence] = routeSequenceJson
-                        it[ParkourResultsTable.startedAt] = Instant.fromEpochMilliseconds(session.runStartMs)
-                        it[ParkourResultsTable.finishedAt] = Instant.fromEpochMilliseconds(finishedAt)
-                        it[ParkourResultsTable.durationMs] = durationMs
+            feature.scheduler.launch {
+                try {
+                    transaction(NexusPlugin.database) {
+                        ParkourResultsTable.insert {
+                            it[ParkourResultsTable.profileId] = profileId
+                            it[ParkourResultsTable.parkourId] = parkour.id
+                            it[ParkourResultsTable.routeKey] = routeKey
+                            it[ParkourResultsTable.routeSequence] = routeSequenceJson
+                            it[ParkourResultsTable.startedAt] = Instant.fromEpochMilliseconds(session.runStartMs)
+                            it[ParkourResultsTable.finishedAt] = Instant.fromEpochMilliseconds(finishedAt)
+                            it[ParkourResultsTable.durationMs] = durationMs
+                        }
                     }
+                } catch (e: Exception) {
+                    NexusPlugin.logger.warning("[Parkour] Failed to save run result: ${e.message}")
                 }
-            } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Parkour] Failed to save run result: ${e.message}")
             }
         }
 
