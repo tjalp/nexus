@@ -1,12 +1,10 @@
 package net.tjalp.nexus.feature.parkour
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.FeatureKeys.PARKOUR
-import net.tjalp.nexus.profile.attachment.ParkourAttachmentProvider
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
+import net.tjalp.nexus.profile.attachment.ParkourAttachmentProvider
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 
@@ -32,11 +30,8 @@ class ParkourFeature : Feature(PARKOUR) {
         AttachmentRegistry.register(ParkourAttachmentProvider)
 
         // Tick live action bar twice per second for active sessions
-        scheduler.launch {
-            while (true) {
-                delay(500L)
-                runtime.tickActionBars()
-            }
+        scheduler.repeat(0, 1) {
+            runtime.tickActionBars()
         }
     }
 

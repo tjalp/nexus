@@ -10,7 +10,11 @@ import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands.argument
 import io.papermc.paper.command.brigadier.Commands.literal
 import io.papermc.paper.command.brigadier.MessageComponentSerializer
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes
+import io.papermc.paper.command.brigadier.argument.resolvers.BlockPositionResolver
+import io.papermc.paper.math.BlockPosition
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.parkour.*
@@ -76,28 +80,23 @@ object ParkourCommand {
                                     val typeStr = StringArgumentType.getString(ctx, "type")
                                     val nodeName = StringArgumentType.getString(ctx, "name")
                                     addNode(player, parkourName, typeStr, nodeName)
-                                })))))
+                                }))))
                 .then(literal("region")
                     .then(argument("parkour", StringArgumentType.word())
                         .then(argument("node", StringArgumentType.word())
-                            .then(argument("x1", StringArgumentType.word())
-                                .then(argument("y1", StringArgumentType.word())
-                                    .then(argument("z1", StringArgumentType.word())
-                                        .then(argument("x2", StringArgumentType.word())
-                                            .then(argument("y2", StringArgumentType.word())
-                                                .then(argument("z2", StringArgumentType.word())
-                                                    .executes { ctx ->
-                                                        val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
-                                                        val parkourName = StringArgumentType.getString(ctx, "parkour")
-                                                        val nodeName = StringArgumentType.getString(ctx, "node")
-                                                        val x1 = StringArgumentType.getString(ctx, "x1").toIntOrNull() ?: 0
-                                                        val y1 = StringArgumentType.getString(ctx, "y1").toIntOrNull() ?: 0
-                                                        val z1 = StringArgumentType.getString(ctx, "z1").toIntOrNull() ?: 0
-                                                        val x2 = StringArgumentType.getString(ctx, "x2").toIntOrNull() ?: 0
-                                                        val y2 = StringArgumentType.getString(ctx, "y2").toIntOrNull() ?: 0
-                                                        val z2 = StringArgumentType.getString(ctx, "z2").toIntOrNull() ?: 0
-                                                        setNodeRegion(player, parkourName, nodeName, x1, y1, z1, x2, y2, z2)
-                                                    })))))))))
+                            .then(argument("from", ArgumentTypes.blockPosition())
+                                .then(argument("to", ArgumentTypes.blockPosition())
+                                    .executes { ctx ->
+                                        val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                                        val parkourName = StringArgumentType.getString(ctx, "parkour")
+                                        val nodeName = StringArgumentType.getString(ctx, "node")
+                                        val from = ctx.getArgument("from", BlockPositionResolver::class.java)
+                                            .resolve(ctx.source)
+                                        val to = ctx.getArgument("to", BlockPositionResolver::class.java)
+                                            .resolve(ctx.source)
+
+                                        setNodeRegion(player, parkourName, nodeName, from, to)
+                                    }))))))
             // ---- edge ----
             .then(literal("edge")
                 .then(literal("add")
@@ -211,8 +210,7 @@ object ParkourCommand {
     }
 
     private fun setNodeRegion(
-        player: Player, parkourName: String, nodeName: String,
-        x1: Int, y1: Int, z1: Int, x2: Int, y2: Int, z2: Int
+        player: Player, parkourName: String, nodeName: String, from: BlockPosition, to: BlockPosition
     ): Int {
         val feat = parkour
         val def = feat.definitions.getByName(parkourName) ?: throw ERROR_PARKOUR_NOT_FOUND.create()
@@ -221,8 +219,12 @@ object ParkourCommand {
         val worldId = player.world.uid
         val region = ParkourRegion(
             worldId = worldId,
-            minX = minOf(x1, x2), minY = minOf(y1, y2), minZ = minOf(z1, z2),
-            maxX = maxOf(x1, x2), maxY = maxOf(y1, y2), maxZ = maxOf(z1, z2)
+            minX = minOf(from.blockX(), to.blockX()),
+            minY = minOf(from.blockY(), to.blockY()),
+            minZ = minOf(from.blockZ(), to.blockZ()),
+            maxX = maxOf(from.blockX(), to.blockX()),
+            maxY = maxOf(from.blockY(), to.blockY()),
+            maxZ = maxOf(from.blockZ(), to.blockZ()),
         )
 
         val idx = def.nodes.indexOfFirst { it.id == node.id }
@@ -355,7 +357,8 @@ object ParkourCommand {
         source.sender.sendMessage(text("Parkours (${all.size}):", NamedTextColor.GOLD))
         all.values.forEach { def ->
             source.sender.sendMessage(
-                text("  ${def.name} (${def.nodes.size} nodes, ${def.edges.size} edges) [${def.id}]", NamedTextColor.WHITE)
+                text("  ${def.name} (${def.nodes.size} nodes, ${def.edges.size} edges)", NamedTextColor.WHITE)
+                    .hoverEvent(HoverEvent.showText(text(def.id.toString())))
             )
         }
         return Command.SINGLE_SUCCESS
