@@ -133,7 +133,10 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
             if (!session.isNextRouteSegment(segment.id)) return
             session.advanceRoute(segment.id)
         } else {
-            session.segmentTimings += SegmentTiming(segment.id, now - session.currentSegmentStartMs)
+            session.segmentTimings += SegmentTiming(
+                segmentId = segment.id,
+                durationMs = now - session.currentSegmentStartMs
+            )
             session.currentSegmentStartMs = now
         }
 

@@ -98,7 +98,7 @@ data class ParkourDefinition(
             .mapNotNull { nodeById(it.toNodeId) }
 
     /** Returns true if there is an enabled segment from [fromNodeId] to [toNodeId]. */
-    fun hasEdge(fromNodeId: UUID, toNodeId: UUID): Boolean =
+    fun hasSegment(fromNodeId: UUID, toNodeId: UUID): Boolean =
         segments.any { it.enabled && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
 
     fun findSegment(fromNodeId: UUID, toNodeId: UUID): ParkourSegment? =
