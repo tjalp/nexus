@@ -15,37 +15,48 @@ data class RunSession(
     val parkourId: UUID,
     var currentNodeId: UUID,
     val runStartMs: Long = System.currentTimeMillis(),
+    var currentSegmentStartMs: Long = System.currentTimeMillis(),
     var lastCheckpointMs: Long = System.currentTimeMillis(),
     var lastEntrypointMs: Long = System.currentTimeMillis(),
     val path: MutableList<UUID> = mutableListOf(),
+    val segmentTimings: MutableList<SegmentTiming> = mutableListOf(),
     /** Non-null when the player has a pinned route that started at the first entry node. */
     val activeRouteKey: String? = null,
-    val activeRouteSequence: List<UUID>? = null,
-    var activeRouteIndex: Int = 0
+    val activeRouteName: String? = null,
+    val activeRouteSegmentIds: List<UUID>? = null,
+    var activeRouteIndex: Int = -1
 ) {
     val elapsedMs: Long get() = System.currentTimeMillis() - runStartMs
     val checkpointSplitMs: Long get() = System.currentTimeMillis() - lastCheckpointMs
     val entrySplitMs: Long get() = System.currentTimeMillis() - lastEntrypointMs
 
     /** Returns true if the pinned route is currently being tracked. */
-    val hasActiveRoute: Boolean get() = activeRouteSequence != null
+    val hasActiveRoute: Boolean get() = activeRouteSegmentIds != null
 
     /**
      * Advances the pinned-route tracker by one node.
-     * Should be called only when [toNodeId] matches the next expected node in the sequence.
+     * Should be called only when [segmentId] matches the next expected segment in the sequence.
      */
-    fun advanceRoute() {
+    fun advanceRoute(segmentId: UUID) {
+        val elapsedForSegment = System.currentTimeMillis() - currentSegmentStartMs
+        segmentTimings += SegmentTiming(segmentId = segmentId, durationMs = elapsedForSegment)
+        currentSegmentStartMs = System.currentTimeMillis()
         activeRouteIndex++
     }
 
-    /** Returns whether [toNodeId] is the next expected node in the pinned route. */
-    fun isNextRouteNode(toNodeId: UUID): Boolean {
-        if (activeRouteSequence == null) return false
+    /** Returns whether [segmentId] is the next expected segment in the active route. */
+    fun isNextRouteSegment(segmentId: UUID): Boolean {
+        if (activeRouteSegmentIds == null) return false
         val nextIndex = activeRouteIndex + 1
-        return nextIndex < activeRouteSequence.size && activeRouteSequence[nextIndex] == toNodeId
+        return nextIndex < activeRouteSegmentIds.size && activeRouteSegmentIds[nextIndex] == segmentId
     }
 
     /** Returns true if the pinned route is now complete (finish node reached). */
     val isRouteComplete: Boolean
-        get() = activeRouteSequence != null && activeRouteIndex >= activeRouteSequence.size - 1
+        get() = activeRouteSegmentIds != null && activeRouteIndex >= activeRouteSegmentIds.size - 1
 }
+
+data class SegmentTiming(
+    val segmentId: UUID,
+    val durationMs: Long
+)

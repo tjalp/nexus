@@ -4,6 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -36,7 +38,8 @@ object ParkourAttachmentTable : Table("parkour_attachments") {
 data class PinnedRoute(
     val entryNodeId: String,
     val routeKey: String,
-    val nodeIds: List<String>
+    val routeName: String? = null,
+    val segmentIds: List<String> = emptyList()
 )
 
 /**
@@ -61,7 +64,10 @@ data class ParkourAttachment(
             it[ParkourAttachmentTable.profileId] = this@ParkourAttachment.id
             it[ParkourAttachmentTable.entryNodeId] = entryNodeId
             it[ParkourAttachmentTable.routeKey] = pinnedRoute.routeKey
-            it[ParkourAttachmentTable.routeSequence] = Json.encodeToString(pinnedRoute.nodeIds)
+            it[ParkourAttachmentTable.routeSequence] = Json.encodeToString(
+                ListSerializer(String.serializer()),
+                pinnedRoute.segmentIds
+            )
         }
     }
 
@@ -87,11 +93,14 @@ object ParkourAttachmentProvider : AttachmentProvider<ParkourAttachment> {
         val pinnedRoutes = rows.associate { row ->
             val entryNodeId = row[ParkourAttachmentTable.entryNodeId].toString()
             val routeKey = row[ParkourAttachmentTable.routeKey]
-            val nodeIds: List<String> = Json.decodeFromString(row[ParkourAttachmentTable.routeSequence])
+            val segmentIds: List<String> = Json.decodeFromString(
+                ListSerializer(String.serializer()),
+                row[ParkourAttachmentTable.routeSequence]
+            )
             entryNodeId to PinnedRoute(
                 entryNodeId = entryNodeId,
                 routeKey = routeKey,
-                nodeIds = nodeIds
+                segmentIds = segmentIds
             )
         }
 

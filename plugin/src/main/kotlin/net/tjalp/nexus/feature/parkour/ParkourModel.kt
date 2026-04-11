@@ -59,6 +59,31 @@ data class ParkourEdge(
 )
 
 /**
+ * A named, directed segment between two nodes.
+ * Segments are the primary building block for timing and route composition.
+ */
+@ConfigSerializable
+data class ParkourSegment(
+    val id: UUID = UUID.randomUUID(),
+    val name: String = "",
+    val fromNodeId: UUID = UUID(0, 0),
+    val toNodeId: UUID = UUID(0, 0),
+    val enabled: Boolean = true
+)
+
+/**
+ * A named route composed of ordered segment IDs.
+ * Predefined routes are shared map content while player-specific routes are pinned via attachments.
+ */
+@ConfigSerializable
+data class ParkourRoute(
+    val id: UUID = UUID.randomUUID(),
+    val name: String = "",
+    val segmentIds: MutableList<UUID> = mutableListOf(),
+    val predefined: Boolean = true
+)
+
+/**
  * A full parkour definition: graph of nodes + edges.
  * Definitions are stored via Configurate (YAML) and use world UUIDs so they
  * survive world-name changes; they can be wiped independently from player data.
@@ -68,17 +93,61 @@ data class ParkourDefinition(
     val id: UUID = UUID.randomUUID(),
     val name: String = "",
     val nodes: MutableList<ParkourNode> = mutableListOf(),
+    val segments: MutableList<ParkourSegment> = mutableListOf(),
+    val routes: MutableList<ParkourRoute> = mutableListOf(),
     val edges: MutableList<ParkourEdge> = mutableListOf()
 ) {
     fun nodeById(id: UUID): ParkourNode? = nodes.firstOrNull { it.id == id }
     fun nodeByName(name: String): ParkourNode? = nodes.firstOrNull { it.name.equals(name, ignoreCase = true) }
+    fun segmentById(id: UUID): ParkourSegment? = allSegments().firstOrNull { it.id == id }
+    fun segmentByName(name: String): ParkourSegment? = allSegments().firstOrNull { it.name.equals(name, ignoreCase = true) }
+    fun routeByName(name: String): ParkourRoute? = routes.firstOrNull { it.name.equals(name, ignoreCase = true) }
 
     /** Returns all nodes reachable from [fromNodeId] via enabled edges. */
     fun successors(fromNodeId: UUID): List<ParkourNode> =
-        edges.filter { it.enabled && it.fromNodeId == fromNodeId }
+        allSegments().filter { it.enabled && it.fromNodeId == fromNodeId }
             .mapNotNull { nodeById(it.toNodeId) }
 
     /** Returns true if there is an enabled edge from [fromNodeId] to [toNodeId]. */
     fun hasEdge(fromNodeId: UUID, toNodeId: UUID): Boolean =
-        edges.any { it.enabled && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
+        allSegments().any { it.enabled && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
+
+    fun findSegment(fromNodeId: UUID, toNodeId: UUID): ParkourSegment? =
+        allSegments().firstOrNull { it.enabled && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
+
+    fun removeNode(nodeId: UUID) {
+        nodes.removeIf { it.id == nodeId }
+        segments.removeIf { it.fromNodeId == nodeId || it.toNodeId == nodeId }
+        edges.removeIf { it.fromNodeId == nodeId || it.toNodeId == nodeId }
+        pruneRoutes()
+    }
+
+    fun removeSegment(segmentId: UUID) {
+        segments.removeIf { it.id == segmentId }
+        pruneRoutes()
+    }
+
+    fun pruneRoutes() {
+        val validSegmentIds = allSegments().map { it.id }.toSet()
+        routes.forEach { route ->
+            route.segmentIds.removeIf { it !in validSegmentIds }
+        }
+        routes.removeIf { it.segmentIds.isEmpty() }
+    }
+
+    fun allSegments(): List<ParkourSegment> {
+        if (segments.isNotEmpty()) return segments
+
+        // Backwards compatibility for legacy edge-only definitions:
+        // expose synthetic segment names when no explicit segments exist yet.
+        return edges.mapIndexed { index, edge ->
+            ParkourSegment(
+                id = UUID.nameUUIDFromBytes("${edge.fromNodeId}:${edge.toNodeId}:$index".toByteArray()),
+                name = "segment-$index",
+                fromNodeId = edge.fromNodeId,
+                toNodeId = edge.toNodeId,
+                enabled = edge.enabled
+            )
+        }
+    }
 }
