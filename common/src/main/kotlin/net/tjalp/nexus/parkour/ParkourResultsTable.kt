@@ -9,8 +9,8 @@ import org.jetbrains.exposed.v1.datetime.timestamp
 import kotlin.time.ExperimentalTime
 
 /**
- * Table that stores completed parkour run results.
- * Keyed by a deterministic route key (hash of parkourId + ordered nodeIds).
+ * Legacy table that stores completed parkour run totals.
+ * New segment-based timings are stored in [ParkourSegmentResultsTable].
  */
 object ParkourResultsTable : UUIDTable("parkour_results") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
