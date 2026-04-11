@@ -20,9 +20,18 @@ import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.parkour.*
 import net.tjalp.nexus.profile.attachment.ParkourAttachment
 import net.tjalp.nexus.util.profile
+import org.bukkit.Color
+import org.bukkit.Location
+import org.bukkit.Particle
 import org.bukkit.entity.Player
+import org.bukkit.scheduler.BukkitTask
+import java.util.*
 
 object ParkourCommand {
+    private const val VISUALIZER_BURSTS = 40
+    private const val VISUALIZER_INTERVAL_TICKS = 6L
+    private val activeVisualizers = mutableMapOf<UUID, BukkitTask>()
+    private val visualizerBurstsRemaining = mutableMapOf<UUID, Int>()
 
     private val ERROR_NOT_PLAYER = SimpleCommandExceptionType(
         MessageComponentSerializer.message().serialize(text("This command can only be run by a player."))
@@ -134,6 +143,22 @@ object ParkourCommand {
                     .executes { ctx ->
                         val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
                         listPins(player)
+                    }))
+                .then(literal("visualize")
+                    .then(argument("parkour", StringArgumentType.word())
+                        .then(argument("from", StringArgumentType.word())
+                            .then(argument("to", StringArgumentType.word())
+                                .executes { ctx ->
+                                    val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                                    val parkourName = StringArgumentType.getString(ctx, "parkour")
+                                    val fromName = StringArgumentType.getString(ctx, "from")
+                                    val toName = StringArgumentType.getString(ctx, "to")
+                                    visualizeRoute(player, parkourName, fromName, toName)
+                                }))))
+                .then(literal("visualize-stop")
+                    .executes { ctx ->
+                        val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                        stopVisualization(player)
                     }))
             // ---- start / stop ----
             .then(literal("start")
@@ -322,6 +347,166 @@ object ParkourCommand {
             )
         }
         return Command.SINGLE_SUCCESS
+    }
+
+    private fun visualizeRoute(player: Player, parkourName: String, fromName: String, toName: String): Int {
+        val feat = parkour
+        val def = feat.definitions.getByName(parkourName) ?: throw ERROR_PARKOUR_NOT_FOUND.create()
+        val fromNode = def.nodeByName(fromName) ?: throw ERROR_NODE_NOT_FOUND.create()
+        val toNode = def.nodeByName(toName) ?: throw ERROR_NODE_NOT_FOUND.create()
+
+        if (fromNode.type != NodeType.ENTRY) {
+            player.sendMessage(text("Route visualizer start node must be an ENTRY node.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+        if (toNode.type != NodeType.ENTRY && toNode.type != NodeType.FINISH) {
+            player.sendMessage(text("Route visualizer target must be an ENTRY or FINISH node.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+        if (fromNode.worldId != toNode.worldId) {
+            player.sendMessage(text("Route visualizer only supports nodes in the same world.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+        if (player.world.uid != fromNode.worldId) {
+            player.sendMessage(text("Stand in the same world as this route to visualize it.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+
+        val route = findRoute(def, fromNode.id, toNode.id)
+        if (route == null || route.size < 2) {
+            player.sendMessage(text("No valid route found from '$fromName' to '$toName'.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+
+        startVisualization(player, route)
+        player.sendMessage(
+            text(
+                "Visualizing route: ${route.joinToString(" → ") { it.name }}",
+                NamedTextColor.GREEN
+            )
+        )
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun stopVisualization(player: Player): Int {
+        activeVisualizers.remove(player.uniqueId)?.cancel()
+        visualizerBurstsRemaining.remove(player.uniqueId)
+        player.sendMessage(text("Stopped route visualization.", NamedTextColor.YELLOW))
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun findRoute(def: ParkourDefinition, fromId: UUID, toId: UUID): List<ParkourNode>? {
+        val visited = mutableSetOf(fromId)
+        val parent = mutableMapOf<UUID, UUID?>()
+        val queue: ArrayDeque<UUID> = ArrayDeque()
+        parent[fromId] = null
+        queue.add(fromId)
+
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            if (current == toId) break
+
+            def.successors(current).forEach { successor ->
+                if (visited.add(successor.id)) {
+                    parent[successor.id] = current
+                    queue.add(successor.id)
+                }
+            }
+        }
+
+        if (!parent.containsKey(toId)) return null
+
+        val nodeIds = mutableListOf<UUID>()
+        var cursor: UUID? = toId
+        while (cursor != null) {
+            nodeIds += cursor
+            cursor = parent[cursor]
+        }
+        nodeIds.reverse()
+
+        return nodeIds.mapNotNull { def.nodeById(it) }
+    }
+
+    private fun startVisualization(player: Player, route: List<ParkourNode>) {
+        activeVisualizers.remove(player.uniqueId)?.cancel()
+        visualizerBurstsRemaining[player.uniqueId] = VISUALIZER_BURSTS
+
+        val task = parkour.scheduler.repeat(initialDelay = 0, interval = VISUALIZER_INTERVAL_TICKS) {
+            if (!player.isOnline || player.world.uid != route.first().worldId) {
+                activeVisualizers.remove(player.uniqueId)?.cancel()
+                visualizerBurstsRemaining.remove(player.uniqueId)
+                return@repeat
+            }
+
+            renderRoute(player, route)
+
+            val burstsLeft = (visualizerBurstsRemaining[player.uniqueId] ?: VISUALIZER_BURSTS) - 1
+            if (burstsLeft <= 0) {
+                activeVisualizers.remove(player.uniqueId)?.cancel()
+                visualizerBurstsRemaining.remove(player.uniqueId)
+            } else {
+                visualizerBurstsRemaining[player.uniqueId] = burstsLeft
+            }
+        }
+
+        activeVisualizers[player.uniqueId] = task
+    }
+
+    private fun renderRoute(player: Player, route: List<ParkourNode>) {
+        route.forEach { node ->
+            val center = nodeCenter(player.world, node)
+            val color = when (node.type) {
+                NodeType.ENTRY -> Color.LIME
+                NodeType.CHECKPOINT -> Color.AQUA
+                NodeType.FINISH -> Color.ORANGE
+            }
+            player.spawnParticle(
+                Particle.DUST,
+                center,
+                16,
+                0.25,
+                0.25,
+                0.25,
+                0.0,
+                Particle.DustOptions(color, 1.5f)
+            )
+        }
+
+        for (i in 0 until route.lastIndex) {
+            val from = nodeCenter(player.world, route[i])
+            val to = nodeCenter(player.world, route[i + 1])
+            drawParticleLine(player, from, to)
+        }
+    }
+
+    private fun nodeCenter(world: org.bukkit.World, node: ParkourNode): Location {
+        val r = node.region
+        val x = (r.minX + r.maxX) / 2.0 + 0.5
+        val y = (r.minY + r.maxY) / 2.0 + 0.5
+        val z = (r.minZ + r.maxZ) / 2.0 + 0.5
+        return Location(world, x, y, z)
+    }
+
+    private fun drawParticleLine(player: Player, from: Location, to: Location) {
+        val distance = from.distance(to)
+        val steps = (distance * 4).toInt().coerceAtLeast(1)
+        val dx = (to.x - from.x) / steps
+        val dy = (to.y - from.y) / steps
+        val dz = (to.z - from.z) / steps
+
+        for (i in 0..steps) {
+            player.spawnParticle(
+                Particle.END_ROD,
+                from.x + dx * i,
+                from.y + dy * i,
+                from.z + dz * i,
+                1,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            )
+        }
     }
 
     private fun startRun(player: Player, parkourName: String, nodeName: String): Int {
