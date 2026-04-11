@@ -32,6 +32,7 @@ object ParkourCommand {
     private const val VISUALIZER_INTERVAL_TICKS = 6L
     private val activeVisualizers = mutableMapOf<UUID, BukkitTask>()
     private val visualizerBurstsRemaining = mutableMapOf<UUID, Int>()
+    private val visualizerPhases = mutableMapOf<UUID, Int>()
 
     private val ERROR_NOT_PLAYER = SimpleCommandExceptionType(
         MessageComponentSerializer.message().serialize(text("This command can only be run by a player."))
@@ -157,6 +158,20 @@ object ParkourCommand {
                                     StringArgumentType.getString(ctx, "name")
                                 )
                             }))))
+                .then(literal("visualize")
+                    .then(argument("parkour", StringArgumentType.word())
+                        .executes { ctx ->
+                            val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                            visualizeAllSegments(
+                                player,
+                                StringArgumentType.getString(ctx, "parkour")
+                            )
+                        }))
+                .then(literal("visualize-stop")
+                    .executes { ctx ->
+                        val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                        stopVisualization(player)
+                    }))
             .then(literal("route")
                 .then(literal("define")
                     .then(argument("parkour", StringArgumentType.word())
@@ -487,10 +502,36 @@ object ParkourCommand {
         return Command.SINGLE_SUCCESS
     }
 
+    private fun visualizeAllSegments(player: Player, parkourName: String): Int {
+        val def = parkour.definitions.getByName(parkourName) ?: throw ERROR_PARKOUR_NOT_FOUND.create()
+        if (def.segments.isEmpty()) {
+            player.sendMessage(text("No segments to visualize in '$parkourName'.", NamedTextColor.YELLOW))
+            return Command.SINGLE_SUCCESS
+        }
+
+        val worldId = player.world.uid
+        val paths = def.segments.mapNotNull { segment ->
+            val from = def.nodeById(segment.fromNodeId) ?: return@mapNotNull null
+            val to = def.nodeById(segment.toNodeId) ?: return@mapNotNull null
+            if (from.worldId != worldId || to.worldId != worldId) return@mapNotNull null
+            nodeCenter(player.world, from) to nodeCenter(player.world, to)
+        }
+
+        if (paths.isEmpty()) {
+            player.sendMessage(text("No segments in '${def.name}' are in your current world.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+
+        startSegmentVisualization(player, paths)
+        player.sendMessage(text("Visualizing ${paths.size} segment(s) in '${def.name}'.", NamedTextColor.GREEN))
+        return Command.SINGLE_SUCCESS
+    }
+
     private fun stopVisualization(player: Player): Int {
         activeVisualizers.remove(player.uniqueId)?.cancel()
         visualizerBurstsRemaining.remove(player.uniqueId)
-        player.sendMessage(text("Stopped route visualization.", NamedTextColor.YELLOW))
+        visualizerPhases.remove(player.uniqueId)
+        player.sendMessage(text("Stopped parkour visualization.", NamedTextColor.YELLOW))
         return Command.SINGLE_SUCCESS
     }
 
@@ -526,11 +567,13 @@ object ParkourCommand {
     private fun startVisualization(player: Player, route: List<ParkourNode>) {
         activeVisualizers.remove(player.uniqueId)?.cancel()
         visualizerBurstsRemaining[player.uniqueId] = VISUALIZER_BURSTS
+        visualizerPhases[player.uniqueId] = 0
 
         val task = parkour.scheduler.repeat(initialDelay = 0, interval = VISUALIZER_INTERVAL_TICKS) {
             if (!player.isOnline || player.world.uid != route.first().worldId) {
                 activeVisualizers.remove(player.uniqueId)?.cancel()
                 visualizerBurstsRemaining.remove(player.uniqueId)
+                visualizerPhases.remove(player.uniqueId)
                 return@repeat
             }
 
@@ -551,6 +594,38 @@ object ParkourCommand {
             if (left <= 0) {
                 activeVisualizers.remove(player.uniqueId)?.cancel()
                 visualizerBurstsRemaining.remove(player.uniqueId)
+                visualizerPhases.remove(player.uniqueId)
+            } else {
+                visualizerBurstsRemaining[player.uniqueId] = left
+            }
+        }
+        activeVisualizers[player.uniqueId] = task
+    }
+
+    private fun startSegmentVisualization(player: Player, segments: List<Pair<Location, Location>>) {
+        activeVisualizers.remove(player.uniqueId)?.cancel()
+        visualizerBurstsRemaining[player.uniqueId] = VISUALIZER_BURSTS
+        visualizerPhases[player.uniqueId] = 0
+
+        val task = parkour.scheduler.repeat(initialDelay = 0, interval = VISUALIZER_INTERVAL_TICKS) {
+            if (!player.isOnline) {
+                activeVisualizers.remove(player.uniqueId)?.cancel()
+                visualizerBurstsRemaining.remove(player.uniqueId)
+                visualizerPhases.remove(player.uniqueId)
+                return@repeat
+            }
+
+            val phase = visualizerPhases[player.uniqueId] ?: 0
+            segments.forEachIndexed { index, (from, to) ->
+                drawDirectionalParticles(player, from, to, phase + index * 4)
+            }
+            visualizerPhases[player.uniqueId] = phase + 1
+
+            val left = (visualizerBurstsRemaining[player.uniqueId] ?: VISUALIZER_BURSTS) - 1
+            if (left <= 0) {
+                activeVisualizers.remove(player.uniqueId)?.cancel()
+                visualizerBurstsRemaining.remove(player.uniqueId)
+                visualizerPhases.remove(player.uniqueId)
             } else {
                 visualizerBurstsRemaining[player.uniqueId] = left
             }
@@ -575,6 +650,30 @@ object ParkourCommand {
         val dz = (to.z - from.z) / steps
         for (i in 0..steps) {
             player.spawnParticle(Particle.END_ROD, from.x + dx * i, from.y + dy * i, from.z + dz * i, 1, 0.0, 0.0, 0.0, 0.0)
+        }
+    }
+
+    private fun drawDirectionalParticles(player: Player, from: Location, to: Location, phase: Int) {
+        val points = 8
+        val speed = 0.08
+        val dx = to.x - from.x
+        val dy = to.y - from.y
+        val dz = to.z - from.z
+
+        for (i in 0 until points) {
+            val progress = ((phase * speed) + i.toDouble() / points) % 1.0
+            player.spawnParticle(
+                Particle.DUST,
+                from.x + dx * progress,
+                from.y + dy * progress,
+                from.z + dz * progress,
+                1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                Particle.DustOptions(Color.YELLOW, 1.0f)
+            )
         }
     }
 
