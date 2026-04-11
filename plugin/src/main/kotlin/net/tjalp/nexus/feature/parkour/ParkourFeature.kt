@@ -9,7 +9,7 @@ import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 
 /**
- * The Parkour feature manages parkour definitions (graph of nodes/edges stored
+ * The Parkour feature manages parkour definitions (graph of nodes/segments stored
  * via Configurate) and runtime player sessions (start/stop tracking, action-bar
  * splits, and pinned-route auto-finish with DB result persistence).
  */

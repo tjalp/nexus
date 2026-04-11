@@ -364,7 +364,6 @@ object ParkourCommand {
             fromNodeId = fromNode.id,
             toNodeId = toNode.id
         )
-        def.edges.clear()
         feat.definitions.upsert(def)
         player.sendMessage(
             text("Added segment '$segmentName' ($fromName → $toName) in '$parkourName'.", NamedTextColor.GREEN)
@@ -618,7 +617,7 @@ object ParkourCommand {
         source.sender.sendMessage(text("Parkours (${all.size}):", NamedTextColor.GOLD))
         all.values.forEach { def ->
             source.sender.sendMessage(
-                text("  ${def.name} (${def.nodes.size} nodes, ${def.allSegments().size} segments, ${def.routes.size} routes)", NamedTextColor.WHITE)
+                text("  ${def.name} (${def.nodes.size} nodes, ${def.segments.size} segments, ${def.routes.size} routes)", NamedTextColor.WHITE)
                     .hoverEvent(HoverEvent.showText(text(def.id.toString())))
             )
         }
@@ -637,7 +636,7 @@ object ParkourCommand {
             source.sender.sendMessage(text("  [${node.type}] ${node.name} (${node.id})", NamedTextColor.WHITE))
         }
 
-        val segments = def.allSegments()
+        val segments = def.segments
         if (segments.isNotEmpty()) {
             source.sender.sendMessage(text("Segments:", NamedTextColor.GOLD))
             segments.forEach { seg ->
