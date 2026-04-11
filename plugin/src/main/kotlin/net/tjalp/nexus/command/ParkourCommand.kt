@@ -157,7 +157,7 @@ object ParkourCommand {
                                     StringArgumentType.getString(ctx, "parkour"),
                                     StringArgumentType.getString(ctx, "name")
                                 )
-                            }))))
+                            })))
                 .then(literal("visualize")
                     .then(argument("parkour", StringArgumentType.word())
                         .executes { ctx ->
@@ -662,18 +662,19 @@ object ParkourCommand {
 
         for (i in 0 until points) {
             val progress = ((phase * speed) + i.toDouble() / points) % 1.0
-            player.spawnParticle(
-                Particle.DUST,
-                from.x + dx * progress,
-                from.y + dy * progress,
-                from.z + dz * progress,
-                1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                Particle.DustOptions(Color.YELLOW, 1.0f)
-            )
+            Particle.END_ROD.builder()
+                .location(
+                    player.world,
+                    from.x + dx * progress,
+                    from.y + dy * progress,
+                    from.z + dz * progress,
+                )
+                .offset(dx, dy, dz)
+                .receivers(player)
+                .count(0)
+                .extra(.01)
+//                .data(Particle.DustOptions(Color.YELLOW, 1.0f))
+                .spawn()
         }
     }
 
