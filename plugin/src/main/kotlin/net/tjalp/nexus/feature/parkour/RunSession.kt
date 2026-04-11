@@ -35,7 +35,7 @@ data class RunSession(
 
     /**
      * Advances the pinned-route tracker by one segment.
-     * Should be called only when [segmentId] matches the next expected segment in the sequence.
+     * Caller is responsible for ensuring [segmentId] matches the next expected segment.
      */
     fun advanceRoute(segmentId: UUID) {
         val elapsedForSegment = System.currentTimeMillis() - currentSegmentStartMs

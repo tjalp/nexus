@@ -183,7 +183,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                     var segmentStartMs = session.runStartMs
                     session.segmentTimings.forEachIndexed { idx, timing ->
                         val segment = parkour.segmentById(timing.segmentId)
-                        val segmentFinishedMs = segmentStartMs + timing.durationMs
+                        val segmentFinishedAtMs = segmentStartMs + timing.durationMs
                         ParkourSegmentResultsTable.insert {
                             it[ParkourSegmentResultsTable.profileId] = profileId
                             it[ParkourSegmentResultsTable.parkourId] = parkour.id
@@ -194,9 +194,9 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                             it[ParkourSegmentResultsTable.segmentOrder] = idx
                             it[ParkourSegmentResultsTable.durationMs] = timing.durationMs
                             it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(segmentStartMs)
-                            it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(segmentFinishedMs)
+                            it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(segmentFinishedAtMs)
                         }
-                        segmentStartMs = segmentFinishedMs
+                        segmentStartMs = segmentFinishedAtMs
                     }
                 }
             } catch (e: Exception) {
