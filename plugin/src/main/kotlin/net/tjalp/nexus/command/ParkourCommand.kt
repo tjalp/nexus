@@ -234,7 +234,7 @@ object ParkourCommand {
                                 ctx.source,
                                 StringArgumentType.getString(ctx, "parkour")
                             )
-                        })))
+                        }))
             .then(literal("start")
                 .then(argument("parkour", StringArgumentType.word())
                     .then(argument("node", StringArgumentType.word())

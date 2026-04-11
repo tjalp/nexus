@@ -1,7 +1,6 @@
 package net.tjalp.nexus.feature.parkour
 
 import net.tjalp.nexus.NexusPlugin
-import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
@@ -44,7 +43,7 @@ class ParkourDefinitionsRepository(dataPath: Path) {
         _parkours.clear()
         try {
             val root = loader.load()
-            val list = root.node("parkours").get<List<ParkourDefinition>>() ?: emptyList()
+            val list = root.node("parkours").getList(ParkourDefinition::class.java) ?: emptyList()
             list.forEach { _parkours[it.id] = it }
             NexusPlugin.logger.info("[Parkour] Loaded ${_parkours.size} parkour definition(s).")
         } catch (e: Exception) {
