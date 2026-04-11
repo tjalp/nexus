@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS parkour_segment_results
     duration_ms     BIGINT       NOT NULL,
     started_at      TIMESTAMP    NOT NULL,
     finished_at     TIMESTAMP    NOT NULL,
-    CONSTRAINT fk_parkour_segment_results_profile_id__id FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE ON UPDATE RESTRICT
+    CONSTRAINT fk_parkour_segment_results_profile_id_id FOREIGN KEY (profile_id) REFERENCES profiles (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );

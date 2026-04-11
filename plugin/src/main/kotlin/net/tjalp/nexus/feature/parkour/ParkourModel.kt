@@ -140,6 +140,8 @@ data class ParkourDefinition(
 
         // Backwards compatibility for legacy edge-only definitions:
         // expose synthetic segment names when no explicit segments exist yet.
+        // UUIDs are derived deterministically from edge endpoints so existing
+        // edge-only definitions map to stable segment IDs across reloads.
         return edges.map { edge ->
             ParkourSegment(
                 id = UUID.nameUUIDFromBytes("${edge.fromNodeId}:${edge.toNodeId}".toByteArray()),
