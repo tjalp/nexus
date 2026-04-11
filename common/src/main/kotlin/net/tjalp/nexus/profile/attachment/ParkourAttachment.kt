@@ -31,8 +31,8 @@ object ParkourAttachmentTable : Table("parkour_attachments") {
 
 /**
  * Represents a single pinned route for a player: standing on [entryNodeId] will
- * automatically track the route identified by [routeKey] whose ordered node IDs
- * are stored in [nodeIds].
+ * automatically track the route identified by [routeKey] whose ordered segment IDs
+ * are stored in [segmentIds].
  */
 @Serializable
 data class PinnedRoute(

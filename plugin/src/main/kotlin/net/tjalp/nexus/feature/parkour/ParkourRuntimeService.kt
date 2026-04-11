@@ -156,7 +156,6 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
     private fun finishSession(player: Player, session: RunSession, parkour: ParkourDefinition) {
         sessions.remove(player.uniqueId)
-        val finishedAt = System.currentTimeMillis()
         val totalDurationMs = session.segmentTimings.sumOf { it.durationMs }
 
         val profileId = try {
@@ -178,8 +177,10 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         feature.scheduler.launch {
             try {
                 transaction(NexusPlugin.database) {
+                    var segmentStartMs = session.runStartMs
                     session.segmentTimings.forEachIndexed { idx, timing ->
                         val segment = parkour.segmentById(timing.segmentId)
+                        val segmentFinishedMs = segmentStartMs + timing.durationMs
                         ParkourSegmentResultsTable.insert {
                             it[ParkourSegmentResultsTable.profileId] = profileId
                             it[ParkourSegmentResultsTable.parkourId] = parkour.id
@@ -189,9 +190,10 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                             it[ParkourSegmentResultsTable.segmentName] = segment?.name ?: timing.segmentId.toString()
                             it[ParkourSegmentResultsTable.segmentOrder] = idx
                             it[ParkourSegmentResultsTable.durationMs] = timing.durationMs
-                            it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(session.runStartMs)
-                            it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(finishedAt)
+                            it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(segmentStartMs)
+                            it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(segmentFinishedMs)
                         }
+                        segmentStartMs = segmentFinishedMs
                     }
                 }
             } catch (e: Exception) {

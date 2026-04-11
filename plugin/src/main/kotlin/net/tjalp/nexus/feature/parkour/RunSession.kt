@@ -7,7 +7,7 @@ import java.util.*
  *
  * A session always operates in "freestyle" mode: every valid node transition
  * is recorded in [path] and split times are tracked.  If the player has a route
- * pinned starting at [currentNodeId], [activeRouteSequence] and [activeRouteIndex]
+ * pinned starting at [currentNodeId], [activeRouteSegmentIds], and [activeRouteIndex]
  * are populated so we can detect route completion and auto-finish.
  */
 data class RunSession(
@@ -34,7 +34,7 @@ data class RunSession(
     val hasActiveRoute: Boolean get() = activeRouteSegmentIds != null
 
     /**
-     * Advances the pinned-route tracker by one node.
+     * Advances the pinned-route tracker by one segment.
      * Should be called only when [segmentId] matches the next expected segment in the sequence.
      */
     fun advanceRoute(segmentId: UUID) {

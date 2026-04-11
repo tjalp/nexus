@@ -52,6 +52,6 @@ fun generateMigrationScript() {
         ParkourSegmentResultsTable,
         ParkourAttachmentTable,
         scriptDirectory = "src/main/resources/db/migration",
-        scriptName = "V7__add_parkour_feature"
+        scriptName = "V8__parkour_segments_and_routes"
     )
 }

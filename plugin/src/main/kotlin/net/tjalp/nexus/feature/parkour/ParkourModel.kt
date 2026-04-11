@@ -140,10 +140,10 @@ data class ParkourDefinition(
 
         // Backwards compatibility for legacy edge-only definitions:
         // expose synthetic segment names when no explicit segments exist yet.
-        return edges.mapIndexed { index, edge ->
+        return edges.map { edge ->
             ParkourSegment(
-                id = UUID.nameUUIDFromBytes("${edge.fromNodeId}:${edge.toNodeId}:$index".toByteArray()),
-                name = "segment-$index",
+                id = UUID.nameUUIDFromBytes("${edge.fromNodeId}:${edge.toNodeId}".toByteArray()),
+                name = "segment-${edge.fromNodeId.toString().take(8)}-${edge.toNodeId.toString().take(8)}",
                 fromNodeId = edge.fromNodeId,
                 toNodeId = edge.toNodeId,
                 enabled = edge.enabled
