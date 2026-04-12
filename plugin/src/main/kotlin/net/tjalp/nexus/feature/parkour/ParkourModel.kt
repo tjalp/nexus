@@ -11,7 +11,7 @@ enum class NodeType {
     ENTRY,
     /** Intermediate checkpoint (may or may not also be an entry point). */
     CHECKPOINT,
-    /** Finish node; can complete runs when reached (pinned-route and freestyle logic is runtime-controlled). */
+    /** Finish node; can complete active freestyle runs when reached. */
     FINISH
 }
 

@@ -212,7 +212,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     private fun formatDuration(ms: Long): String {
         val minutes = ms / 60_000
         val seconds = (ms % 60_000) / 1_000
-        val millis = ms % 1_000 / 100
+        val millis = (ms % 1_000) / 100
         return "%02d:%02d.%d".format(minutes, seconds, millis)
     }
 

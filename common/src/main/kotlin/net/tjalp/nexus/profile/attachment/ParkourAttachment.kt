@@ -16,9 +16,8 @@ import org.jetbrains.exposed.v1.jdbc.upsert
 import java.util.*
 
 /**
- * Table that stores pinned parkour routes per player profile.
- * Each row represents one pinned route: the entrypoint node ID and the route
- * key + sequence for that route.
+ * Legacy table for pinned route data from the previous route-based parkour model.
+ * The current parkour implementation no longer depends on this attachment.
  */
 object ParkourAttachmentTable : Table("parkour_attachments") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
