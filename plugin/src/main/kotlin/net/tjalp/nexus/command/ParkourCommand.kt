@@ -26,10 +26,11 @@ import org.bukkit.Particle
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 import java.util.*
+import java.util.concurrent.ThreadLocalRandom
 
 object ParkourCommand {
-    private const val VISUALIZER_BURSTS = 40
-    private const val VISUALIZER_INTERVAL_TICKS = 6L
+    private const val VISUALIZER_BURSTS = 240
+    private const val VISUALIZER_INTERVAL_TICKS = 1L
     private val activeVisualizers = mutableMapOf<UUID, BukkitTask>()
     private val visualizerBurstsRemaining = mutableMapOf<UUID, Int>()
     private val visualizerPhases = mutableMapOf<UUID, Int>()
@@ -587,7 +588,8 @@ object ParkourCommand {
                 player.spawnParticle(Particle.DUST, center, 16, 0.25, 0.25, 0.25, 0.0, Particle.DustOptions(color, 1.5f))
             }
             for (i in 0 until route.lastIndex) {
-                drawParticleLine(player, nodeCenter(player.world, route[i]), nodeCenter(player.world, route[i + 1]))
+                drawDirectionalParticles(player, nodeCenter(player.world, route[i]), nodeCenter(player.world, route[i + 1]), Color.WHITE)
+//                drawParticleLine(player, nodeCenter(player.world, route[i]), nodeCenter(player.world, route[i + 1]))
             }
 
             val left = (visualizerBurstsRemaining[player.uniqueId] ?: VISUALIZER_BURSTS) - 1
@@ -617,7 +619,13 @@ object ParkourCommand {
 
             val phase = visualizerPhases[player.uniqueId] ?: 0
             segments.forEachIndexed { index, (from, to) ->
-                drawDirectionalParticles(player, from, to, phase + index * 4)
+                // bright color based on segment
+                val color = Color.fromRGB(
+                    (index * 50) % 256,
+                    (index * 80) % 256,
+                    (index * 110) % 256
+                )
+                drawDirectionalParticles(player, from, to, color)
             }
             visualizerPhases[player.uniqueId] = phase + 1
 
@@ -653,29 +661,19 @@ object ParkourCommand {
         }
     }
 
-    private fun drawDirectionalParticles(player: Player, from: Location, to: Location, phase: Int) {
-        val points = 8
-        val speed = 0.08
-        val dx = to.x - from.x
-        val dy = to.y - from.y
-        val dz = to.z - from.z
-
-        for (i in 0 until points) {
-            val progress = ((phase * speed) + i.toDouble() / points) % 1.0
-            Particle.END_ROD.builder()
-                .location(
-                    player.world,
-                    from.x + dx * progress,
-                    from.y + dy * progress,
-                    from.z + dz * progress,
-                )
-                .offset(dx, dy, dz)
-                .receivers(player)
-                .count(0)
-                .extra(.01)
-//                .data(Particle.DustOptions(Color.YELLOW, 1.0f))
-                .spawn()
-        }
+    private fun drawDirectionalParticles(player: Player, from: Location, to: Location, color: Color) {
+        val random = ThreadLocalRandom.current()
+        Particle.TRAIL.builder()
+            .location(from)
+            .offset(.5, .5, .5)
+            .receivers(player)
+            .count(1)
+            .data(Particle.Trail(
+                to.toBlockLocation().offset(random.nextDouble(), random.nextDouble(), random.nextDouble()).toLocation(to.world)
+                , color,
+                random.nextInt(40) + 10
+            ))
+            .spawn()
     }
 
     private fun startRun(player: Player, parkourName: String, nodeName: String, routeName: String?): Int {
