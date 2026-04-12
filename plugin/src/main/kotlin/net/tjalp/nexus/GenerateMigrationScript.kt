@@ -16,15 +16,15 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.migration.jdbc.MigrationUtils
 
 val db = Database.connect(
-    url = "jdbc:postgresql://localhost:5432/postgres",
+    url = "jdbc:postgresql://localhost:5432/minecraft",
     driver = "org.postgresql.Driver",
-    user = "postgres",
+    user = "mcuser",
     password = "postgres"
 )
 
 fun main() {
     val flyway = Flyway.configure()
-        .dataSource(db.url, "postgres", "postgres")
+        .dataSource(db.url, "mcuser", "postgres")
         .locations("classpath:db/migration")
         .baselineOnMigrate(true)
         .load()
