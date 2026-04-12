@@ -27,9 +27,8 @@ class ParkourListener(private val runtime: ParkourRuntimeService) : Listener {
         val y = to.blockY
         val z = to.blockZ
 
-        val nodes = runtime.getNodesAt(worldId, x, y, z)
-        nodes.forEach { (parkour, node) ->
-            runtime.onNodeEntered(player, parkour, node)
+        runtime.getNodesAt(worldId, x, y, z).forEach { node ->
+            runtime.onNodeEntered(player, node)
         }
     }
 

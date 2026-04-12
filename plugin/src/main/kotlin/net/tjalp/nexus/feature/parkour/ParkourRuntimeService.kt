@@ -1,47 +1,38 @@
 package net.tjalp.nexus.feature.parkour
 
 import kotlinx.coroutines.launch
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.json.Json
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.parkour.ParkourSegmentResultsTable
-import net.tjalp.nexus.profile.attachment.ParkourAttachment
-import net.tjalp.nexus.profile.attachment.ParkourAttachmentTable
-import net.tjalp.nexus.profile.attachment.PinnedRoute
 import net.tjalp.nexus.util.profile
+import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
-import java.security.MessageDigest
 import java.util.*
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-/**
- * Manages active parkour run sessions, chunk-indexed triggers, segment timing, and result persistence.
- */
+/** Manages active parkour sessions, node entry handling, and segment result persistence. */
 @OptIn(ExperimentalTime::class)
 class ParkourRuntimeService(private val feature: ParkourFeature) {
 
     private val sessions = mutableMapOf<UUID, RunSession>()
-    private val chunkIndex = mutableMapOf<String, MutableList<Pair<ParkourDefinition, ParkourNode>>>()
+    private val chunkIndex = mutableMapOf<String, MutableList<ParkourNode>>()
 
     fun rebuildIndex() {
         chunkIndex.clear()
-        feature.definitions.allNodes().forEach { (parkour, node) ->
-            indexNode(parkour, node)
-        }
+        feature.definitions.definition.nodes.forEach(::indexNode)
     }
 
-    private fun indexNode(parkour: ParkourDefinition, node: ParkourNode) {
+    fun reindex() = rebuildIndex()
+
+    private fun indexNode(node: ParkourNode) {
         val r = node.region
         val minCX = r.minX shr 4
         val maxCX = r.maxX shr 4
@@ -50,56 +41,28 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         for (cx in minCX..maxCX) {
             for (cz in minCZ..maxCZ) {
                 val key = "${r.worldId}:$cx:$cz"
-                chunkIndex.getOrPut(key) { mutableListOf() } += parkour to node
+                chunkIndex.getOrPut(key) { mutableListOf() } += node
             }
         }
-    }
-
-    fun reindexParkour(parkour: ParkourDefinition) {
-        chunkIndex.values.forEach { list ->
-            list.removeAll { (p, _) -> p.id == parkour.id }
-        }
-        parkour.nodes.forEach { indexNode(parkour, it) }
     }
 
     fun getSession(playerId: UUID): RunSession? = sessions[playerId]
     fun hasSession(playerId: UUID): Boolean = sessions.containsKey(playerId)
 
-    /**
-     * Starts a new session at [entryNode]. If [selectedRoute] is provided it is tracked,
-     * otherwise a pinned route for this entry node is used when available.
-     */
-    fun startSession(
-        player: Player,
-        parkour: ParkourDefinition,
-        entryNode: ParkourNode,
-        selectedRoute: ParkourRoute? = null
-    ) {
-        val route = selectedRoute ?: resolvePinnedRoute(player, parkour, entryNode.id)
-
+    fun startSession(player: Player, entryNode: ParkourNode) {
+        val now = System.currentTimeMillis()
         val session = RunSession(
             playerId = player.uniqueId,
-            parkourId = parkour.id,
             currentNodeId = entryNode.id,
-            runStartMs = System.currentTimeMillis(),
-            currentSegmentStartMs = System.currentTimeMillis(),
-            lastCheckpointMs = System.currentTimeMillis(),
-            lastEntrypointMs = System.currentTimeMillis(),
+            runStartMs = now,
+            currentSegmentStartMs = now,
+            lastCheckpointMs = now,
+            lastEntrypointMs = now,
             path = mutableListOf(entryNode.id),
-            segmentTimings = mutableListOf(),
-            activeRouteKey = route?.let { computeRouteKey(parkour.id, it.segmentIds) },
-            activeRouteName = route?.name,
-            activeRouteSegmentIds = route?.segmentIds?.toList(),
-            activeRouteIndex = -1
+            segmentTimings = mutableListOf()
         )
         sessions[player.uniqueId] = session
-
-        val msg = if (route != null) {
-            text("Parkour started! Tracking route '${route.name}'.", NamedTextColor.GREEN)
-        } else {
-            text("Parkour started! No route selected – freestyle mode.", NamedTextColor.GREEN)
-        }
-        player.sendMessage(msg)
+        player.sendMessage(text("Parkour started.", NamedTextColor.GREEN))
     }
 
     fun stopSession(player: Player) {
@@ -108,185 +71,126 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         player.sendMessage(text("Parkour session stopped.", NamedTextColor.YELLOW))
     }
 
-    fun onNodeEntered(player: Player, parkour: ParkourDefinition, node: ParkourNode) {
+    fun onNodeEntered(player: Player, node: ParkourNode) {
+        val definition = feature.definitions.definition
         val session = sessions[player.uniqueId]
         if (session == null) {
-            if (node.type == NodeType.ENTRY) {
-                startSession(player, parkour, node)
-            }
+            if (node.type == NodeType.ENTRY) startSession(player, node)
             return
         }
 
-        if (session.parkourId != parkour.id) return
         if (node.id == session.currentNodeId) return
+        val segment = definition.findSegment(session.currentNodeId, node.id) ?: return
 
-        val segment = parkour.findSegment(session.currentNodeId, node.id) ?: return
         val now = System.currentTimeMillis()
+        val duration = now - session.currentSegmentStartMs
+        val timing = SegmentTiming(segmentId = segment.id, durationMs = duration)
 
         session.path += node.id
-        session.lastCheckpointMs = now
-        if (node.type == NodeType.ENTRY) {
-            session.lastEntrypointMs = now
-        }
-
-        if (session.hasActiveRoute) {
-            if (!session.isNextRouteSegment(segment.id)) return
-            session.advanceRoute(segment.id)
-        } else {
-            session.segmentTimings += SegmentTiming(
-                segmentId = segment.id,
-                durationMs = now - session.currentSegmentStartMs
-            )
-            session.currentSegmentStartMs = now
-        }
-
+        session.segmentTimings += timing
+        session.currentSegmentStartMs = now
         session.currentNodeId = node.id
+        session.lastCheckpointMs = now
+        if (node.type == NodeType.ENTRY) session.lastEntrypointMs = now
+
+        handleSegmentSplit(player, timing, now)
 
         if (node.type == NodeType.FINISH) {
-            if (session.hasActiveRoute) {
-                if (session.isRouteComplete) {
-                    finishSession(player, session, parkour)
-                    return
-                }
-            } else {
-                finishSession(player, session, parkour)
-                return
-            }
+            finishSession(player, session)
+            return
         }
 
         sendSplitActionBar(player, session)
     }
 
-    private fun finishSession(player: Player, session: RunSession, parkour: ParkourDefinition) {
-        sessions.remove(player.uniqueId)
-        val totalDurationMs = session.segmentTimings.sumOf { it.durationMs }
-
-        val profileId = try {
-            player.profile().id
-        } catch (e: IllegalStateException) {
-            NexusPlugin.logger.warning("[Parkour] No profile for ${player.name}, result not saved.")
-            player.sendActionBar(Component.empty())
+    private fun handleSegmentSplit(player: Player, timing: SegmentTiming, finishedAtMs: Long) {
+        val profileId = runCatching { player.profile().id }.getOrNull()
+        if (profileId == null) {
+            player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
             player.sendMessage(
-                text("Parkour finished! Time: ${formatDuration(totalDurationMs)}", NamedTextColor.GOLD)
+                text("Segment split: ${formatDuration(timing.durationMs)}", NamedTextColor.AQUA)
             )
             return
         }
 
-        val routeKey = session.activeRouteKey ?: computeRouteKey(
-            parkour.id,
-            session.segmentTimings.map { it.segmentId }
-        )
-
         feature.scheduler.launch {
             try {
-                transaction(NexusPlugin.database) {
-                    var segmentStartMs = session.runStartMs
-                    session.segmentTimings.forEachIndexed { idx, timing ->
-                        val segment = parkour.segmentById(timing.segmentId)
-                        val segmentFinishedAtMs = segmentStartMs + timing.durationMs
-                        ParkourSegmentResultsTable.insert {
-                            it[ParkourSegmentResultsTable.profileId] = profileId
-                            it[ParkourSegmentResultsTable.parkourId] = parkour.id
-                            it[ParkourSegmentResultsTable.routeKey] = routeKey
-                            it[ParkourSegmentResultsTable.routeName] = session.activeRouteName
-                            it[ParkourSegmentResultsTable.segmentId] = timing.segmentId
-                            it[ParkourSegmentResultsTable.segmentName] = segment?.name ?: timing.segmentId.toString()
-                            it[ParkourSegmentResultsTable.segmentOrder] = idx
-                            it[ParkourSegmentResultsTable.durationMs] = timing.durationMs
-                            it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(segmentStartMs)
-                            it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(segmentFinishedAtMs)
+                val startedAtMs = finishedAtMs - timing.durationMs
+                val outcome = transaction(NexusPlugin.database) {
+                    val priorForPlayer = ParkourSegmentResultsTable
+                        .selectAll()
+                        .where {
+                            (ParkourSegmentResultsTable.profileId eq profileId) and
+                                    (ParkourSegmentResultsTable.segmentId eq timing.segmentId)
                         }
-                        segmentStartMs = segmentFinishedAtMs
+                        .map { it[ParkourSegmentResultsTable.durationMs] }
+                        .minOrNull()
+
+                    val priorGlobal = ParkourSegmentResultsTable
+                        .selectAll()
+                        .where { ParkourSegmentResultsTable.segmentId eq timing.segmentId }
+                        .map { it[ParkourSegmentResultsTable.durationMs] }
+                        .minOrNull()
+
+                    ParkourSegmentResultsTable.insert {
+                        it[ParkourSegmentResultsTable.profileId] = profileId
+                        it[ParkourSegmentResultsTable.segmentId] = timing.segmentId
+                        it[ParkourSegmentResultsTable.durationMs] = timing.durationMs
+                        it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(startedAtMs)
+                        it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(finishedAtMs)
+                    }
+
+                    val isPersonalBest = priorForPlayer == null || timing.durationMs < priorForPlayer
+                    val isGlobalBest = priorGlobal == null || timing.durationMs < priorGlobal
+                    SplitOutcome(isPersonalBest, isGlobalBest)
+                }
+
+                when {
+                    outcome.isGlobalBest -> {
+                        player.playSound(player.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.0f)
+                        player.sendMessage(
+                            text("New segment record! ", NamedTextColor.GOLD)
+                                .append(text(formatDuration(timing.durationMs), NamedTextColor.YELLOW))
+                        )
+                    }
+
+                    outcome.isPersonalBest -> {
+                        player.playSound(player.location, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.3f)
+                        player.sendMessage(
+                            text("New segment PB: ", NamedTextColor.GREEN)
+                                .append(text(formatDuration(timing.durationMs), NamedTextColor.AQUA))
+                        )
+                    }
+
+                    else -> {
+                        player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
+                        player.sendMessage(
+                            text("Segment split: ${formatDuration(timing.durationMs)}", NamedTextColor.AQUA)
+                        )
                     }
                 }
             } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Parkour] Failed to save segment run results: ${e.message}")
+                NexusPlugin.logger.warning("[Parkour] Failed to save segment result: ${e.message}")
             }
         }
+    }
 
+    private fun finishSession(player: Player, session: RunSession) {
+        sessions.remove(player.uniqueId)
         player.sendActionBar(Component.empty())
+        val totalDurationMs = session.segmentTimings.sumOf { it.durationMs }
+        player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.2f)
         player.sendMessage(
             text("Parkour finished! Time: ${formatDuration(totalDurationMs)}", NamedTextColor.GOLD)
         )
     }
 
-    fun getNodesAt(worldId: UUID, x: Int, y: Int, z: Int): List<Pair<ParkourDefinition, ParkourNode>> {
+    fun getNodesAt(worldId: UUID, x: Int, y: Int, z: Int): List<ParkourNode> {
         val cx = x shr 4
         val cz = z shr 4
         val key = "$worldId:$cx:$cz"
         val candidates = chunkIndex[key] ?: return emptyList()
-        return candidates.filter { (_, node) -> node.region.contains(x, y, z) }
-    }
-
-    private fun resolvePinnedRoute(player: Player, parkour: ParkourDefinition, entryNodeId: UUID): ParkourRoute? {
-        val pinnedRoute = getPinnedRoute(player, entryNodeId) ?: return null
-        val segmentIds = pinnedRoute.segmentIds.mapNotNull {
-            runCatching { UUID.fromString(it) }.getOrNull()
-        }
-        if (segmentIds.isEmpty()) return null
-
-        return ParkourRoute(
-            name = pinnedRoute.routeName ?: "Player route",
-            segmentIds = segmentIds.toMutableList(),
-            predefined = false
-        )
-    }
-
-    private fun getPinnedRoute(player: Player, nodeId: UUID): PinnedRoute? {
-        return try {
-            val attachment = player.profile().attachmentOf<ParkourAttachment>() ?: return null
-            attachment.pinnedRoutes[nodeId.toString()]
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    fun pinRoute(
-        player: Player,
-        parkourId: UUID,
-        routeName: String?,
-        entryNodeId: UUID,
-        segmentIds: List<UUID>
-    ): String {
-        val routeKey = computeRouteKey(parkourId, segmentIds)
-        val segmentIdStrings = segmentIds.map { it.toString() }
-        val profileId = player.profile().id
-
-        feature.scheduler.launch {
-            try {
-                transaction(NexusPlugin.database) {
-                    ParkourAttachmentTable.upsert {
-                        it[ParkourAttachmentTable.profileId] = profileId
-                        it[ParkourAttachmentTable.entryNodeId] = entryNodeId
-                        it[ParkourAttachmentTable.routeKey] = routeKey
-                        it[ParkourAttachmentTable.routeSequence] = Json.encodeToString(
-                            ListSerializer(String.serializer()),
-                            segmentIdStrings
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Parkour] Failed to pin route: ${e.message}")
-            }
-        }
-
-        return routeKey
-    }
-
-    fun unpinRoute(player: Player, entryNodeId: UUID) {
-        val profileId = player.profile().id
-        feature.scheduler.launch {
-            try {
-                transaction(NexusPlugin.database) {
-                    ParkourAttachmentTable.deleteWhere {
-                        (ParkourAttachmentTable.profileId eq profileId) and
-                                (ParkourAttachmentTable.entryNodeId eq entryNodeId)
-                    }
-                }
-            } catch (e: Exception) {
-                NexusPlugin.logger.warning("[Parkour] Failed to unpin route: ${e.message}")
-            }
-        }
+        return candidates.filter { node -> node.region.contains(x, y, z) }
     }
 
     fun sendSplitActionBar(player: Player, session: RunSession) {
@@ -305,14 +209,6 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         }
     }
 
-    fun computeRouteKey(parkourId: UUID, segmentIds: List<UUID>): String {
-        val input = parkourId.toString() + segmentIds.joinToString(",")
-        val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-        return digest.take(8).joinToString("") { "%02x".format(it) }
-    }
-
-    fun routeDurationMs(session: RunSession): Long = session.segmentTimings.sumOf { it.durationMs }
-
     private fun formatDuration(ms: Long): String {
         val minutes = ms / 60_000
         val seconds = (ms % 60_000) / 1_000
@@ -324,3 +220,8 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         sessions.remove(playerId)
     }
 }
+
+private data class SplitOutcome(
+    val isPersonalBest: Boolean,
+    val isGlobalBest: Boolean
+)

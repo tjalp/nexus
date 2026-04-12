@@ -5,17 +5,11 @@ import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.nio.file.Path
-import java.util.*
 
-/**
- * Manages loading and saving of [ParkourDefinition]s using Sponge Configurate (YAML).
- * Definitions are stored in `<dataPath>/parkours.yml` and use world UUIDs,
- * so they survive world resets or name changes and can be wiped independently
- * of player data stored in the database.
- */
+/** Manages loading/saving of the single global parkour graph. */
 class ParkourDefinitionsRepository(dataPath: Path) {
 
-    private val filePath: Path = dataPath.resolve("parkours.yml")
+    private val filePath: Path = dataPath.resolve("parkour.yml")
     private val loader: YamlConfigurationLoader = YamlConfigurationLoader.builder()
         .path(filePath)
         .nodeStyle(NodeStyle.BLOCK)
@@ -29,60 +23,39 @@ class ParkourDefinitionsRepository(dataPath: Path) {
         }
         .build()
 
-    private val _parkours: MutableMap<UUID, ParkourDefinition> = mutableMapOf()
-
-    /** All loaded parkour definitions, keyed by their ID. */
-    val parkours: Map<UUID, ParkourDefinition> get() = _parkours
+    var definition: ParkourDefinition = ParkourDefinition()
+        private set
 
     init {
         reload()
     }
 
-    /** Reloads all definitions from disk. */
+    /** Reloads definition from disk. */
     fun reload() {
-        _parkours.clear()
         try {
             val root = loader.load()
-            val list = root.node("parkours").getList(ParkourDefinition::class.java) ?: emptyList()
-            list.forEach { _parkours[it.id] = it }
-            NexusPlugin.logger.info("[Parkour] Loaded ${_parkours.size} parkour definition(s).")
+            definition = root.node("definition").get(ParkourDefinition::class.java) ?: ParkourDefinition()
+            NexusPlugin.logger.info("[Parkour] Loaded ${definition.nodes.size} nodes and ${definition.segments.size} segments.")
         } catch (e: Exception) {
-            NexusPlugin.logger.warning("[Parkour] Failed to load parkours.yml: ${e.message}")
+            NexusPlugin.logger.warning("[Parkour] Failed to load parkour.yml: ${e.message}")
+            definition = ParkourDefinition()
         }
     }
 
-    /** Persists all definitions to disk. */
+    /** Persists definition to disk. */
     fun save() {
         try {
             val root = loader.load()
-            root.node("parkours").setList(ParkourDefinition::class.java, _parkours.values.toList())
+            root.node("definition").set(ParkourDefinition::class.java, definition)
             loader.save(root)
         } catch (e: Exception) {
-            NexusPlugin.logger.warning("[Parkour] Failed to save parkours.yml: ${e.message}")
+            NexusPlugin.logger.warning("[Parkour] Failed to save parkour.yml: ${e.message}")
         }
     }
 
-    /** Returns the definition with the given [id], or null. */
-    fun get(id: UUID): ParkourDefinition? = _parkours[id]
-
-    /** Returns the definition whose name matches [name] (case-insensitive), or null. */
-    fun getByName(name: String): ParkourDefinition? =
-        _parkours.values.firstOrNull { it.name.equals(name, ignoreCase = true) }
-
-    /** Saves or replaces a definition and persists to disk. */
-    fun upsert(parkour: ParkourDefinition) {
-        _parkours[parkour.id] = parkour
+    /** Replaces in-memory definition and persists it. */
+    fun update(definition: ParkourDefinition) {
+        this.definition = definition
         save()
     }
-
-    /** Removes a definition by ID and persists to disk. */
-    fun remove(id: UUID): Boolean {
-        val removed = _parkours.remove(id) != null
-        if (removed) save()
-        return removed
-    }
-
-    /** All nodes across all definitions, with a reference to their parent parkour. */
-    fun allNodes(): List<Pair<ParkourDefinition, ParkourNode>> =
-        _parkours.values.flatMap { parkour -> parkour.nodes.map { node -> parkour to node } }
 }

@@ -62,35 +62,17 @@ data class ParkourSegment(
 )
 
 /**
- * A named route composed of ordered segment IDs.
- * Predefined routes are shared map content while player-specific routes are pinned via attachments.
- */
-@ConfigSerializable
-data class ParkourRoute(
-    val id: UUID = UUID.randomUUID(),
-    val name: String = "",
-    val segmentIds: MutableList<UUID> = mutableListOf(),
-    val predefined: Boolean = true
-)
-
-/**
- * A full parkour definition: graph of nodes + segments.
- * Definitions are stored via Configurate (YAML) and use world UUIDs so they
- * survive world-name changes; they can be wiped independently from player data.
+ * Full parkour graph: nodes + directed segments.
  */
 @ConfigSerializable
 data class ParkourDefinition(
-    val id: UUID = UUID.randomUUID(),
-    val name: String = "",
     val nodes: MutableList<ParkourNode> = mutableListOf(),
-    val segments: MutableList<ParkourSegment> = mutableListOf(),
-    val routes: MutableList<ParkourRoute> = mutableListOf()
+    val segments: MutableList<ParkourSegment> = mutableListOf()
 ) {
     fun nodeById(id: UUID): ParkourNode? = nodes.firstOrNull { it.id == id }
     fun nodeByName(name: String): ParkourNode? = nodes.firstOrNull { it.name.equals(name, ignoreCase = true) }
     fun segmentById(id: UUID): ParkourSegment? = segments.firstOrNull { it.id == id }
     fun segmentByName(name: String): ParkourSegment? = segments.firstOrNull { it.name.equals(name, ignoreCase = true) }
-    fun routeByName(name: String): ParkourRoute? = routes.firstOrNull { it.name.equals(name, ignoreCase = true) }
 
     /** Returns all nodes reachable from [fromNodeId] via enabled segments. */
     fun successors(fromNodeId: UUID): List<ParkourNode> =
@@ -107,19 +89,9 @@ data class ParkourDefinition(
     fun removeNode(nodeId: UUID) {
         nodes.removeIf { it.id == nodeId }
         segments.removeIf { it.fromNodeId == nodeId || it.toNodeId == nodeId }
-        pruneRoutes()
     }
 
     fun removeSegment(segmentId: UUID) {
         segments.removeIf { it.id == segmentId }
-        pruneRoutes()
-    }
-
-    fun pruneRoutes() {
-        val validSegmentIds = segments.map { it.id }.toSet()
-        routes.forEach { route ->
-            route.segmentIds.removeIf { it !in validSegmentIds }
-        }
-        routes.removeIf { it.segmentIds.isEmpty() }
     }
 }
