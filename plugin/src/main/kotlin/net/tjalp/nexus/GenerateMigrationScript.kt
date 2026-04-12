@@ -3,7 +3,6 @@
 package net.tjalp.nexus
 
 import net.tjalp.nexus.auth.UsersTable
-import net.tjalp.nexus.parkour.ParkourResultsTable
 import net.tjalp.nexus.parkour.ParkourSegmentResultsTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.attachment.NoticesTable
@@ -48,11 +47,10 @@ fun generateMigrationScript() {
         PunishmentsTable,
         NoticesTable,
         UsersTable,
-        ParkourResultsTable,
         ParkourSegmentResultsTable,
         ParkourAttachmentTable,
         scriptDirectory = "src/main/resources/db/migration",
         // Generates the current segment-based parkour migration script.
-        scriptName = "V8__parkour_segments_and_routes"
+        scriptName = "V7__add_parkour_feature"
     )
 }
