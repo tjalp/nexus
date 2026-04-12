@@ -17,7 +17,8 @@ import java.util.*
 
 /**
  * Legacy table for pinned route data from the previous route-based parkour model.
- * The current parkour implementation no longer depends on this attachment.
+ * The current parkour implementation no longer depends on this attachment and it
+ * is retained only for migration/read-only compatibility until cleanup.
  */
 object ParkourAttachmentTable : Table("parkour_attachments") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)

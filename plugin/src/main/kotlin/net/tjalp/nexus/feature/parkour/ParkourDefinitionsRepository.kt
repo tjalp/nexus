@@ -5,9 +5,11 @@ import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.nio.file.Path
+import java.util.UUID
 
 /** Manages loading/saving of the single global parkour graph. */
 class ParkourDefinitionsRepository(dataPath: Path) {
+    private val annotatedMapperFactory = objectMapperFactory()
 
     private val filePath: Path = dataPath.resolve("parkour.yml")
     private val loader: YamlConfigurationLoader = YamlConfigurationLoader.builder()
@@ -16,7 +18,7 @@ class ParkourDefinitionsRepository(dataPath: Path) {
         .indent(2)
         .defaultOptions { options ->
             options.serializers { builder ->
-                builder.registerAnnotatedObjects(objectMapperFactory())
+                builder.registerAnnotatedObjects(annotatedMapperFactory)
                 builder.register(UUID::class.java, UUIDTypeSerializer)
                 builder.register(NodeType::class.java, NodeTypeSerializer)
             }

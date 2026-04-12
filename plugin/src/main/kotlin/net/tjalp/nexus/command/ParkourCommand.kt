@@ -30,6 +30,7 @@ import java.util.*
 object ParkourCommand {
     private const val VISUALIZER_BURSTS = 40
     private const val VISUALIZER_INTERVAL_TICKS = 6L
+    private const val DEFAULT_NODE_HALF_SIZE = 1
     private val activeVisualizers = mutableMapOf<UUID, BukkitTask>()
     private val visualizerBurstsRemaining = mutableMapOf<UUID, Int>()
     private val visualizerPhases = mutableMapOf<UUID, Int>()
@@ -155,8 +156,12 @@ object ParkourCommand {
             type = type,
             region = ParkourRegion(
                 worldId = loc.world.uid,
-                minX = loc.blockX - 1, minY = loc.blockY - 1, minZ = loc.blockZ - 1,
-                maxX = loc.blockX + 1, maxY = loc.blockY + 1, maxZ = loc.blockZ + 1
+                minX = loc.blockX - DEFAULT_NODE_HALF_SIZE,
+                minY = loc.blockY - DEFAULT_NODE_HALF_SIZE,
+                minZ = loc.blockZ - DEFAULT_NODE_HALF_SIZE,
+                maxX = loc.blockX + DEFAULT_NODE_HALF_SIZE,
+                maxY = loc.blockY + DEFAULT_NODE_HALF_SIZE,
+                maxZ = loc.blockZ + DEFAULT_NODE_HALF_SIZE
             )
         )
         feat.definitions.update(definition)

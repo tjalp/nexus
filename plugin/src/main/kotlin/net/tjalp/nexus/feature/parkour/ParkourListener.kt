@@ -3,7 +3,6 @@ package net.tjalp.nexus.feature.parkour
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerChangedWorldEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerQuitEvent
 
@@ -30,11 +29,6 @@ class ParkourListener(private val runtime: ParkourRuntimeService) : Listener {
         runtime.getNodesAt(worldId, x, y, z).forEach { node ->
             runtime.onNodeEntered(player, node)
         }
-    }
-
-    @EventHandler
-    fun on(event: PlayerChangedWorldEvent) {
-        // No per-player state to clean up; sessions are kept alive across world changes.
     }
 
     @EventHandler
