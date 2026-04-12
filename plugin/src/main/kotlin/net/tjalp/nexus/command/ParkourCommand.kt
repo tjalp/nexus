@@ -23,17 +23,18 @@ import net.tjalp.nexus.feature.parkour.ParkourSegment
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Particle
+import org.bukkit.World
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 import java.util.*
+import java.util.concurrent.ThreadLocalRandom
 
 object ParkourCommand {
-    private const val VISUALIZER_BURSTS = 40
-    private const val VISUALIZER_INTERVAL_TICKS = 6L
+    private const val VISUALIZER_BURSTS = 240
+    private const val VISUALIZER_INTERVAL_TICKS = 1L
     private const val DEFAULT_NODE_HALF_SIZE = 1
     private val activeVisualizers = mutableMapOf<UUID, BukkitTask>()
     private val visualizerBurstsRemaining = mutableMapOf<UUID, Int>()
-    private val visualizerPhases = mutableMapOf<UUID, Int>()
 
     private val ERROR_NOT_PLAYER = SimpleCommandExceptionType(
         MessageComponentSerializer.message().serialize(text("This command can only be run by a player."))
@@ -117,12 +118,12 @@ object ParkourCommand {
                     .executes { ctx ->
                         val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
                         visualizeAllSegments(player)
-                    })
-                .then(literal("visualize-stop")
-                    .executes { ctx ->
-                        val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
-                        stopVisualization(player)
-                    }))
+                    }
+                    .then(literal("stop")
+                        .executes { ctx ->
+                            val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                            stopVisualization(player)
+                        })))
             .then(literal("start")
                 .then(argument("node", StringArgumentType.word())
                     .executes { ctx ->
@@ -258,7 +259,6 @@ object ParkourCommand {
     private fun stopVisualization(player: Player): Int {
         activeVisualizers.remove(player.uniqueId)?.cancel()
         visualizerBurstsRemaining.remove(player.uniqueId)
-        visualizerPhases.remove(player.uniqueId)
         player.sendMessage(text("Stopped parkour visualization.", NamedTextColor.YELLOW))
         return Command.SINGLE_SUCCESS
     }
@@ -266,27 +266,22 @@ object ParkourCommand {
     private fun startSegmentVisualization(player: Player, segments: List<Pair<Location, Location>>) {
         activeVisualizers.remove(player.uniqueId)?.cancel()
         visualizerBurstsRemaining[player.uniqueId] = VISUALIZER_BURSTS
-        visualizerPhases[player.uniqueId] = 0
 
         val task = parkour.scheduler.repeat(initialDelay = 0, interval = VISUALIZER_INTERVAL_TICKS) {
             if (!player.isOnline) {
                 activeVisualizers.remove(player.uniqueId)?.cancel()
                 visualizerBurstsRemaining.remove(player.uniqueId)
-                visualizerPhases.remove(player.uniqueId)
                 return@repeat
             }
 
-            val phase = visualizerPhases[player.uniqueId] ?: 0
-            segments.forEachIndexed { index, (from, to) ->
-                drawDirectionalParticles(player, from, to, phase + index * 4)
+            segments.forEach { (from, to) ->
+                drawDirectionalParticles(player, from, to)
             }
-            visualizerPhases[player.uniqueId] = phase + 1
 
             val left = (visualizerBurstsRemaining[player.uniqueId] ?: VISUALIZER_BURSTS) - 1
             if (left <= 0) {
                 activeVisualizers.remove(player.uniqueId)?.cancel()
                 visualizerBurstsRemaining.remove(player.uniqueId)
-                visualizerPhases.remove(player.uniqueId)
             } else {
                 visualizerBurstsRemaining[player.uniqueId] = left
             }
@@ -294,7 +289,7 @@ object ParkourCommand {
         activeVisualizers[player.uniqueId] = task
     }
 
-    private fun nodeCenter(world: org.bukkit.World, node: ParkourNode): Location {
+    private fun nodeCenter(world: World, node: ParkourNode): Location {
         val r = node.region
         return Location(
             world,
@@ -304,28 +299,15 @@ object ParkourCommand {
         )
     }
 
-    private fun drawDirectionalParticles(player: Player, from: Location, to: Location, phase: Int) {
-        val points = 8
-        val speed = 0.08
-        val dx = to.x - from.x
-        val dy = to.y - from.y
-        val dz = to.z - from.z
-
-        for (i in 0 until points) {
-            val progress = ((phase * speed) + i.toDouble() / points) % 1.0
-            player.spawnParticle(
-                Particle.DUST,
-                from.x + dx * progress,
-                from.y + dy * progress,
-                from.z + dz * progress,
-                1,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                Particle.DustOptions(Color.YELLOW, 1.0f)
-            )
-        }
+    private fun drawDirectionalParticles(player: Player, from: Location, to: Location) {
+        val random = ThreadLocalRandom.current()
+        Particle.TRAIL.builder()
+            .location(from)
+            .offset(.5, .5, .5)
+            .receivers(player)
+            .count(1)
+            .data(Particle.Trail(to, Color.ORANGE, random.nextInt(40) + 10))
+            .spawn()
     }
 
     private fun startRun(player: Player, nodeName: String): Int {
