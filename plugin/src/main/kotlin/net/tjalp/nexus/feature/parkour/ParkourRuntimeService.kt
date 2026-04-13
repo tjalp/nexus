@@ -63,12 +63,12 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         val now = System.currentTimeMillis()
         val session = RunSession(
             playerId = player.uniqueId,
-            currentNodeId = entryNode.id,
+            currentNodeKey = entryNode.key,
             runStartMs = now,
             currentSegmentStartMs = now,
             lastCheckpointMs = now,
             lastEntrypointMs = now,
-            path = mutableListOf(entryNode.id),
+            path = mutableListOf(entryNode.key),
             segmentTimings = mutableListOf()
         )
         sessions[player.uniqueId] = session
@@ -91,17 +91,17 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
             return
         }
 
-        if (node.id == session.currentNodeId) return
-        val segment = definition.findSegment(session.currentNodeId, node.id) ?: return
+        if (node.key == session.currentNodeKey) return
+        val segment = definition.findSegment(session.currentNodeKey, node.key) ?: return
 
         val now = System.currentTimeMillis()
         val duration = now - session.currentSegmentStartMs
         val timing = SegmentTiming(segmentId = segment.id, durationMs = duration)
 
-        session.path += node.id
+        session.path += node.key
         session.segmentTimings += timing
         session.currentSegmentStartMs = now
-        session.currentNodeId = node.id
+        session.currentNodeKey = node.key
         session.lastCheckpointMs = now
         if (node.type == NodeType.ENTRY) session.lastEntrypointMs = now
 

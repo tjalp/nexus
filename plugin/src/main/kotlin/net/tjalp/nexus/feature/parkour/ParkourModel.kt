@@ -1,5 +1,7 @@
 package net.tjalp.nexus.feature.parkour
 
+import net.kyori.adventure.text.Component
+import net.tjalp.nexus.util.miniMessage
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 import java.util.*
 
@@ -9,8 +11,10 @@ import java.util.*
 enum class NodeType {
     /** Starting point; also acts as a checkpoint. */
     ENTRY,
-    /** Intermediate checkpoint (may or may not also be an entry point). */
+
+    /** Intermediate checkpoint (may not also be an entry point). */
     CHECKPOINT,
+
     /** Finish node; can complete active freestyle runs when reached. */
     FINISH
 }
@@ -39,13 +43,18 @@ data class ParkourRegion(
  */
 @ConfigSerializable
 data class ParkourNode(
-    val id: UUID = UUID.randomUUID(),
-    val name: String = "",
+    val key: String,
+    val name: String = key,
     val type: NodeType = NodeType.CHECKPOINT,
     val region: ParkourRegion = ParkourRegion()
 ) {
     /** Convenience: the world UUID of this node (from its region). */
     val worldId: UUID get() = region.worldId
+
+    /**
+     * Convenience: the display name of this node, parsed from its [name] using MiniMessage.
+     */
+    val displayName: Component = miniMessage.deserialize(name)
 }
 
 /**
@@ -56,10 +65,16 @@ data class ParkourNode(
 data class ParkourSegment(
     val id: UUID = UUID.randomUUID(),
     val name: String = "",
-    val fromNodeId: UUID = UUID(0, 0),
-    val toNodeId: UUID = UUID(0, 0),
+    val fromNodeKey: String,
+    val toNodeKey: String,
     val enabled: Boolean = true
-)
+) {
+
+    /**
+     * Convenience: the display name of this segment, parsed from its [name] using MiniMessage.
+     */
+    val displayName: Component = miniMessage.deserialize(name)
+}
 
 /**
  * Full parkour graph: nodes + directed segments.
@@ -69,26 +84,42 @@ data class ParkourDefinition(
     val nodes: MutableList<ParkourNode> = mutableListOf(),
     val segments: MutableList<ParkourSegment> = mutableListOf()
 ) {
-    fun nodeById(id: UUID): ParkourNode? = nodes.firstOrNull { it.id == id }
+
+    fun nodeByKey(key: String): ParkourNode? = nodes.firstOrNull { it.key.equals(key, ignoreCase = true) }
     fun nodeByName(name: String): ParkourNode? = nodes.firstOrNull { it.name.equals(name, ignoreCase = true) }
     fun segmentById(id: UUID): ParkourSegment? = segments.firstOrNull { it.id == id }
     fun segmentByName(name: String): ParkourSegment? = segments.firstOrNull { it.name.equals(name, ignoreCase = true) }
 
-    /** Returns all nodes reachable from [fromNodeId] via enabled segments. */
-    fun successors(fromNodeId: UUID): List<ParkourNode> =
-        segments.filter { it.enabled && it.fromNodeId == fromNodeId }
-            .mapNotNull { nodeById(it.toNodeId) }
+    /** Returns all nodes reachable from [fromNodeKey] via enabled segments. */
+    fun successors(fromNodeKey: String): List<ParkourNode> =
+        segments.filter { it.enabled && it.fromNodeKey.equals(fromNodeKey, ignoreCase = true) }
+            .mapNotNull { nodeByKey(it.toNodeKey) }
 
-    /** Returns true if there is an enabled segment from [fromNodeId] to [toNodeId]. */
-    fun hasSegment(fromNodeId: UUID, toNodeId: UUID): Boolean =
-        segments.any { it.enabled && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
+    /** Returns true if there is an enabled segment from [fromNodeKey] to [toNodeKey]. */
+    fun hasSegment(fromNodeKey: String, toNodeKey: String): Boolean =
+        segments.any {
+            it.enabled && it.fromNodeKey.equals(fromNodeKey, ignoreCase = true) && it.toNodeKey.equals(
+                toNodeKey,
+                ignoreCase = true
+            )
+        }
 
-    fun findSegment(fromNodeId: UUID, toNodeId: UUID): ParkourSegment? =
-        segments.firstOrNull { it.enabled && it.fromNodeId == fromNodeId && it.toNodeId == toNodeId }
+    fun findSegment(fromNodeKey: String, toNodeKey: String): ParkourSegment? =
+        segments.firstOrNull {
+            it.enabled && it.fromNodeKey.equals(
+                fromNodeKey,
+                ignoreCase = true
+            ) && it.toNodeKey.equals(toNodeKey, ignoreCase = true)
+        }
 
-    fun removeNode(nodeId: UUID) {
-        nodes.removeIf { it.id == nodeId }
-        segments.removeIf { it.fromNodeId == nodeId || it.toNodeId == nodeId }
+    fun removeNode(nodeKey: String) {
+        nodes.removeIf { it.key.equals(nodeKey, ignoreCase = true) }
+        segments.removeIf {
+            it.fromNodeKey.equals(nodeKey, ignoreCase = true) || it.toNodeKey.equals(
+                nodeKey,
+                ignoreCase = true
+            )
+        }
     }
 
     fun removeSegment(segmentId: UUID) {

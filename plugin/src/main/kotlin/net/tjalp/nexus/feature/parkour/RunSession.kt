@@ -9,12 +9,12 @@ import java.util.*
  */
 data class RunSession(
     val playerId: UUID,
-    var currentNodeId: UUID,
+    var currentNodeKey: String,
     val runStartMs: Long = System.currentTimeMillis(),
     var currentSegmentStartMs: Long = System.currentTimeMillis(),
     var lastCheckpointMs: Long = System.currentTimeMillis(),
     var lastEntrypointMs: Long = System.currentTimeMillis(),
-    val path: MutableList<UUID> = mutableListOf(),
+    val path: MutableList<String> = mutableListOf(),
     val segmentTimings: MutableList<SegmentTiming> = mutableListOf()
 ) {
     val elapsedMs: Long get() = System.currentTimeMillis() - runStartMs
