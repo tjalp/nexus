@@ -1,6 +1,12 @@
+@file:OptIn(ExperimentalTime::class)
+
 package net.tjalp.nexus.feature.parkour
 
 import java.util.*
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Represents an active parkour run for a single player.
@@ -10,19 +16,19 @@ import java.util.*
 data class RunSession(
     val playerId: UUID,
     var currentNodeKey: String,
-    val runStartMs: Long = System.currentTimeMillis(),
-    var currentSegmentStartMs: Long = System.currentTimeMillis(),
-    var lastCheckpointMs: Long = System.currentTimeMillis(),
-    var lastEntrypointMs: Long = System.currentTimeMillis(),
+    val runStartTime: Instant = Clock.System.now(),
+    var currentSegmentStartTime: Instant = Clock.System.now(),
+    var lastCheckpointTime: Instant = Clock.System.now(),
+    var lastEntrypointTime: Instant = Clock.System.now(),
     val path: MutableList<String> = mutableListOf(),
     val segmentTimings: MutableList<SegmentTiming> = mutableListOf()
 ) {
-    val elapsedMs: Long get() = System.currentTimeMillis() - runStartMs
-    val checkpointSplitMs: Long get() = System.currentTimeMillis() - lastCheckpointMs
-    val entrySplitMs: Long get() = System.currentTimeMillis() - lastEntrypointMs
+    val elapsedTime: Duration get() = Clock.System.now() - runStartTime
+    val checkpointSplitTime: Duration get() = Clock.System.now() - lastCheckpointTime
+    val entrySplitTime: Duration get() = Clock.System.now() - lastEntrypointTime
 }
 
 data class SegmentTiming(
     val segmentKey: String,
-    val durationMs: Long
+    val duration: Duration
 )

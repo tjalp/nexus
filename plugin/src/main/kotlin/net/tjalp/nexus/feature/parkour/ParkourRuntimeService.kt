@@ -25,12 +25,9 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import java.time.Duration
 import java.util.*
+import kotlin.time.*
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
-import kotlin.time.toJavaDuration
 
 /** Manages active parkour sessions, node entry handling, and segment result persistence. */
 @OptIn(ExperimentalTime::class)
@@ -64,23 +61,17 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     fun hasSession(playerId: UUID): Boolean = sessions.containsKey(playerId)
 
     fun startSession(player: Player, entryNode: ParkourNode) {
-        val now = System.currentTimeMillis()
         val session = RunSession(
             playerId = player.uniqueId,
             currentNodeKey = entryNode.key,
-            runStartMs = now,
-            currentSegmentStartMs = now,
-            lastCheckpointMs = now,
-            lastEntrypointMs = now,
             path = mutableListOf(entryNode.key),
-            segmentTimings = mutableListOf()
         )
         sessions[player.uniqueId] = session
 
         title(
             empty(),
             translatable("parkour.started", PRIMARY_COLOR),
-            times(Duration.ZERO, 1.5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+            times(Duration.ZERO.toJavaDuration(), 1.5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
         ).sendTo(player)
     }
 
@@ -102,16 +93,16 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         if (node.key == session.currentNodeKey) return
         val segment = definition.findSegment(session.currentNodeKey, node.key) ?: return
 
-        val now = System.currentTimeMillis()
-        val duration = now - session.currentSegmentStartMs
-        val timing = SegmentTiming(segmentKey = segment.key, durationMs = duration)
+        val now = Clock.System.now()
+        val duration = now - session.currentSegmentStartTime
+        val timing = SegmentTiming(segmentKey = segment.key, duration = duration)
 
         session.path += node.key
         session.segmentTimings += timing
-        session.currentSegmentStartMs = now
+        session.currentSegmentStartTime = now
         session.currentNodeKey = node.key
-        session.lastCheckpointMs = now
-        if (node.type == NodeType.ENTRY) session.lastEntrypointMs = now
+        session.lastCheckpointTime = now
+        if (node.type == NodeType.ENTRY) session.lastEntrypointTime = now
 
         handleSegmentSplit(player, timing, now)
 
@@ -123,35 +114,35 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         sendSplitActionBar(player, session)
     }
 
-    private fun handleSegmentSplit(player: Player, timing: SegmentTiming, finishedAtMs: Long) {
+    private fun handleSegmentSplit(player: Player, timing: SegmentTiming, finishedAt: Instant) {
         val profileId = player.profile().id
 
         feature.scheduler.launch {
             try {
-                val startedAtMs = finishedAtMs - timing.durationMs
+                val startedAt = finishedAt - timing.duration
                 val outcome = transaction(NexusPlugin.database) {
                     val priorForPlayer = ParkourSegmentResultsTable
                         .selectAll()
                         .where {
                             (ParkourSegmentResultsTable.profileId eq profileId) and
                                     (ParkourSegmentResultsTable.segmentKey eq timing.segmentKey)
-                        }.minOfOrNull { it[ParkourSegmentResultsTable.durationMs] }
+                        }.minOfOrNull { it[ParkourSegmentResultsTable.duration] }
 
                     val priorGlobal = ParkourSegmentResultsTable
                         .selectAll()
                         .where { ParkourSegmentResultsTable.segmentKey eq timing.segmentKey }
-                        .minOfOrNull { it[ParkourSegmentResultsTable.durationMs] }
+                        .minOfOrNull { it[ParkourSegmentResultsTable.duration] }
 
                     ParkourSegmentResultsTable.insert {
                         it[ParkourSegmentResultsTable.profileId] = profileId
                         it[ParkourSegmentResultsTable.segmentKey] = timing.segmentKey
-                        it[ParkourSegmentResultsTable.durationMs] = timing.durationMs
-                        it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(startedAtMs)
-                        it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(finishedAtMs)
+                        it[ParkourSegmentResultsTable.duration] = timing.duration
+                        it[ParkourSegmentResultsTable.startedAt] = startedAt
+                        it[ParkourSegmentResultsTable.finishedAt] = finishedAt
                     }
 
-                    val isPersonalBest = priorForPlayer == null || timing.durationMs < priorForPlayer
-                    val isGlobalBest = priorGlobal == null || timing.durationMs < priorGlobal
+                    val isPersonalBest = priorForPlayer == null || timing.duration < priorForPlayer
+                    val isGlobalBest = priorGlobal == null || timing.duration < priorGlobal
                     SplitOutcome(isPersonalBest, isGlobalBest)
                 }
 
@@ -161,12 +152,12 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                 segment?.displayName?.let {
                     subtitle.append(it.colorIfAbsent(PRIMARY_COLOR)).append(text(" | "))
                 }
-                subtitle.append(text("⌚ ${formatDuration(timing.durationMs, player.locale())}", PRIMARY_COLOR))
+                subtitle.append(text("⌚ ${formatDuration(timing.duration, player.locale())}", PRIMARY_COLOR))
 
                 title(
                     empty(),
                     subtitle.build(),
-                    times(Duration.ZERO, 1.5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+                    times(Duration.ZERO.toJavaDuration(), 3.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
                 ).sendTo(player)
 
                 when {
@@ -177,7 +168,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                             "parkour.record.global",
                             Argument.component(
                                 "time",
-                                text("⌚ ${formatDuration(timing.durationMs, player.locale())}", MONOCHROME_COLOR)
+                                text("⌚ ${formatDuration(timing.duration, player.locale())}", MONOCHROME_COLOR)
                             ),
                             Argument.component(
                                 "segment",
@@ -193,7 +184,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                             "parkour.record.personal",
                             Argument.component(
                                 "time",
-                                text("⌚ ${formatDuration(timing.durationMs, player.locale())}", MONOCHROME_COLOR)
+                                text("⌚ ${formatDuration(timing.duration, player.locale())}", MONOCHROME_COLOR)
                             ),
                             Argument.component(
                                 "segment",
@@ -215,14 +206,14 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     private fun finishSession(player: Player, session: RunSession) {
         sessions.remove(player.uniqueId)
         player.sendActionBar(empty())
-        val totalDurationMs = session.segmentTimings.sumOf { it.durationMs }
+        val totalDuration = session.segmentTimings.fold(Duration.ZERO) { acc, timing -> acc + timing.duration }
         player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.2f)
 
         translatable(
             "parkour.finished",
             Argument.component(
                 "time",
-                text("⌚ ${formatDuration(totalDurationMs, player.locale())}", MONOCHROME_COLOR)
+                text("⌚ ${formatDuration(totalDuration, player.locale())}", MONOCHROME_COLOR)
             )
         ).asEventMessage().sendTo(player)
     }
@@ -236,8 +227,8 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     }
 
     fun sendSplitActionBar(player: Player, session: RunSession) {
-        val total = formatDuration(session.elapsedMs, player.locale())
-        val currentSegment = formatDuration(System.currentTimeMillis() - session.currentSegmentStartMs, player.locale())
+        val total = formatDuration(session.elapsedTime, player.locale())
+        val currentSegment = formatDuration(Clock.System.now() - session.currentSegmentStartTime, player.locale())
 
         translatable(
             "parkour.split_actionbar",
@@ -254,7 +245,8 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         }
     }
 
-    private fun formatDuration(ms: Long, locale: Locale = Locale.US): String {
+    private fun formatDuration(duration: Duration, locale: Locale = Locale.US): String {
+        val ms = duration.inWholeMilliseconds // TODO rewrite to use duration
         val totalTenths = ms / 100
         val minutes = totalTenths / 600
         val secondsWithTenths = (totalTenths % 600) / 10.0 // 0.0..59.9
