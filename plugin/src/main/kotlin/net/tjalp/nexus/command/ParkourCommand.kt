@@ -14,6 +14,7 @@ import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import io.papermc.paper.command.brigadier.argument.resolvers.BlockPositionResolver
 import io.papermc.paper.math.BlockPosition
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.command.argument.ParkourNodeArgument
@@ -46,7 +47,7 @@ object ParkourCommand {
         MessageComponentSerializer.message().serialize(text("The Parkour feature is not enabled."))
     )
     private val ERROR_NO_SESSION = SimpleCommandExceptionType(
-        MessageComponentSerializer.message().serialize(text("You are not currently running a parkour."))
+        MessageComponentSerializer.message().serialize(translatable("command.parkour.error.no_session"))
     )
     private val ERROR_DUPLICATE_NODE = SimpleCommandExceptionType(
         MessageComponentSerializer.message().serialize(text("A node with that name already exists."))
