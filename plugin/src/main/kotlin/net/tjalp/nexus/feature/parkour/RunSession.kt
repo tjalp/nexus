@@ -23,6 +23,6 @@ data class RunSession(
 }
 
 data class SegmentTiming(
-    val segmentId: UUID,
+    val segmentKey: String,
     val durationMs: Long
 )

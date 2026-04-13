@@ -3,11 +3,10 @@
 package net.tjalp.nexus
 
 import net.tjalp.nexus.auth.UsersTable
-import net.tjalp.nexus.parkour.ParkourSegmentResultsTable
 import net.tjalp.nexus.profile.attachment.GeneralTable
 import net.tjalp.nexus.profile.attachment.NoticesTable
-import net.tjalp.nexus.profile.attachment.ParkourAttachmentTable
 import net.tjalp.nexus.profile.attachment.PunishmentsTable
+import net.tjalp.nexus.profile.model.ParkourSegmentResultsTable
 import net.tjalp.nexus.profile.model.ProfilesTable
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.core.ExperimentalDatabaseMigrationApi
@@ -22,6 +21,11 @@ val db = Database.connect(
     password = "postgres"
 )
 
+/**
+ * **********************************************************************
+ * *** IMPORTANT! Run this using the Gradle task generateMigrationScript!
+ * **********************************************************************
+ */
 fun main() {
     val flyway = Flyway.configure()
         .dataSource(db.url, "mcuser", "postgres")
@@ -48,7 +52,6 @@ fun generateMigrationScript() {
         NoticesTable,
         UsersTable,
         ParkourSegmentResultsTable,
-        ParkourAttachmentTable,
         scriptDirectory = "src/main/resources/db/migration",
         // Generates the current segment-based parkour migration script.
         scriptName = "V7__add_parkour_feature"

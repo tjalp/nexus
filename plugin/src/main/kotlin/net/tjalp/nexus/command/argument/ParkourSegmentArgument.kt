@@ -24,7 +24,7 @@ object ParkourSegmentArgument : CustomArgumentType.Converted<ParkourSegment, Str
     }
 
     override fun convert(nativeType: String): ParkourSegment {
-        return NexusPlugin.parkour?.definitions?.definition?.segmentByName(nativeType)
+        return NexusPlugin.parkour?.definitions?.definition?.segmentByKey(nativeType)
             ?: throw ERROR_UNKNOWN_SEGMENT.create(nativeType)
     }
 
@@ -35,7 +35,7 @@ object ParkourSegmentArgument : CustomArgumentType.Converted<ParkourSegment, Str
         builder: SuggestionsBuilder
     ): CompletableFuture<Suggestions> {
         NexusPlugin.parkour?.definitions?.definition?.segments
-            ?.map { it.name }
+            ?.map { it.key }
             ?.filter { it.startsWith(builder.remaining, ignoreCase = true) }
             ?.sorted()
             ?.forEach { builder.suggest(it) }

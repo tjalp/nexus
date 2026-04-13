@@ -1,11 +1,11 @@
-@file:OptIn(kotlin.time.ExperimentalTime::class)
+@file:OptIn(ExperimentalTime::class)
 
-package net.tjalp.nexus.parkour
+package net.tjalp.nexus.profile.model
 
-import net.tjalp.nexus.profile.model.ProfilesTable
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
 import org.jetbrains.exposed.v1.datetime.timestamp
+import kotlin.time.ExperimentalTime
 
 /**
  * Stores completed segment timings for parkour runs.
@@ -13,7 +13,7 @@ import org.jetbrains.exposed.v1.datetime.timestamp
  */
 object ParkourSegmentResultsTable : UUIDTable("parkour_segment_results") {
     val profileId = reference("profile_id", ProfilesTable.id, onDelete = ReferenceOption.CASCADE)
-    val segmentId = uuid("segment_id")
+    val segmentKey = varchar("segment_key", 32)
     val durationMs = long("duration_ms")
     val startedAt = timestamp("started_at")
     val finishedAt = timestamp("finished_at")

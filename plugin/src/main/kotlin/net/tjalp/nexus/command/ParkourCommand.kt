@@ -72,35 +72,54 @@ object ParkourCommand {
                                     StringArgumentType.getString(ctx, "node")
                                 )
                             })))
-                .then(literal("region")
-                    .then(argument("node", ParkourNodeArgument)
-                        .then(argument("from", ArgumentTypes.blockPosition())
-                            .then(argument("to", ArgumentTypes.blockPosition())
-                                .executes { ctx ->
-                                    val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
-                                    setNodeRegion(
-                                        player,
-                                        ctx.getArgument("node", ParkourNode::class.java),
-                                        ctx.getArgument("from", BlockPositionResolver::class.java).resolve(ctx.source),
-                                        ctx.getArgument("to", BlockPositionResolver::class.java).resolve(ctx.source)
-                                    )
-                                }))))
                 .then(literal("delete")
                     .then(argument("node", ParkourNodeArgument)
                         .executes { ctx ->
                             val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
                             deleteNode(player, ctx.getArgument("node", ParkourNode::class.java))
-                        })))
+                        }))
+                .then(literal("modify")
+                    .then(argument("node", ParkourNodeArgument)
+                        .then(literal("type")
+                            .then(argument("type", ParkourNodeTypeArgument)
+                                .executes { ctx ->
+                                    setNodeType(
+                                        ctx.source,
+                                        ctx.getArgument("node", ParkourNode::class.java),
+                                        ctx.getArgument("type", NodeType::class.java)
+                                    )
+                                }))
+                        .then(literal("name")
+                            .then(argument("name", StringArgumentType.greedyString())
+                                .executes { ctx ->
+                                    setNodeName(
+                                        ctx.source,
+                                        ctx.getArgument("node", ParkourNode::class.java),
+                                        StringArgumentType.getString(ctx, "name")
+                                    )
+                                }))
+                        .then(literal("region")
+                            .then(argument("from", ArgumentTypes.blockPosition())
+                                .then(argument("to", ArgumentTypes.blockPosition())
+                                    .executes { ctx ->
+                                        val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
+                                        setNodeRegion(
+                                            player,
+                                            ctx.getArgument("node", ParkourNode::class.java),
+                                            ctx.getArgument("from", BlockPositionResolver::class.java).resolve(ctx.source),
+                                            ctx.getArgument("to", BlockPositionResolver::class.java).resolve(ctx.source)
+                                        )
+                                    }))))))
             .then(literal("segment")
                 .then(literal("add")
-                    .then(argument("name", StringArgumentType.string())
+                    .then(argument("segment", StringArgumentType.word())
                         .then(argument("from", ParkourNodeArgument)
                             .then(argument("to", ParkourNodeArgument)
                                 .executes { ctx ->
                                     val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
                                     addSegment(
                                         player,
-                                        StringArgumentType.getString(ctx, "name"),
+                                        StringArgumentType.getString(ctx, "segment"),
                                         ctx.getArgument("from", ParkourNode::class.java),
                                         ctx.getArgument("to", ParkourNode::class.java)
                                     )
@@ -120,7 +139,18 @@ object ParkourCommand {
                         .executes { ctx ->
                             val player = ctx.source.sender as? Player ?: throw ERROR_NOT_PLAYER.create()
                             stopVisualization(player)
-                        })))
+                        }))
+                .then(literal("modify")
+                    .then(argument("segment", ParkourSegmentArgument)
+                        .then(literal("name")
+                            .then(argument("name", StringArgumentType.greedyString())
+                                .executes { ctx ->
+                                    setSegmentName(
+                                        ctx.source,
+                                        ctx.getArgument("segment", ParkourSegment::class.java),
+                                        StringArgumentType.getString(ctx, "name")
+                                    )
+                                })))))
             .then(literal("start")
                 .then(argument("node", ParkourNodeArgument)
                     .executes { ctx ->
@@ -162,10 +192,37 @@ object ParkourCommand {
         return Command.SINGLE_SUCCESS
     }
 
+    private fun setNodeName(source: CommandSourceStack, node: ParkourNode, name: String): Int {
+        val feat = parkour
+        val definition = feat.definitions.definition
+        val idx = definition.nodes.indexOfFirst { it.key == node.key }
+
+        definition.nodes[idx] = node.copy(name = name)
+        feat.definitions.update(definition)
+        feat.runtime.reindex()
+
+        source.sender.sendMessage(text("Updated ${node.key}'s name to '$name'.", NamedTextColor.GREEN))
+
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun setNodeType(source: CommandSourceStack, node: ParkourNode, type: NodeType): Int {
+        val feat = parkour
+        val definition = feat.definitions.definition
+        val idx = definition.nodes.indexOfFirst { it.key == node.key }
+
+        definition.nodes[idx] = node.copy(type = type)
+        feat.definitions.update(definition)
+        feat.runtime.reindex()
+
+        source.sender.sendMessage(text("Updated ${node.key}'s type to '$type'.", NamedTextColor.GREEN))
+
+        return Command.SINGLE_SUCCESS
+    }
+
     private fun setNodeRegion(player: Player, node: ParkourNode, from: BlockPosition, to: BlockPosition): Int {
         val feat = parkour
         val definition = feat.definitions.definition
-
         val region = ParkourRegion(
             worldId = player.world.uid,
             minX = minOf(from.blockX(), to.blockX()),
@@ -176,49 +233,61 @@ object ParkourCommand {
             maxZ = maxOf(from.blockZ(), to.blockZ())
         )
         val idx = definition.nodes.indexOfFirst { it.key == node.key }
+
         definition.nodes[idx] = node.copy(region = region)
         feat.definitions.update(definition)
         feat.runtime.reindex()
+
         player.sendMessage(text("Updated region for node '${node.name}'.", NamedTextColor.GREEN))
+
         return Command.SINGLE_SUCCESS
     }
 
     private fun deleteNode(player: Player, node: ParkourNode): Int {
         val feat = parkour
         val definition = feat.definitions.definition
+
         definition.removeNode(node.key)
         feat.definitions.update(definition)
         feat.runtime.reindex()
+
         player.sendMessage(text("Deleted node '${node.name}' and linked segments.", NamedTextColor.YELLOW))
+
         return Command.SINGLE_SUCCESS
     }
 
-    private fun addSegment(player: Player, segmentName: String, from: ParkourNode, to: ParkourNode): Int {
+    private fun addSegment(player: Player, segmentKey: String, from: ParkourNode, to: ParkourNode): Int {
         val feat = parkour
         val definition = feat.definitions.definition
-        if (definition.segmentByName(segmentName) != null) throw ERROR_DUPLICATE_SEGMENT.create()
+        if (definition.segmentByKey(segmentKey) != null) throw ERROR_DUPLICATE_SEGMENT.create()
 
         definition.segments += ParkourSegment(
-            name = segmentName,
+            key = segmentKey,
             fromNodeKey = from.key,
             toNodeKey = to.key
         )
         feat.definitions.update(definition)
-        player.sendMessage(text("Added segment '$segmentName' ($from → ${to.name}).", NamedTextColor.GREEN))
+
+        player.sendMessage(text("Added segment '$segmentKey' (${from.name} → ${to.name}).", NamedTextColor.GREEN))
+
         return Command.SINGLE_SUCCESS
     }
 
     private fun deleteSegment(player: Player, segment: ParkourSegment): Int {
         val feat = parkour
         val definition = feat.definitions.definition
-        definition.removeSegment(segment.id)
+
+        definition.removeSegment(segment.key)
         feat.definitions.update(definition)
+
         player.sendMessage(text("Deleted segment '${segment.name}'.", NamedTextColor.YELLOW))
+
         return Command.SINGLE_SUCCESS
     }
 
     private fun visualizeAllSegments(player: Player): Int {
         val definition = parkour.definitions.definition
+
         if (definition.segments.isEmpty()) {
             player.sendMessage(text("No segments to visualize.", NamedTextColor.YELLOW))
             return Command.SINGLE_SUCCESS
@@ -239,6 +308,7 @@ object ParkourCommand {
 
         startSegmentVisualization(player, paths)
         player.sendMessage(text("Visualizing ${paths.size} segment(s).", NamedTextColor.GREEN))
+
         return Command.SINGLE_SUCCESS
     }
 
@@ -273,6 +343,19 @@ object ParkourCommand {
             }
         }
         activeVisualizers[player.uniqueId] = task
+    }
+
+    private fun setSegmentName(source: CommandSourceStack, segment: ParkourSegment, name: String): Int {
+        val feat = parkour
+        val definition = feat.definitions.definition
+        val idx = definition.segments.indexOfFirst { it.key == segment.key }
+
+        definition.segments[idx] = segment.copy(name = name)
+        feat.definitions.update(definition)
+
+        source.sender.sendMessage(text("Set segment ${segment.key}'s name to $name", NamedTextColor.GREEN))
+
+        return Command.SINGLE_SUCCESS
     }
 
     private fun nodeCenter(world: World, node: ParkourNode): Location {

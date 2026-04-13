@@ -1,15 +1,19 @@
 package net.tjalp.nexus.feature.parkour
 
+import com.ibm.icu.number.IntegerWidth
+import com.ibm.icu.number.NumberFormatter
+import com.ibm.icu.number.Precision
 import kotlinx.coroutines.launch
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.empty
-import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.*
+import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.kyori.adventure.text.minimessage.translation.Argument
 import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
+import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
-import net.tjalp.nexus.parkour.ParkourSegmentResultsTable
+import net.tjalp.nexus.profile.model.ParkourSegmentResultsTable
 import net.tjalp.nexus.util.asEventMessage
 import net.tjalp.nexus.util.profile
 import net.tjalp.nexus.util.sendActionBarTo
@@ -73,14 +77,18 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         )
         sessions[player.uniqueId] = session
 
-        text("Parkour started").asEventMessage().sendTo(player)
+        title(
+            empty(),
+            translatable("parkour.started", PRIMARY_COLOR),
+            times(Duration.ZERO, 1.5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+        ).sendTo(player)
     }
 
     fun stopSession(player: Player) {
         sessions.remove(player.uniqueId)
-        player.sendActionBar(Component.empty())
+        player.sendActionBar(empty())
 
-        text("Parkour session stopped", RED).asEventMessage().sendTo(player)
+        translatable("parkour.stopped", RED).asEventMessage().sendTo(player)
     }
 
     fun onNodeEntered(player: Player, node: ParkourNode) {
@@ -96,7 +104,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
         val now = System.currentTimeMillis()
         val duration = now - session.currentSegmentStartMs
-        val timing = SegmentTiming(segmentId = segment.id, durationMs = duration)
+        val timing = SegmentTiming(segmentKey = segment.key, durationMs = duration)
 
         session.path += node.key
         session.segmentTimings += timing
@@ -116,14 +124,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     }
 
     private fun handleSegmentSplit(player: Player, timing: SegmentTiming, finishedAtMs: Long) {
-        val profileId = runCatching { player.profile().id }.getOrNull()
-        if (profileId == null) {
-            player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
-
-            text("Segment split: ⌚ ${formatDuration(timing.durationMs)}").asEventMessage()
-                .sendTo(player)
-            return
-        }
+        val profileId = player.profile().id
 
         feature.scheduler.launch {
             try {
@@ -133,17 +134,17 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                         .selectAll()
                         .where {
                             (ParkourSegmentResultsTable.profileId eq profileId) and
-                                    (ParkourSegmentResultsTable.segmentId eq timing.segmentId)
+                                    (ParkourSegmentResultsTable.segmentKey eq timing.segmentKey)
                         }.minOfOrNull { it[ParkourSegmentResultsTable.durationMs] }
 
                     val priorGlobal = ParkourSegmentResultsTable
                         .selectAll()
-                        .where { ParkourSegmentResultsTable.segmentId eq timing.segmentId }
+                        .where { ParkourSegmentResultsTable.segmentKey eq timing.segmentKey }
                         .minOfOrNull { it[ParkourSegmentResultsTable.durationMs] }
 
                     ParkourSegmentResultsTable.insert {
                         it[ParkourSegmentResultsTable.profileId] = profileId
-                        it[ParkourSegmentResultsTable.segmentId] = timing.segmentId
+                        it[ParkourSegmentResultsTable.segmentKey] = timing.segmentKey
                         it[ParkourSegmentResultsTable.durationMs] = timing.durationMs
                         it[ParkourSegmentResultsTable.startedAt] = Instant.fromEpochMilliseconds(startedAtMs)
                         it[ParkourSegmentResultsTable.finishedAt] = Instant.fromEpochMilliseconds(finishedAtMs)
@@ -154,24 +155,51 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                     SplitOutcome(isPersonalBest, isGlobalBest)
                 }
 
+                val segment = feature.definitions.definition.segmentByKey(timing.segmentKey)
+                val subtitle = text().color(GRAY)
+
+                segment?.displayName?.let {
+                    subtitle.append(it.colorIfAbsent(PRIMARY_COLOR)).append(text(" | "))
+                }
+                subtitle.append(text("⌚ ${formatDuration(timing.durationMs, player.locale())}", PRIMARY_COLOR))
+
                 title(
                     empty(),
-                    text("⌚ ${formatDuration(timing.durationMs)}", PRIMARY_COLOR),
-                    times(Duration.ZERO, 1.seconds.toJavaDuration(), 1.seconds.toJavaDuration())
+                    subtitle.build(),
+                    times(Duration.ZERO, 1.5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
                 ).sendTo(player)
 
                 when {
                     outcome.isGlobalBest -> {
                         player.playSound(player.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.0f)
-                        text("New global segment record! ⌚ ${formatDuration(timing.durationMs)}")
-                            .asEventMessage()
-                            .sendTo(player)
+
+                        translatable(
+                            "parkour.record.global",
+                            Argument.component(
+                                "time",
+                                text("⌚ ${formatDuration(timing.durationMs, player.locale())}", MONOCHROME_COLOR)
+                            ),
+                            Argument.component(
+                                "segment",
+                                segment?.displayName?.colorIfAbsent(MONOCHROME_COLOR) ?: empty()
+                            )
+                        ).asEventMessage().sendTo(player)
                     }
 
                     outcome.isPersonalBest -> {
                         player.playSound(player.location, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.3f)
-                        text("New segment PB: ⌚ ${formatDuration(timing.durationMs)}").asEventMessage()
-                            .sendTo(player)
+
+                        translatable(
+                            "parkour.record.personal",
+                            Argument.component(
+                                "time",
+                                text("⌚ ${formatDuration(timing.durationMs, player.locale())}", MONOCHROME_COLOR)
+                            ),
+                            Argument.component(
+                                "segment",
+                                segment?.displayName?.colorIfAbsent(MONOCHROME_COLOR) ?: empty()
+                            )
+                        ).asEventMessage().sendTo(player)
                     }
 
                     else -> {
@@ -186,11 +214,17 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
     private fun finishSession(player: Player, session: RunSession) {
         sessions.remove(player.uniqueId)
-        player.sendActionBar(Component.empty())
+        player.sendActionBar(empty())
         val totalDurationMs = session.segmentTimings.sumOf { it.durationMs }
         player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.2f)
-        text("Parkour finished! Time: ⌚ ${formatDuration(totalDurationMs)}").asEventMessage()
-            .sendTo(player)
+
+        translatable(
+            "parkour.finished",
+            Argument.component(
+                "time",
+                text("⌚ ${formatDuration(totalDurationMs, player.locale())}", MONOCHROME_COLOR)
+            )
+        ).asEventMessage().sendTo(player)
     }
 
     fun getNodesAt(worldId: UUID, x: Int, y: Int, z: Int): List<ParkourNode> {
@@ -202,14 +236,14 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     }
 
     fun sendSplitActionBar(player: Player, session: RunSession) {
-        val total = formatDuration(session.elapsedMs)
-        val checkpoint = formatDuration(session.checkpointSplitMs)
-        val entry = formatDuration(session.entrySplitMs)
-        val currentSegment = formatDuration(System.currentTimeMillis() - session.currentSegmentStartMs)
+        val total = formatDuration(session.elapsedMs, player.locale())
+        val currentSegment = formatDuration(System.currentTimeMillis() - session.currentSegmentStartMs, player.locale())
 
-        text(
-            "Run: ⌚ $total  |  Segment: ⌚ $currentSegment  |  Checkpoint: ⌚ $checkpoint  |  Entry: ⌚ $entry",
-            PRIMARY_COLOR
+        translatable(
+            "parkour.split_actionbar",
+            GRAY,
+            Argument.component("total_time", text("⌚ $total", PRIMARY_COLOR)),
+            Argument.component("segment_time", text("⌚ $currentSegment", PRIMARY_COLOR)),
         ).sendActionBarTo(player)
     }
 
@@ -220,12 +254,22 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         }
     }
 
-    private fun formatDuration(ms: Long): String {
-        val minutes = ms / 60_000
-        val seconds = (ms % 60_000) / 1_000
-        // Single decimal precision (tenths of a second) for compact split displays.
-        val millis = (ms % 1_000) / 100
-        return "%02d:%02d.%d".format(minutes, seconds, millis)
+    private fun formatDuration(ms: Long, locale: Locale = Locale.US): String {
+        val totalTenths = ms / 100
+        val minutes = totalTenths / 600
+        val secondsWithTenths = (totalTenths % 600) / 10.0 // 0.0..59.9
+
+        val minuteFormatter = NumberFormatter.withLocale(locale)
+            .integerWidth(IntegerWidth.zeroFillTo(2))
+
+        val secondsFormatter = NumberFormatter.withLocale(locale)
+            .integerWidth(IntegerWidth.zeroFillTo(2))
+            .precision(Precision.fixedFraction(1))
+
+        val mm = minuteFormatter.format(minutes).toString()
+        val ssT = secondsFormatter.format(secondsWithTenths).toString()
+
+        return "$mm:$ssT"
     }
 
     fun clearPlayerSession(playerId: UUID) {

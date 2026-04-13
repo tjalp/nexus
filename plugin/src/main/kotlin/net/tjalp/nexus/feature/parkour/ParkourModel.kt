@@ -63,8 +63,8 @@ data class ParkourNode(
  */
 @ConfigSerializable
 data class ParkourSegment(
-    val id: UUID = UUID.randomUUID(),
-    val name: String = "",
+    val key: String,
+    val name: String = key,
     val fromNodeKey: String,
     val toNodeKey: String,
     val enabled: Boolean = true
@@ -87,7 +87,7 @@ data class ParkourDefinition(
 
     fun nodeByKey(key: String): ParkourNode? = nodes.firstOrNull { it.key.equals(key, ignoreCase = true) }
     fun nodeByName(name: String): ParkourNode? = nodes.firstOrNull { it.name.equals(name, ignoreCase = true) }
-    fun segmentById(id: UUID): ParkourSegment? = segments.firstOrNull { it.id == id }
+    fun segmentByKey(key: String): ParkourSegment? = segments.firstOrNull { it.key.equals(key, ignoreCase = true) }
     fun segmentByName(name: String): ParkourSegment? = segments.firstOrNull { it.name.equals(name, ignoreCase = true) }
 
     /** Returns all nodes reachable from [fromNodeKey] via enabled segments. */
@@ -122,7 +122,7 @@ data class ParkourDefinition(
         }
     }
 
-    fun removeSegment(segmentId: UUID) {
-        segments.removeIf { it.id == segmentId }
+    fun removeSegment(segmentKey: String) {
+        segments.removeIf { it.key.equals(segmentKey, ignoreCase = true) }
     }
 }
