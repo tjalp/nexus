@@ -22,6 +22,7 @@ object AnnounceCommand {
 
     private val stacks = WeakHashMap<CommandSourceStack, AnnounceStack>()
 
+    @Suppress("UnstableApiUsage")
     fun create(commands: Commands): Collection<LiteralCommandNode<CommandSourceStack>> {
         val requirement: (CommandSourceStack) -> Boolean = { NexusPlugin.notices != null && it.sender.hasPermission("nexus.command.announce") }
         val dispatcher = commands.dispatcher

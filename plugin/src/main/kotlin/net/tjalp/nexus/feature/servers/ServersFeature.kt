@@ -45,7 +45,6 @@ import kotlin.time.Duration.Companion.seconds
  * - Full session enforcement via Redis registries.
  * - Transfers use a short-lived signed cookie ([TransferToken]) validated on the target.
  */
-@Suppress("UnstableApiUsage")
 class ServersFeature : Feature(SERVERS), Listener {
 
     // ── Public properties ─────────────────────────────────────────────────────

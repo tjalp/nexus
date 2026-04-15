@@ -2,11 +2,14 @@ package net.tjalp.nexus.util
 
 import net.minecraft.core.BlockPos
 import net.minecraft.network.protocol.Packet
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.model.ProfileSnapshot
 import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.block.Biome
+import org.bukkit.craftbukkit.CraftWorld
 import org.bukkit.craftbukkit.block.CraftBiome
 import org.bukkit.craftbukkit.entity.CraftPlayer
 import org.bukkit.entity.Entity
@@ -73,14 +76,14 @@ fun Biome.asNmsBiome() = (this as CraftBiome).handle
  *
  * @return The NMS world corresponding to this World
  */
-fun World.asNmsWorld() = (this as org.bukkit.craftbukkit.CraftWorld).handle
+fun World.asNmsWorld(): ServerLevel = (this as CraftWorld).handle
 
 /**
  * Converts this Player to an NMS ServerPlayer.
  *
  * @return The NMS ServerPlayer corresponding to this Player
  */
-fun Player.asServerPlayer() = (this as CraftPlayer).handle
+fun Player.asServerPlayer(): ServerPlayer = (this as CraftPlayer).handle
 
 /**
  * Sends the given packet to this player.

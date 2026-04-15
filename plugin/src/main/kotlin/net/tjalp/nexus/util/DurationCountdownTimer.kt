@@ -1,11 +1,7 @@
 package net.tjalp.nexus.util
 
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import net.tjalp.nexus.scheduler.Scheduler
-import net.tjalp.nexus.scheduler.ticks
+import org.bukkit.scheduler.BukkitTask
 import org.spongepowered.configurate.reactive.Disposable
 import kotlin.time.Duration
 import kotlin.time.TimeSource
@@ -18,7 +14,7 @@ import kotlin.time.TimeSource
  */
 class DurationCountdownTimer(
     private val scheduler: Scheduler,
-    val initialDuration: Duration,
+    initialDuration: Duration,
     private val onTick: (remaining: Duration) -> Unit = {},
     private val onFinished: () -> Unit
 ) : Disposable {
@@ -29,7 +25,7 @@ class DurationCountdownTimer(
     var remaining: Duration = initialDuration; private set
 
     private var anchor = TimeSource.Monotonic.markNow()
-    private var job: Job? = null
+    private var job: BukkitTask? = null
 
     /**
      * Starts the countdown timer.
@@ -38,23 +34,18 @@ class DurationCountdownTimer(
         if (job != null) return
         // Re-anchor so elapsed is measured from now
         anchor = TimeSource.Monotonic.markNow()
-        job = scheduler.launch {
-            while (isActive) {
-                // Compute elapsed since last anchor and subtract
-                val elapsed = anchor.elapsedNow()
-                remaining -= elapsed
-                anchor = TimeSource.Monotonic.markNow()
+        job = scheduler.repeat(interval = 1) {
+            // Compute elapsed since last anchor and subtract
+            val elapsed = anchor.elapsedNow()
+            remaining -= elapsed
+            anchor = TimeSource.Monotonic.markNow()
 
-                if (remaining <= Duration.ZERO) {
-                    onTick(Duration.ZERO)
-                    onFinished()
-                    break
-                } else {
-                    onTick(remaining)
-                }
-
-                // Sleep a short interval; keep it small for responsiveness
-                delay(1.ticks)
+            if (remaining <= Duration.ZERO) {
+                onTick(Duration.ZERO)
+                onFinished()
+                job?.cancel()
+            } else {
+                onTick(remaining)
             }
         }
     }
@@ -81,7 +72,7 @@ class DurationCountdownTimer(
     /**
      * Whether the countdown timer is currently running.
      */
-    val isRunning: Boolean get() = job?.isActive == true
+    val isRunning: Boolean get() = job?.isCancelled == false
 
     override fun dispose() {
         job?.cancel()

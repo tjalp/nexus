@@ -1,7 +1,6 @@
 package net.tjalp.nexus.feature.disguises.provider
 
 import io.papermc.paper.event.player.PlayerArmSwingEvent
-import kotlinx.coroutines.delay
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.minimessage.translation.Argument
@@ -10,7 +9,6 @@ import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.disguises.DisguiseProvider
-import net.tjalp.nexus.scheduler.ticks
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.EntityEffect
@@ -41,7 +39,6 @@ class NexusDisguiseProvider(
     init {
         feature.scheduler.repeat(interval = 15) {
             disguises.forEach { (entity, disguise) -> sendStatus(entity, disguise.type) }
-            delay(15.ticks)
         }
     }
 

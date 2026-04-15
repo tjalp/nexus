@@ -21,8 +21,6 @@ repositories {
     }
 }
 
-paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
-
 dependencies {
     implementation(project(":common"))
     implementation(libs.configurateKotlinExtras)
@@ -36,9 +34,11 @@ dependencies {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.11")
+        minecraftVersion("26.1.2")
         downloadPlugins {
 //            github("libraryaddict", "LibsDisguises", "v11.0.13", "LibsDisguises-11.0.13-Github.jar")
+            hangar("ViaVersion", "5.8.1")
+            hangar("ViaBackwards", "5.8.1")
         }
     }
 
@@ -55,7 +55,7 @@ tasks.withType(xyz.jpenilla.runtask.task.AbstractRun::class) {
     javaLauncher = javaToolchains.launcherFor {
         @Suppress("UnstableApiUsage")
         vendor = JvmVendorSpec.JETBRAINS
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
     jvmArgs("-XX:+AllowEnhancedClassRedefinition")
 }

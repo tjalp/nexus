@@ -32,7 +32,7 @@ object WinterSeasonTicker : SeasonTicker {
         val blockAbove = block.getRelative(BlockFace.UP)
         // todo check whether face is full, instead of just checking whether block is sturdy on top or leaves.
         // unfortunately the api does not expose this, so nms would have to be used
-        if ((blockAbove.type == Material.SNOW || blockAbove.type.isAir && !Tag.ICE.isTagged(block.type) && !Tag.SNOW_LAYER_CANNOT_SURVIVE_ON.isTagged(
+        if ((blockAbove.type == Material.SNOW || blockAbove.type.isAir && !Tag.ICE.isTagged(block.type) && !Tag.CANNOT_SUPPORT_SNOW_LAYER.isTagged(
                 block.type
             ) && (block.blockData.isFaceSturdy(
                 BlockFace.UP,

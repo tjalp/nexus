@@ -3,7 +3,7 @@ version: '2026.01.20'
 authors: ['tjalp']
 main: net.tjalp.nexus.NexusPlugin
 description: A Minecraft server plugin providing various utilities and features.
-api-version: '1.21.11'
+api-version: '26.1.2'
 bootstrapper: net.tjalp.nexus.NexusBootstrap
 dependencies:
   server:
