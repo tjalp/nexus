@@ -239,7 +239,7 @@ object ParkourCommand {
         feat.definitions.update(definition)
         feat.runtime.reindex()
 
-        player.sendMessage(text("Updated region for node '${node.name}'.", NamedTextColor.GREEN))
+        player.sendMessage(text("Updated region for node '${node.key}'.", NamedTextColor.GREEN))
 
         return Command.SINGLE_SUCCESS
     }
@@ -252,7 +252,7 @@ object ParkourCommand {
         feat.definitions.update(definition)
         feat.runtime.reindex()
 
-        player.sendMessage(text("Deleted node '${node.name}' and linked segments.", NamedTextColor.YELLOW))
+        player.sendMessage(text("Deleted node '${node.key}' and linked segments.", NamedTextColor.YELLOW))
 
         return Command.SINGLE_SUCCESS
     }
@@ -269,7 +269,7 @@ object ParkourCommand {
         )
         feat.definitions.update(definition)
 
-        player.sendMessage(text("Added segment '$segmentKey' (${from.name} → ${to.name}).", NamedTextColor.GREEN))
+        player.sendMessage(text("Added segment '$segmentKey' (${from.key} → ${to.key}).", NamedTextColor.GREEN))
 
         return Command.SINGLE_SUCCESS
     }
@@ -281,7 +281,8 @@ object ParkourCommand {
         definition.removeSegment(segment.key)
         feat.definitions.update(definition)
 
-        player.sendMessage(text("Deleted segment '${segment.name}'.", NamedTextColor.YELLOW))
+        player.sendMessage(text("Deleted segment ", NamedTextColor.YELLOW)
+            .append(segment.displayName))
 
         return Command.SINGLE_SUCCESS
     }
@@ -350,11 +351,13 @@ object ParkourCommand {
         val feat = parkour
         val definition = feat.definitions.definition
         val idx = definition.segments.indexOfFirst { it.key == segment.key }
+        val newSegment = segment.copy(name = name)
 
-        definition.segments[idx] = segment.copy(name = name)
+        definition.segments[idx] = newSegment
         feat.definitions.update(definition)
 
-        source.sender.sendMessage(text("Set segment ${segment.key}'s name to $name", NamedTextColor.GREEN))
+        source.sender.sendMessage(text("Set segment ${segment.key}'s name to ", NamedTextColor.GREEN)
+            .append(newSegment.displayName))
 
         return Command.SINGLE_SUCCESS
     }
@@ -404,10 +407,18 @@ object ParkourCommand {
         }
         source.sender.sendMessage(text("  Segments: ${definition.segments.size}", NamedTextColor.WHITE))
         definition.segments.forEach { seg ->
-            val fromName = definition.nodeByKey(seg.fromNodeKey)?.name ?: seg.fromNodeKey
-            val toName = definition.nodeByKey(seg.toNodeKey)?.name ?: seg.toNodeKey
+            val fromName = definition.nodeByKey(seg.fromNodeKey)?.displayName ?: text(seg.fromNodeKey)
+            val toName = definition.nodeByKey(seg.toNodeKey)?.displayName ?: text(seg.toNodeKey)
             val status = if (seg.enabled) "" else " (disabled)"
-            source.sender.sendMessage(text("    ${seg.name}: $fromName → $toName$status", NamedTextColor.WHITE))
+            source.sender.sendMessage(
+                text("    ", NamedTextColor.WHITE)
+                    .append(seg.displayName)
+                    .append(text(": "))
+                    .append(fromName)
+                    .append(text(" → "))
+                    .append(toName)
+                    .append(text(status))
+            )
         }
         return Command.SINGLE_SUCCESS
     }

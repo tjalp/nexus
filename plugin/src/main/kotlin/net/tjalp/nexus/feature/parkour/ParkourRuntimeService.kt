@@ -71,7 +71,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         title(
             empty(),
             translatable("parkour.started", PRIMARY_COLOR),
-            times(Duration.ZERO.toJavaDuration(), 1.5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+            times(Duration.ZERO.toJavaDuration(), .5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
         ).sendTo(player)
     }
 
