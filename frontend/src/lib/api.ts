@@ -1,7 +1,12 @@
-import type { ParkourRecord, ParkourRun } from './data/parkour';
+import type { paths } from './openapi/types';
 import { sampleRecords, sampleRuns } from './data/parkour';
 
 const API_BASE = 'http://localhost:8080/api';
+
+type RecordsResponse =
+	paths['/api/parkour/records']['get']['responses'][200]['content']['application/json'];
+type RunsResponse =
+	paths['/api/parkour/runs']['get']['responses'][200]['content']['application/json'];
 
 async function safeJson<T>(promise: Promise<Response>, fallback: T): Promise<T> {
 	try {
@@ -15,9 +20,9 @@ async function safeJson<T>(promise: Promise<Response>, fallback: T): Promise<T> 
 }
 
 export function fetchParkourRecords(fetcher = fetch) {
-	return safeJson<ParkourRecord[]>(fetcher(`${API_BASE}/parkour/records`), sampleRecords);
+	return safeJson<RecordsResponse>(fetcher(`${API_BASE}/parkour/records`), sampleRecords);
 }
 
 export function fetchParkourRuns(fetcher = fetch) {
-	return safeJson<ParkourRun[]>(fetcher(`${API_BASE}/parkour/runs`), sampleRuns);
+	return safeJson<RunsResponse>(fetcher(`${API_BASE}/parkour/runs`), sampleRuns);
 }

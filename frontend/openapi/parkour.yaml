@@ -1,0 +1,89 @@
+openapi: 3.1.0
+info:
+  title: Parkour API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/parkour/records:
+    get:
+      summary: List global parkour records
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkourRecord'
+  /api/parkour/runs:
+    get:
+      summary: List parkour run submissions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkourRun'
+components:
+  schemas:
+    ParkourRecord:
+      type: object
+      required:
+        - course
+        - player
+        - timeMs
+        - date
+      properties:
+        course:
+          type: string
+        player:
+          type: string
+        timeMs:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date-time
+        video:
+          type: string
+          format: uri
+          nullable: true
+    ParkourRun:
+      type: object
+      required:
+        - id
+        - player
+        - course
+        - timeMs
+        - status
+        - submittedAt
+      properties:
+        id:
+          type: string
+        player:
+          type: string
+        course:
+          type: string
+        timeMs:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+            - verified
+            - pending
+            - rejected
+        submittedAt:
+          type: string
+          format: date-time
+        device:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true

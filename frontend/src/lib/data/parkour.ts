@@ -1,21 +1,7 @@
-export type ParkourRecord = {
-	course: string;
-	player: string;
-	timeMs: number;
-	date: string;
-	video?: string;
-};
+import type { components } from '../openapi/types';
 
-export type ParkourRun = {
-	id: string;
-	player: string;
-	course: string;
-	timeMs: number;
-	status: 'verified' | 'pending' | 'rejected';
-	submittedAt: string;
-	device?: string;
-	notes?: string;
-};
+export type ParkourRecord = components['schemas']['ParkourRecord'];
+export type ParkourRun = components['schemas']['ParkourRun'];
 
 export const sampleRecords: ParkourRecord[] = [
 	{
