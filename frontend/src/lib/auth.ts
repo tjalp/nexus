@@ -1,17 +1,21 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import {goto} from "$app/navigation";
+import { goto } from '$app/navigation';
+import { normalizeUsername } from '$lib/utils';
 
 export interface AuthToken {
 	accessToken: string;
 	refreshToken: string;
 	userId: string;
 	username: string;
+	displayName?: string;
 	role: string;
+	permissions?: string[];
 }
 
 const STORAGE_KEY = 'authToken';
 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+const elevatedRoles = ['admin', 'engineer', 'operator'];
 
 function createAuthStore() {
 	const { subscribe, set, update } = writable<AuthToken | null>(null);
@@ -138,14 +142,28 @@ export const isAuthenticated = derived(authStore, ($authStore) => $authStore !==
 // Derived store for user role
 export const userRole = derived(authStore, ($authStore) => $authStore?.role ?? null);
 
+export const canManageServers = derived(authStore, ($authStore) => {
+	if (!$authStore) return false;
+	return (
+		elevatedRoles.includes($authStore.role) ||
+		$authStore.permissions?.includes('manage:servers') === true
+	);
+});
+
 // Login function
-export async function login(username: string, password: string): Promise<AuthToken> {
+export async function login(
+	username: string,
+	displayName: string,
+	password: string
+): Promise<AuthToken> {
+	const normalized = normalizeUsername(username);
+
 	const response = await fetch('http://localhost:8080/auth/login', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify({ username, password })
+		body: JSON.stringify({ username: normalized, displayName, password })
 	});
 
 	if (!response.ok) {
@@ -161,15 +179,18 @@ export async function login(username: string, password: string): Promise<AuthTok
 // Register function
 export async function register(
 	username: string,
+	displayName: string,
 	password: string,
 	profileId: string
 ): Promise<AuthToken> {
+	const normalized = normalizeUsername(username);
+
 	const response = await fetch('http://localhost:8080/auth/register', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify({ username, password, profileId })
+		body: JSON.stringify({ username: normalized, displayName, password, profileId })
 	});
 
 	if (!response.ok) {
@@ -186,6 +207,3 @@ export async function register(
 export function logout() {
 	authStore.clearAuth();
 }
-
-
-

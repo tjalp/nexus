@@ -1,41 +1,122 @@
-@import "tailwindcss";
-
+@import 'tailwindcss';
+@import '@fontsource/fira-mono/400.css';
+@import '@fontsource/fira-mono/700.css';
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0 0 0);
-    --primary: oklch(0.491 0.115 154.684);
-    --primary-foreground: oklch(0.9 0.05 240);
-    --secondary: oklch(1 0 0);
-    --secondary-foreground: oklch(0 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.14 0.013 255);
+	--muted: oklch(0.92 0.015 265);
+	--muted-foreground: oklch(0.45 0.01 240);
+	--primary: oklch(0.62 0.16 170);
+	--primary-foreground: oklch(0.98 0.01 200);
+	--secondary: oklch(0.98 0.015 250);
+	--secondary-foreground: oklch(0.2 0.01 255);
+	--destructive: oklch(0.57 0.22 30);
+	--panel: color-mix(in srgb, var(--background) 92%, black 8%);
+	--panel-foreground: oklch(0.25 0.02 255);
 }
 
 @media (prefers-color-scheme: dark) {
-    :root {
-        --background: oklch(0.305 0.019 268.063);
-        --foreground: oklch(0.984 0.003 247.858);
-        --primary: oklch(0.491 0.115 154.684);
-        --primary-foreground: oklch(1 0 0);
-        --secondary: oklch(0.405 0.002 247.877);
-        --secondary-foreground: oklch(1 0 0);
-        --destructive: oklch(0.558 0.207 25.046);
-    }
+	:root {
+		--background: oklch(0.13 0.02 260);
+		--foreground: oklch(0.96 0.015 240);
+		--muted: oklch(0.2 0.01 260);
+		--muted-foreground: oklch(0.73 0.01 255);
+		--primary: oklch(0.62 0.16 170);
+		--primary-foreground: oklch(0.98 0.01 200);
+		--secondary: oklch(0.24 0.01 255);
+		--secondary-foreground: oklch(0.95 0.01 240);
+		--destructive: oklch(0.55 0.21 26);
+		--panel: color-mix(in srgb, var(--background) 78%, white 22%);
+		--panel-foreground: oklch(0.88 0.02 250);
+	}
 }
 
 @theme inline {
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-destructive: var(--destructive);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-border: color-mix(in srgb, var(--foreground) 14%, transparent);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-destructive: var(--destructive);
 }
 
 @layer base {
-    body {
-        @apply bg-background text-foreground;
-    }
+	* {
+		@apply border-border;
+	}
+
+	body {
+		font-family:
+			'Inter',
+			'Segoe UI',
+			system-ui,
+			-apple-system,
+			sans-serif;
+		@apply bg-background text-foreground antialiased;
+		background-image:
+			radial-gradient(
+				circle at 20% 20%,
+				color-mix(in srgb, var(--primary) 12%, transparent) 0,
+				transparent 38%
+			),
+			radial-gradient(
+				circle at 80% 0%,
+				color-mix(in srgb, var(--secondary) 10%, transparent) 0,
+				transparent 40%
+			),
+			linear-gradient(
+				120deg,
+				color-mix(in srgb, var(--panel) 85%, transparent) 0%,
+				transparent 55%
+			),
+			linear-gradient(180deg, color-mix(in srgb, var(--panel) 75%, transparent) 0%, transparent 60%);
+	}
+
+	::selection {
+		background: color-mix(in srgb, var(--primary) 65%, transparent);
+		color: var(--primary-foreground);
+	}
+
+	code,
+	.mono {
+		font-family:
+			'Fira Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+			'Courier New', monospace;
+		letter-spacing: 0.02em;
+	}
+}
+
+@layer utilities {
+	.panel {
+		@apply rounded-xl border border-white/10 bg-white/70 p-4 text-foreground shadow-[0_10px_60px_-30px_rgba(0,0,0,0.6)] backdrop-blur dark:border-white/5 dark:bg-white/5;
+	}
+
+	.panel-strong {
+		@apply border border-primary/30 bg-primary/5 dark:border-primary/30 dark:bg-primary/10;
+	}
+
+	.grid-surface {
+		background-image:
+			linear-gradient(
+				to right,
+				color-mix(in srgb, var(--muted) 16%, transparent) 1px,
+				transparent 1px
+			),
+			linear-gradient(
+				to bottom,
+				color-mix(in srgb, var(--muted) 16%, transparent) 1px,
+				transparent 1px
+			);
+		background-size: 40px 40px;
+	}
+
+	.heading-label {
+		@apply text-xs tracking-[0.25em] text-muted-foreground uppercase;
+	}
 }

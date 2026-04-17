@@ -11,8 +11,9 @@ export const urqlClient = new Client({
 			onError: async (error) => {
 				// Check if error is authentication related
 				const isAuthError = error.graphQLErrors.some(
-					(e) => e.message.includes('Authentication required') ||
-					       e.message.includes('Token is not valid')
+					(e) =>
+						e.message.includes('Authentication required') ||
+						e.message.includes('Token is not valid')
 				);
 
 				if (isAuthError) {
@@ -37,7 +38,10 @@ export const urqlClient = new Client({
 
 		if (auth?.accessToken) {
 			headers['Authorization'] = `Bearer ${auth.accessToken}`;
-			console.log('DEBUG: Sending auth header with token:', auth.accessToken.substring(0, 20) + '...');
+			console.log(
+				'DEBUG: Sending auth header with token:',
+				auth.accessToken.substring(0, 20) + '...'
+			);
 		} else {
 			console.log('DEBUG: No auth token available');
 		}
@@ -45,5 +49,3 @@ export const urqlClient = new Client({
 		return { headers };
 	}
 });
-
-
