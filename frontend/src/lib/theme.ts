@@ -154,11 +154,23 @@ export function applyFont(font: FontChoice) {
 	if (!browser) return;
 	const root = document.documentElement;
 	if (font === 'jetbrains') {
-		root.style.setProperty('--font-sans', '"IBM Plex Sans", "Inter", "Segoe UI", system-ui, sans-serif');
-		root.style.setProperty('--font-mono', '"JetBrains Mono", "Fira Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace');
+		root.style.setProperty(
+			'--font-sans',
+			'"IBM Plex Sans", "Inter", "Segoe UI", system-ui, sans-serif'
+		);
+		root.style.setProperty(
+			'--font-mono',
+			'"JetBrains Mono", "Fira Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+		);
 	} else {
-		root.style.setProperty('--font-sans', '"IBM Plex Sans", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif');
-		root.style.setProperty('--font-mono', '"Fira Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace');
+		root.style.setProperty(
+			'--font-sans',
+			'"IBM Plex Sans", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif'
+		);
+		root.style.setProperty(
+			'--font-mono',
+			'"Fira Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+		);
 	}
 }
 

@@ -61,7 +61,9 @@
 		<div class="panel">
 			<p class="heading-label">Servers healthy</p>
 			<p class="mt-2 text-3xl font-semibold">{totalOnlineServers}/{data.servers.length}</p>
-			<p class="text-xs text-muted-foreground">Only privileged users can open full server controls</p>
+			<p class="text-xs text-muted-foreground">
+				Only privileged users can open full server controls
+			</p>
 		</div>
 		<div class="panel">
 			<p class="heading-label">Open appeals</p>
@@ -71,7 +73,9 @@
 		<div class="panel panel-strong">
 			<p class="heading-label">Access policy</p>
 			<p class="mt-2 text-lg font-semibold">Roles: {data.privilegedRoles.join(', ')}</p>
-			<p class="text-xs text-muted-foreground">Only these roles can open the server management dashboard.</p>
+			<p class="text-xs text-muted-foreground">
+				Only these roles can open the server management dashboard.
+			</p>
 		</div>
 	</section>
 
@@ -82,7 +86,8 @@
 					<p class="heading-label">Directory</p>
 					<h2 class="text-lg font-semibold">Search public profiles</h2>
 				</div>
-				<span class="mono rounded-md border border-muted-foreground/30 bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+				<span
+					class="mono rounded-md border border-muted-foreground/30 bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
 					>Public</span
 				>
 			</div>
@@ -117,8 +122,11 @@
 				{/each}
 			</div>
 
-			<div class="rounded-lg border border-muted-foreground/20 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
-				Everyone can view public profile data. Administrators see attachment data and can edit metadata.
+			<div
+				class="rounded-lg border border-muted-foreground/20 bg-muted/10 px-3 py-2 text-xs text-muted-foreground"
+			>
+				Everyone can view public profile data. Administrators see attachment data and can edit
+				metadata.
 			</div>
 		</div>
 
@@ -130,8 +138,12 @@
 					<p class="text-sm text-muted-foreground">@{selectedProfile.username}</p>
 				</div>
 				<div class="flex items-center gap-2 text-xs text-muted-foreground">
-					<span class="rounded-md border border-muted-foreground/40 bg-muted/20 px-2 py-1">Role: {selectedProfile.role}</span>
-					<span class="rounded-md border border-muted-foreground/40 bg-muted/20 px-2 py-1">Timezone: {selectedProfile.timezone}</span>
+					<span class="rounded-md border border-muted-foreground/40 bg-muted/20 px-2 py-1"
+						>Role: {selectedProfile.role}</span
+					>
+					<span class="rounded-md border border-muted-foreground/40 bg-muted/20 px-2 py-1"
+						>Timezone: {selectedProfile.timezone}</span
+					>
 				</div>
 			</div>
 
@@ -164,17 +176,25 @@
 					<div class="grid gap-4 md:grid-cols-2">
 						<div class="space-y-2">
 							<p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Public fields</p>
-							<div class="rounded-lg border border-muted-foreground/20 bg-white/80 p-3 text-sm leading-relaxed shadow-inner dark:bg-white/5">
+							<div
+								class="rounded-lg border border-muted-foreground/20 bg-white/80 p-3 text-sm leading-relaxed shadow-inner dark:bg-white/5"
+							>
 								<div class="mono text-xs text-muted-foreground">Profile ID</div>
 								<div class="mono text-base">{selectedProfile.id}</div>
 								<div class="mt-2 text-sm text-muted-foreground">
-									Primary server: <span class="font-semibold text-foreground">{selectedProfile.primaryServer}</span>
+									Primary server: <span class="font-semibold text-foreground"
+										>{selectedProfile.primaryServer}</span
+									>
 								</div>
 								<div class="text-sm text-muted-foreground">
-									Reputation: <span class="font-semibold text-foreground">{selectedProfile.reputation}</span>
+									Reputation: <span class="font-semibold text-foreground"
+										>{selectedProfile.reputation}</span
+									>
 								</div>
 								<div class="text-sm text-muted-foreground">
-									Last seen: <span class="font-semibold text-foreground">{selectedProfile.lastSeen}</span>
+									Last seen: <span class="font-semibold text-foreground"
+										>{selectedProfile.lastSeen}</span
+									>
 								</div>
 							</div>
 						</div>
@@ -189,9 +209,13 @@
 									aria-invalid={!isValidUsername(desiredUsername)}
 								/>
 								{#if !isValidUsername(desiredUsername)}
-									<div class="text-xs text-destructive">Usernames must be lowercase and contain only a-z, 0-9, ., _, -</div>
+									<div class="text-xs text-destructive">
+										Usernames must be lowercase and contain only a-z, 0-9, ., _, -
+									</div>
 								{:else}
-									<div class="text-xs text-muted-foreground">Usernames can be changed but must remain unique.</div>
+									<div class="text-xs text-muted-foreground">
+										Usernames can be changed but must remain unique.
+									</div>
 								{/if}
 							</label>
 							<label class="space-y-1 text-sm">
@@ -201,7 +225,9 @@
 									value={desiredDisplayName}
 									oninput={(event) => (desiredDisplayName = event.currentTarget.value)}
 								/>
-								<div class="text-xs text-muted-foreground">Login requires both username and display name.</div>
+								<div class="text-xs text-muted-foreground">
+									Login requires both username and display name.
+								</div>
 							</label>
 							<BitsButton.Root
 								class="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:border-primary/60 hover:bg-primary/20"
@@ -222,17 +248,23 @@
 								<p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Admin notes</p>
 								<ul class="space-y-2 text-sm leading-relaxed text-foreground">
 									{#each selectedProfile.attachments.notes as note}
-										<li class="rounded-md border border-muted-foreground/20 bg-white/70 px-3 py-2 shadow-inner dark:bg-white/5">
+										<li
+											class="rounded-md border border-muted-foreground/20 bg-white/70 px-3 py-2 shadow-inner dark:bg-white/5"
+										>
 											{note}
 										</li>
 									{/each}
 								</ul>
 							</div>
 							<div class="space-y-2">
-								<p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Security flags</p>
+								<p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">
+									Security flags
+								</p>
 								<ul class="space-y-2 text-sm leading-relaxed text-foreground">
 									{#each selectedProfile.attachments.securityFlags as flag}
-										<li class="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary-foreground shadow-inner">
+										<li
+											class="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-primary-foreground shadow-inner"
+										>
 											{flag}
 										</li>
 									{/each}
@@ -240,8 +272,11 @@
 							</div>
 						</div>
 					{:else}
-						<div class="rounded-lg border border-muted-foreground/30 bg-muted/15 p-4 text-sm text-muted-foreground">
-							You need an elevated role to view attachment data. Contact an operator if you need to review or edit this profile.
+						<div
+							class="rounded-lg border border-muted-foreground/30 bg-muted/15 p-4 text-sm text-muted-foreground"
+						>
+							You need an elevated role to view attachment data. Contact an operator if you need to
+							review or edit this profile.
 						</div>
 					{/if}
 				</Tabs.Content>
@@ -260,7 +295,9 @@
 							<p class="heading-label">Tags</p>
 							<div class="mt-2 flex flex-wrap gap-2">
 								{#each selectedProfile.tags as tag}
-									<span class="rounded-md border border-muted-foreground/30 bg-white/70 px-2 py-1 text-[11px] font-semibold shadow-inner dark:bg-white/5">
+									<span
+										class="rounded-md border border-muted-foreground/30 bg-white/70 px-2 py-1 text-[11px] font-semibold shadow-inner dark:bg-white/5"
+									>
 										{tag}
 									</span>
 								{/each}
@@ -268,10 +305,12 @@
 						</div>
 						<div class="rounded-lg border border-muted-foreground/30 bg-muted/15 p-3 text-sm">
 							<p class="heading-label">Connections</p>
-							<p class="mt-1 text-foreground mono text-sm">
+							<p class="mono mt-1 text-sm text-foreground">
 								Discord: {selectedProfile.attachments.connections.discord ?? '—'}
 							</p>
-							<p class="mono text-sm">GitHub: {selectedProfile.attachments.connections.github ?? '—'}</p>
+							<p class="mono text-sm">
+								GitHub: {selectedProfile.attachments.connections.github ?? '—'}
+							</p>
 						</div>
 					</div>
 				</Tabs.Content>
@@ -286,7 +325,10 @@
 					<p class="heading-label">Submit appeal</p>
 					<h3 class="text-lg font-semibold">Anyone can file an appeal</h3>
 				</div>
-				<span class="rounded-md border border-muted-foreground/30 bg-muted/20 px-2 py-1 text-xs text-muted-foreground">Channel: web</span>
+				<span
+					class="rounded-md border border-muted-foreground/30 bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+					>Channel: web</span
+				>
 			</div>
 			<div class="grid gap-3 md:grid-cols-2">
 				<label class="space-y-1 text-sm">
@@ -365,7 +407,9 @@
 			</div>
 			<div class="space-y-3">
 				{#each data.servers.slice(0, 3) as server}
-					<div class="rounded-2xl border border-muted-foreground/30 bg-white/70 p-4 shadow-inner dark:bg-white/5">
+					<div
+						class="rounded-2xl border border-muted-foreground/30 bg-white/70 p-4 shadow-inner dark:bg-white/5"
+					>
 						<div class="flex items-center justify-between">
 							<div>
 								<p class="mono text-xs text-muted-foreground">{server.address}</p>
@@ -373,29 +417,34 @@
 							</div>
 							<span
 								class={cn(
-									'rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]',
+									'rounded-md px-2 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase',
 									server.status === 'online' &&
 										'bg-emerald-500/15 text-emerald-600 dark:text-emerald-200',
 									server.status === 'degraded' &&
 										'bg-amber-500/15 text-amber-600 dark:text-amber-100',
-									server.status === 'offline' &&
-										'bg-red-500/15 text-red-600 dark:text-red-100'
+									server.status === 'offline' && 'bg-red-500/15 text-red-600 dark:text-red-100'
 								)}
 							>
 								{server.status}
 							</span>
 						</div>
 						<div class="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
-							<div><span class="text-foreground font-semibold">{server.playerCount}</span> / {server.maxPlayers} players</div>
-							<div>Latency: <span class="text-foreground font-semibold">{server.latencyMs}ms</span></div>
-							<div>TPS: <span class="text-foreground font-semibold">{server.tps}</span></div>
+							<div>
+								<span class="font-semibold text-foreground">{server.playerCount}</span> / {server.maxPlayers}
+								players
+							</div>
+							<div>
+								Latency: <span class="font-semibold text-foreground">{server.latencyMs}ms</span>
+							</div>
+							<div>TPS: <span class="font-semibold text-foreground">{server.tps}</span></div>
 						</div>
 					</div>
 				{/each}
 			</div>
 			<Separator.Root class="border-muted-foreground/30" />
 			<div class="text-sm text-muted-foreground">
-				Server management is locked to privileged roles. You can still view public metrics and player counts.
+				Server management is locked to privileged roles. You can still view public metrics and
+				player counts.
 			</div>
 		</div>
 	</section>

@@ -39,6 +39,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@internationalized/date": "^3.12.1",
 		"@urql/svelte": "^5.0.0",
 		"bits-ui": "file:vendor/bits-ui"
 	}

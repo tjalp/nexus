@@ -991,6 +991,13 @@
   resolved "https://registry.yarnpkg.com/@inquirer/type/-/type-3.0.10.tgz#11ed564ec78432a200ea2601a212d24af8150d50"
   integrity sha512-BvziSRxfz5Ov8ch0z/n3oijRSEcEsHnhggm4xFZe93DHcUCTlutlq9Ox4SVENAfcRD22UQq7T/atg9Wr3k09eA==
 
+"@internationalized/date@^3.12.1":
+  version "3.12.1"
+  resolved "https://registry.yarnpkg.com/@internationalized/date/-/date-3.12.1.tgz#6e07ff34fafcba9a155cb8d4e0505f362e57a56b"
+  integrity sha512-6IedsVWXyq4P9Tj+TxuU8WGWM70hYLl12nbYU8jkikVpa6WXapFazPUcHUMDMoWftIDE2ILDkFFte6W2nFCkRQ==
+  dependencies:
+    "@swc/helpers" "^0.5.0"
+
 "@jridgewell/gen-mapping@^0.3.12", "@jridgewell/gen-mapping@^0.3.5":
   version "0.3.13"
   resolved "https://registry.yarnpkg.com/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz#6342a19f44347518c93e43b1ac69deb3c4656a1f"
@@ -1243,6 +1250,13 @@
     magic-string "^0.30.21"
     obug "^2.1.0"
     vitefu "^1.1.1"
+
+"@swc/helpers@^0.5.0":
+  version "0.5.21"
+  resolved "https://registry.yarnpkg.com/@swc/helpers/-/helpers-0.5.21.tgz#0b1b020317ee1282860ca66f7e9a7c7790f05ae0"
+  integrity sha512-jI/VAmtdjB/RnI8GTnokyX7Ug8c+g+ffD6QRLa6XQewtnGyukKkKSk3wLTM3b5cjt1jNh9x0jfVlagdN2gDKQg==
+  dependencies:
+    tslib "^2.8.0"
 
 "@tailwindcss/node@4.2.2":
   version "4.2.2"

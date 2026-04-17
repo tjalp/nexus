@@ -1,6 +1,13 @@
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
-import { applyFont, applyRoundness, applyTheme, type FontChoice, type Roundness, type ThemeId } from './theme';
+import {
+	applyFont,
+	applyRoundness,
+	applyTheme,
+	type FontChoice,
+	type Roundness,
+	type ThemeId
+} from './theme';
 
 type Preferences = {
 	theme: ThemeId;

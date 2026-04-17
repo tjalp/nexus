@@ -8,7 +8,9 @@
 	let summary = '';
 	let username = data.profiles[2]?.username ?? 'rook';
 
-	$: filteredAppeals = data.appeals.filter((appeal) => (tab === 'all' ? true : appeal.status === tab));
+	$: filteredAppeals = data.appeals.filter((appeal) =>
+		tab === 'all' ? true : appeal.status === tab
+	);
 </script>
 
 <svelte:head>

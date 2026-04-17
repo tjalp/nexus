@@ -22,10 +22,9 @@
 		{ href: '/parkour', label: 'Parkour' }
 	];
 
-	let prefs = defaultPreferences;
-	let paletteOpen = false;
-	let paletteQuery = '';
-	let mounted = false;
+	let prefs = $state(defaultPreferences);
+	let paletteOpen = $state(false);
+	let paletteQuery = $state('');
 
 	const fontOptions = [
 		{ id: 'jetbrains', label: 'JetBrains Mono / Plex Sans' },
@@ -62,7 +61,6 @@
 				}
 			};
 			window.addEventListener('keydown', handler);
-			mounted = true;
 			return () => {
 				window.removeEventListener('keydown', handler);
 				unsub();
@@ -75,7 +73,7 @@
 	const session = $derived($authStore);
 	const role = $derived($userRole ?? 'viewer');
 
-	function selectTheme(id: typeof themes[number]['id']) {
+	function selectTheme(id: (typeof themes)[number]['id']) {
 		updatePreferences({ theme: id });
 	}
 
@@ -96,9 +94,13 @@
 
 <div class="min-h-svh bg-background text-foreground">
 	<div class="grid min-h-svh grid-cols-1 gap-6 lg:grid-cols-[270px_1fr]">
-		<aside class="grid-surface sticky top-0 hidden min-h-svh flex-col gap-4 border-r border-white/10 bg-white/70 p-6 backdrop-blur dark:bg-white/5 lg:flex">
+		<aside
+			class="grid-surface sticky top-0 hidden min-h-svh flex-col gap-4 border-r border-white/10 bg-white/70 p-6 backdrop-blur lg:flex dark:bg-white/5"
+		>
 			<div class="flex items-center gap-3">
-				<div class="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-lg font-semibold text-primary-foreground shadow">
+				<div
+					class="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-lg font-semibold text-primary-foreground shadow"
+				>
 					NX
 				</div>
 				<div>
@@ -135,16 +137,18 @@
 						<button
 							type="button"
 							class={cn(
-								'group relative rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+								'group relative rounded-lg border p-3 text-left transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
 								theme.id === prefs.theme
-									? 'border-primary/60 ring-1 ring-primary/40 bg-primary/5'
+									? 'border-primary/60 bg-primary/5 ring-1 ring-primary/40'
 									: 'border-muted-foreground/20 bg-white/70 hover:border-primary/50 hover:bg-primary/10 dark:bg-white/5'
 							)}
 							style={`--preview:${theme.preview};`}
 							onclick={() => selectTheme(theme.id)}
 							aria-pressed={theme.id === prefs.theme}
 						>
-							<div class="h-10 w-full rounded-md border border-white/20 bg-[image:var(--preview)] shadow-inner"></div>
+							<div
+								class="h-10 w-full rounded-md border border-white/20 bg-[image:var(--preview)] shadow-inner"
+							></div>
 							<p class="mt-2 text-sm font-semibold">{theme.label}</p>
 							<p class="text-[11px] text-muted-foreground">{theme.isDark ? 'Dark' : 'Light'}</p>
 						</button>
@@ -161,14 +165,16 @@
 								type="button"
 								onclick={() => selectFont(font.id)}
 								class={cn(
-									'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+									'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
 									prefs.font === font.id
 										? 'border-primary/60 bg-primary/10 text-primary-foreground'
 										: 'border-muted-foreground/20 bg-white/70 hover:border-primary/50 hover:bg-primary/10 dark:bg-white/5'
 								)}
 							>
 								<span class="mono">{font.label}</span>
-								<span class="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-primary-foreground">
+								<span
+									class="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] tracking-[0.15em] text-primary-foreground uppercase"
+								>
 									Preview
 								</span>
 							</button>
@@ -184,7 +190,7 @@
 								type="button"
 								onclick={() => selectRoundness(option.id)}
 								class={cn(
-									'rounded-lg border px-2 py-2 text-center text-xs font-semibold uppercase tracking-[0.18em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+									'rounded-lg border px-2 py-2 text-center text-xs font-semibold tracking-[0.18em] uppercase transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
 									prefs.radius === option.id
 										? 'border-primary/60 bg-primary/10 text-primary-foreground'
 										: 'border-muted-foreground/20 bg-white/70 hover:border-primary/50 hover:bg-primary/10 dark:bg-white/5'
@@ -200,24 +206,28 @@
 			</section>
 
 			<section aria-label="Session" class="mt-auto space-y-3">
-				<div class="rounded-lg border border-muted-foreground/20 bg-panel p-3 shadow-inner">
+				<div class="bg-panel rounded-lg border border-muted-foreground/20 p-3 shadow-inner">
 					<p class="text-sm text-muted-foreground">Signed in as</p>
 					<p class="mono text-base font-semibold">
 						{session?.displayName ?? session?.username ?? 'Guest'}{session ? '' : ' (limited)'}
 					</p>
-					<p class="text-xs text-muted-foreground mt-1">Role: {role}</p>
+					<p class="mt-1 text-xs text-muted-foreground">Role: {role}</p>
 					<div class="mt-3 flex flex-wrap gap-2">
 						{#if $isAuthenticated}
 							<Button variant="destructive" onclick={() => authStore.clearAuth()}>Logout</Button>
 						{:else}
-							<Button variant="secondary" href="/login" disabled={activePath === '/login'}>Login</Button>
-							<Button variant="secondary" href="/register" disabled={activePath === '/register'}>Create</Button>
+							<Button variant="secondary" href="/login" disabled={activePath === '/login'}
+								>Login</Button
+							>
+							<Button variant="secondary" href="/register" disabled={activePath === '/register'}
+								>Create</Button
+							>
 						{/if}
 					</div>
 				</div>
 				<button
 					type="button"
-					class="flex w-full items-center justify-center gap-2 rounded-lg border border-muted-foreground/20 bg-white/80 px-3 py-2 text-sm font-semibold shadow hover:border-primary/50 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:bg-white/5"
+					class="flex w-full items-center justify-center gap-2 rounded-lg border border-muted-foreground/20 bg-white/80 px-3 py-2 text-sm font-semibold shadow hover:border-primary/50 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-white/5"
 					onclick={() => (paletteOpen = true)}
 					aria-haspopup="dialog"
 				>
@@ -227,17 +237,23 @@
 		</aside>
 
 		<div class="relative flex flex-col">
-			<header class="sticky top-0 z-20 flex items-center gap-3 border-b border-white/10 bg-panel/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+			<header
+				class="bg-panel/80 sticky top-0 z-20 flex items-center gap-3 border-b border-white/10 px-4 py-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur"
+			>
 				<div class="flex items-center gap-3 lg:hidden">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-sm font-semibold text-primary-foreground shadow">
+					<div
+						class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary text-sm font-semibold text-primary-foreground shadow"
+					>
 						NX
 					</div>
 					<div class="text-left">
-						<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Nexus</p>
+						<p class="text-xs tracking-[0.2em] text-muted-foreground uppercase">Nexus</p>
 						<p class="mono text-sm font-semibold">Programmer mode</p>
 					</div>
 				</div>
-				<div class="flex-1 rounded-lg border border-muted-foreground/20 bg-white/70 px-3 py-2 text-sm text-muted-foreground shadow-inner focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30 dark:bg-white/5">
+				<div
+					class="flex-1 rounded-lg border border-muted-foreground/20 bg-white/70 px-3 py-2 text-sm text-muted-foreground shadow-inner focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30 dark:bg-white/5"
+				>
 					<input
 						class="w-full bg-transparent outline-none"
 						placeholder="Type to open the command palette (Ctrl/Cmd + K)"
@@ -246,8 +262,12 @@
 					/>
 				</div>
 				<div class="flex items-center gap-2">
-					<Button variant="secondary" href="/parkour" disabled={activePath === '/parkour'}>Parkour</Button>
-					<Button variant="secondary" href="/servers" disabled={activePath === '/servers'}>Servers</Button>
+					<Button variant="secondary" href="/parkour" disabled={activePath === '/parkour'}
+						>Parkour</Button
+					>
+					<Button variant="secondary" href="/servers" disabled={activePath === '/servers'}
+						>Servers</Button
+					>
 				</div>
 			</header>
 
@@ -261,8 +281,17 @@
 	</div>
 
 	{#if paletteOpen}
-		<div class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" role="presentation" on:click={() => (paletteOpen = false)}></div>
-		<div class="fixed inset-x-4 top-10 z-50 mx-auto max-w-2xl rounded-xl border border-muted-foreground/20 bg-panel p-3 shadow-2xl outline-none">
+		<div
+			class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+			role="presentation"
+			onclick={() => (paletteOpen = false)}
+		></div>
+		<div
+			class="bg-panel fixed inset-x-4 top-10 z-50 mx-auto max-w-2xl rounded-xl border border-muted-foreground/20 p-3 shadow-2xl outline-none"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Command palette"
+		>
 			<Command.Root>
 				<Command.Input
 					placeholder="Jump to a page or action…"
@@ -270,11 +299,16 @@
 					oninput={(event) => (paletteQuery = event.currentTarget.value)}
 					class="w-full rounded-lg border border-muted-foreground/30 bg-white/80 px-3 py-2 text-sm text-foreground shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 dark:bg-white/5"
 				/>
-				<Command.List class="mt-3 max-h-80 overflow-auto rounded-lg border border-muted-foreground/20 bg-white/70 p-1 text-sm shadow-inner dark:bg-white/5">
+				<Command.List
+					class="mt-3 max-h-80 overflow-auto rounded-lg border border-muted-foreground/20 bg-white/70 p-1 text-sm shadow-inner dark:bg-white/5"
+				>
 					{#if paletteQuery.trim().length === 0}
-						<Command.Empty class="px-3 py-2 text-muted-foreground">Start typing to filter commands.</Command.Empty>
+						<Command.Empty class="px-3 py-2 text-muted-foreground"
+							>Start typing to filter commands.</Command.Empty
+						>
 					{/if}
-					<Command.Group heading="Navigation">
+					<Command.Group>
+						<Command.GroupHeading>Navigation</Command.GroupHeading>
 						{#each actions.filter((action) => !action.requiresAuth || $isAuthenticated) as action}
 							<Command.Item
 								onSelect={() => {
