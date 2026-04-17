@@ -13,6 +13,7 @@ import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import io.papermc.paper.command.brigadier.argument.resolvers.BlockPositionResolver
 import io.papermc.paper.math.BlockPosition
+import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.format.NamedTextColor
@@ -150,6 +151,15 @@ object ParkourCommand {
                                         ctx.source,
                                         ctx.getArgument("segment", ParkourSegment::class.java),
                                         StringArgumentType.getString(ctx, "name")
+                                    )
+                                }))
+                        .then(literal("icon")
+                            .then(argument("icon", ArgumentTypes.key())
+                                .executes { ctx ->
+                                    setSegmentIcon(
+                                        ctx.source,
+                                        ctx.getArgument("segment", ParkourSegment::class.java),
+                                        ctx.getArgument("icon", Key::class.java)
                                     )
                                 })))))
             .then(literal("start")
@@ -358,6 +368,21 @@ object ParkourCommand {
 
         source.sender.sendMessage(text("Set segment ${segment.key}'s name to ", NamedTextColor.GREEN)
             .append(newSegment.displayName))
+
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun setSegmentIcon(source: CommandSourceStack, segment: ParkourSegment, icon: Key): Int {
+        val feat = parkour
+        val definition = feat.definitions.definition
+        val idx = definition.segments.indexOfFirst { it.key == segment.key }
+        val newSegment = segment.copy(iconModel = icon.asString())
+
+        definition.segments[idx] = newSegment
+        feat.definitions.update(definition)
+
+        source.sender.sendMessage(text("Set segment ${segment.key}'s icon to ", NamedTextColor.GREEN)
+            .append(text(newSegment.iconModel.orEmpty())))
 
         return Command.SINGLE_SUCCESS
     }

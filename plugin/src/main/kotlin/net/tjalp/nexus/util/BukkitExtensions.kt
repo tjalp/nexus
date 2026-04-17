@@ -1,5 +1,7 @@
 package net.tjalp.nexus.util
 
+import io.papermc.paper.advancement.AdvancementDisplay
+import net.minecraft.advancements.AdvancementType
 import net.minecraft.core.BlockPos
 import net.minecraft.network.protocol.Packet
 import net.minecraft.server.level.ServerLevel
@@ -12,11 +14,15 @@ import org.bukkit.block.Biome
 import org.bukkit.craftbukkit.CraftWorld
 import org.bukkit.craftbukkit.block.CraftBiome
 import org.bukkit.craftbukkit.entity.CraftPlayer
+import org.bukkit.craftbukkit.inventory.CraftItemStack
 import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
+import org.bukkit.inventory.ItemStack
 import java.util.*
+
+typealias MinecraftItemStack = net.minecraft.world.item.ItemStack
 
 /**
  * Registers this listener to the server.
@@ -77,6 +83,24 @@ fun Biome.asNmsBiome() = (this as CraftBiome).handle
  * @return The NMS world corresponding to this World
  */
 fun World.asNmsWorld(): ServerLevel = (this as CraftWorld).handle
+
+/**
+ * Converts this ItemStack to an NMS ItemStack.
+ *
+ * @return The NMS item stack corresponding to this ItemStack
+ */
+fun ItemStack.asNmsItemStack(): MinecraftItemStack = (this as CraftItemStack).handle
+
+/**
+ * Converts this Frame to an NMS type.
+ *
+ * @return The NMS type corresponding to this Frame
+ */
+fun AdvancementDisplay.Frame.asNmsType(): AdvancementType = when (this) {
+    AdvancementDisplay.Frame.TASK -> AdvancementType.TASK
+    AdvancementDisplay.Frame.CHALLENGE -> AdvancementType.CHALLENGE
+    AdvancementDisplay.Frame.GOAL -> AdvancementType.GOAL
+}
 
 /**
  * Converts this Player to an NMS ServerPlayer.

@@ -3,10 +3,12 @@ package net.tjalp.nexus.feature.parkour
 import com.ibm.icu.number.IntegerWidth
 import com.ibm.icu.number.NumberFormatter
 import com.ibm.icu.number.Precision
+import io.papermc.paper.advancement.AdvancementDisplay
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
+import net.kyori.adventure.text.format.TextColor.color
 import net.kyori.adventure.text.minimessage.translation.Argument
 import net.kyori.adventure.title.Title.Times.times
 import net.kyori.adventure.title.Title.title
@@ -14,12 +16,10 @@ import net.tjalp.nexus.Constants.MONOCHROME_COLOR
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.model.ParkourSegmentResultsTable
-import net.tjalp.nexus.util.asEventMessage
-import net.tjalp.nexus.util.profile
-import net.tjalp.nexus.util.sendActionBarTo
-import net.tjalp.nexus.util.sendTo
+import net.tjalp.nexus.util.*
 import org.bukkit.Sound
 import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemType
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -147,22 +147,32 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                 }
 
                 val segment = feature.definitions.definition.segmentByKey(timing.segmentKey)
-                val subtitle = text().color(GRAY)
+                val segmentName = segment?.displayName ?: text("???", RED)
+//                val subtitle = text().color(GRAY)
+//
+//                subtitle.append(segmentName.colorIfAbsent(PRIMARY_COLOR)).append(text(" | "))
+//                subtitle.append(text("⌚ ${formatDuration(timing.duration, player.locale())}", PRIMARY_COLOR))
+//
+//                title(
+//                    empty(),
+//                    subtitle.build(),
+//                    times(Duration.ZERO.toJavaDuration(), 3.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+//                ).sendTo(player)
 
-                segment?.displayName?.let {
-                    subtitle.append(it.colorIfAbsent(PRIMARY_COLOR)).append(text(" | "))
-                }
-                subtitle.append(text("⌚ ${formatDuration(timing.duration, player.locale())}", PRIMARY_COLOR))
+                val nameColor = if (outcome.isGlobalBest) color(0xff88ff) else PRIMARY_COLOR
+                val timeColor = if (outcome.isGlobalBest) PRIMARY_COLOR else MONOCHROME_COLOR
 
-                title(
-                    empty(),
-                    subtitle.build(),
-                    times(Duration.ZERO.toJavaDuration(), 3.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
-                ).sendTo(player)
+                AdvancementMessage(
+                    title = textOfChildren(
+                        segmentName.colorIfAbsent(nameColor),
+                        newline(), text("⌚ ${formatDuration(timing.duration, player.locale())}", timeColor)),
+                    frame = if (outcome.isGlobalBest) AdvancementDisplay.Frame.CHALLENGE else AdvancementDisplay.Frame.GOAL,
+                    icon = segment?.icon ?: @Suppress("UnstableApiUsage") ItemType.CLOCK.createItemStack()
+                ).toast(player)
 
                 when {
                     outcome.isGlobalBest -> {
-                        player.playSound(player.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.0f)
+//                        player.playSound(player.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.0f)
 
                         translatable(
                             "parkour.record.global",

@@ -2,6 +2,9 @@ package net.tjalp.nexus.feature.parkour
 
 import net.kyori.adventure.text.Component
 import net.tjalp.nexus.util.miniMessage
+import org.bukkit.NamespacedKey
+import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.ItemType
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 import java.util.*
 
@@ -67,6 +70,7 @@ data class ParkourSegment(
     val name: String = key,
     val fromNodeKey: String,
     val toNodeKey: String,
+    val iconModel: String? = null,
     val enabled: Boolean = true
 ) {
 
@@ -74,6 +78,11 @@ data class ParkourSegment(
      * Convenience: the display name of this segment, parsed from its [name] using MiniMessage.
      */
     val displayName: Component = miniMessage.deserialize(name)
+
+    @Suppress("UnstableApiUsage")
+    val icon: ItemStack = iconModel?.let {
+        ItemType.CLOCK.createItemStack { meta -> meta.itemModel = NamespacedKey.fromString(iconModel) }
+    } ?: ItemType.CLOCK.createItemStack()
 }
 
 /**

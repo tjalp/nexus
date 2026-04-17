@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import com.mojang.brigadier.tree.LiteralCommandNode
+import io.papermc.paper.advancement.AdvancementDisplay
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
 import io.papermc.paper.command.brigadier.Commands.argument
@@ -20,6 +21,8 @@ import net.tjalp.nexus.command.argument.FeatureDefinitionArgument
 import net.tjalp.nexus.feature.FeatureDefinition
 import net.tjalp.nexus.lang.Lang
 import net.tjalp.nexus.scheduler.Scheduler
+import net.tjalp.nexus.util.AdvancementMessage
+import org.bukkit.entity.Player
 
 object NexusCommand {
 
@@ -93,7 +96,14 @@ object NexusCommand {
             .then(featureNode)
             .then(literal("test")
                 .executes { context ->
-                    context.source.sender.sendMessage(translatable("test"))
+                    context.source.sender.sendMessage("test 1")
+                    AdvancementMessage(
+                        text("Title"),
+                        text("Description"),
+                        frame = AdvancementDisplay.Frame.GOAL
+                    )
+                        .toast(context.source.executor as? Player ?: return@executes Command.SINGLE_SUCCESS)
+                    context.source.sender.sendMessage("test 2")
                     return@executes Command.SINGLE_SUCCESS
                 })
             .build()
