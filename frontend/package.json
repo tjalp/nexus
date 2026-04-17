@@ -40,6 +40,6 @@
 	"type": "module",
 	"dependencies": {
 		"@urql/svelte": "^5.0.0",
-		"bits-ui": "^2.17.3"
+		"bits-ui": "file:vendor/bits-ui"
 	}
 }
