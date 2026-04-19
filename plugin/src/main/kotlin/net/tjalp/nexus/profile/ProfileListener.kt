@@ -65,14 +65,12 @@ class ProfileListener(private val profiles: ProfilesService) : Listener {
                 return@runBlocking
             }
 
-            launch {
-                waitForTimeZone(audience, profile)
-            }
-
             profile.update<GeneralAttachment> { att ->
                 att.setLastKnownName(username)
                 locale?.let { att.setPreferredLocale(it) }
             }
+
+            waitForTimeZone(audience, profile)
         }
     }
 
