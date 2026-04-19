@@ -180,7 +180,22 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
         val enteredNodes = toNodes.filter { it.key !in fromKeys }
         for (node in enteredNodes) {
-            if (node.key == session.currentNodeKey) continue
+            if (node.key == session.currentNodeKey) {
+                // Re-entering the current checkpoint cancels the active attempt.
+                if (session.currentSegmentStartTime != null) {
+                    session.currentSegmentStartTime = null
+                    session.lastCheckpointTime = Clock.System.now()
+
+                    player.playSound(player, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
+
+                    title(
+                        empty(),
+                        translatable("parkour.timer.reset", PRIMARY_COLOR),
+                        times(Duration.ZERO.toJavaDuration(), .5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+                    ).sendTo(player)
+                }
+                return
+            }
             val segment = definition.findSegment(session.currentNodeKey, node.key) ?: continue
             val segmentStartTime = session.currentSegmentStartTime
             if (segmentStartTime == null) {
