@@ -3,6 +3,7 @@ package net.tjalp.nexus.feature.parkour
 import com.ibm.icu.number.IntegerWidth
 import com.ibm.icu.number.NumberFormatter
 import com.ibm.icu.number.Precision
+import com.ibm.icu.util.MeasureUnit
 import io.papermc.paper.advancement.AdvancementDisplay
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component.*
@@ -23,7 +24,7 @@ import org.bukkit.inventory.ItemType
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.*
 import kotlin.time.*
@@ -33,8 +34,10 @@ import kotlin.time.Duration.Companion.seconds
 @OptIn(ExperimentalTime::class)
 class ParkourRuntimeService(private val feature: ParkourFeature) {
 
-    private val sessions = mutableMapOf<UUID, RunSession>()
+    private val sessions = mutableMapOf<UUID, ParkourSession>()
+    private val pendingStarts = mutableMapOf<UUID, PendingSessionStart>()
     private val chunkIndex = mutableMapOf<String, MutableList<ParkourNode>>()
+    private val requiredStartHold = 3.seconds
 
     fun rebuildIndex() {
         chunkIndex.clear()
@@ -57,11 +60,17 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         }
     }
 
-    fun getSession(playerId: UUID): RunSession? = sessions[playerId]
+    fun getSession(playerId: UUID): ParkourSession? = sessions[playerId]
     fun hasSession(playerId: UUID): Boolean = sessions.containsKey(playerId)
 
     fun startSession(player: Player, entryNode: ParkourNode) {
-        val session = RunSession(
+        beginPendingStart(player, entryNode)
+    }
+
+    private fun activateSession(player: Player, entryNode: ParkourNode) {
+        pendingStarts.remove(player.uniqueId)
+
+        val session = ParkourSession(
             playerId = player.uniqueId,
             currentNodeKey = entryNode.key,
             path = mutableListOf(entryNode.key),
@@ -73,45 +82,133 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
             translatable("parkour.started", PRIMARY_COLOR),
             times(Duration.ZERO.toJavaDuration(), .5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
         ).sendTo(player)
+
+        translatable("parkour.timer.armed").asEventMessage().sendTo(player)
+
+        player.playSound(player, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
     }
 
     fun stopSession(player: Player) {
         sessions.remove(player.uniqueId)
+        pendingStarts.remove(player.uniqueId)
         player.sendActionBar(empty())
 
         translatable("parkour.stopped", RED).asEventMessage().sendTo(player)
     }
 
-    fun onNodeEntered(player: Player, node: ParkourNode) {
-        val definition = feature.definitions.definition
+    fun onPlayerMoved(player: Player, fromNodes: List<ParkourNode>, toNodes: List<ParkourNode>) {
+        val fromKeys = fromNodes.asSequence().map(ParkourNode::key).toSet()
+        val toKeys = toNodes.asSequence().map(ParkourNode::key).toSet()
+
         val session = sessions[player.uniqueId]
         if (session == null) {
-            if (node.type == NodeType.ENTRY) startSession(player, node)
+            handlePendingStart(player, fromKeys, toNodes, toKeys)
             return
         }
 
-        if (node.key == session.currentNodeKey) return
-        val segment = definition.findSegment(session.currentNodeKey, node.key) ?: return
+        handleSessionProgression(player, session, fromKeys, toNodes, toKeys)
+    }
 
-        val now = Clock.System.now()
-        val duration = now - session.currentSegmentStartTime
-        val timing = SegmentTiming(segmentKey = segment.key, duration = duration)
-
-        session.path += node.key
-        session.segmentTimings += timing
-        session.currentSegmentStartTime = now
-        session.currentNodeKey = node.key
-        session.lastCheckpointTime = now
-        if (node.type == NodeType.ENTRY) session.lastEntrypointTime = now
-
-        handleSegmentSplit(player, timing, now)
-
-        if (node.type == NodeType.FINISH) {
-            finishSession(player, session)
+    private fun handlePendingStart(
+        player: Player,
+        fromKeys: Set<String>,
+        toNodes: List<ParkourNode>,
+        toKeys: Set<String>
+    ) {
+        val pending = pendingStarts[player.uniqueId]
+        if (pending != null) {
+            if (pending.entryNodeKey !in toKeys) {
+                pendingStarts.remove(player.uniqueId)
+                translatable("parkour.pending.cancelled", RED).sendActionBarTo(player)
+            }
             return
         }
 
-        sendSplitActionBar(player, session)
+        val enteredEntries = toNodes.asSequence()
+            .filter { it.type == NodeType.ENTRY }
+            .filter { it.key !in fromKeys }
+            .toList()
+
+        val entryNode = enteredEntries.firstOrNull() ?: return
+        beginPendingStart(player, entryNode, isInsideEntryOverride = true)
+    }
+
+    private fun beginPendingStart(
+        player: Player,
+        entryNode: ParkourNode,
+        isInsideEntryOverride: Boolean? = null
+    ) {
+        if (sessions.containsKey(player.uniqueId)) return
+
+        val insideEntry = isInsideEntryOverride ?: run {
+            val location = player.location
+            entryNode.region.worldId == location.world.uid &&
+                    entryNode.region.contains(location.blockX, location.blockY, location.blockZ)
+        }
+        if (!insideEntry) {
+            translatable("parkour.pending.enter_start").asEventMessage().sendTo(player)
+            return
+        }
+
+        val existing = pendingStarts[player.uniqueId]
+        if (existing?.entryNodeKey == entryNode.key) return
+
+        pendingStarts[player.uniqueId] = PendingSessionStart(entryNode.key, Clock.System.now())
+    }
+
+    private fun handleSessionProgression(
+        player: Player,
+        session: ParkourSession,
+        fromKeys: Set<String>,
+        toNodes: List<ParkourNode>,
+        toKeys: Set<String>
+    ) {
+        val definition = feature.definitions.definition
+
+        // Segment timers only run after leaving the current node region.
+        if (session.currentNodeKey in fromKeys && session.currentNodeKey !in toKeys && session.currentSegmentStartTime == null) {
+            val now = Clock.System.now()
+            session.currentSegmentStartTime = now
+            session.lastCheckpointTime = now
+
+            title(
+                empty(),
+                translatable("parkour.timer.started", PRIMARY_COLOR),
+                times(Duration.ZERO.toJavaDuration(), .5.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
+            ).sendTo(player)
+        }
+
+        val enteredNodes = toNodes.filter { it.key !in fromKeys }
+        for (node in enteredNodes) {
+            if (node.key == session.currentNodeKey) continue
+            val segment = definition.findSegment(session.currentNodeKey, node.key) ?: continue
+            val segmentStartTime = session.currentSegmentStartTime
+            if (segmentStartTime == null) {
+                translatable("parkour.timer.waiting_exit").asEventMessage().sendTo(player)
+                continue
+            }
+
+            val now = Clock.System.now()
+            val duration = now - segmentStartTime
+            val timing = SegmentTiming(segmentKey = segment.key, duration = duration)
+
+            session.path += node.key
+            session.segmentTimings += timing
+            session.currentSegmentStartTime = null
+            session.currentNodeKey = node.key
+            session.lastCheckpointTime = now
+            if (node.type == NodeType.ENTRY) session.lastEntrypointTime = now
+
+            handleSegmentSplit(player, timing, now)
+
+            if (node.type == NodeType.FINISH) {
+                finishSession(player, session)
+                return
+            }
+
+            sendSplitActionBar(player, session)
+            return
+        }
     }
 
     private fun handleSegmentSplit(player: Player, timing: SegmentTiming, finishedAt: Instant) {
@@ -122,14 +219,14 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                 val startedAt = finishedAt - timing.duration
                 val outcome = transaction(NexusPlugin.database) {
                     val priorForPlayer = ParkourSegmentResultsTable
-                        .selectAll()
+                        .select(ParkourSegmentResultsTable.duration)
                         .where {
                             (ParkourSegmentResultsTable.profileId eq profileId) and
                                     (ParkourSegmentResultsTable.segmentKey eq timing.segmentKey)
                         }.minOfOrNull { it[ParkourSegmentResultsTable.duration] }
 
                     val priorGlobal = ParkourSegmentResultsTable
-                        .selectAll()
+                        .select(ParkourSegmentResultsTable.duration)
                         .where { ParkourSegmentResultsTable.segmentKey eq timing.segmentKey }
                         .minOfOrNull { it[ParkourSegmentResultsTable.duration] }
 
@@ -148,17 +245,6 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
                 val segment = feature.definitions.definition.segmentByKey(timing.segmentKey)
                 val segmentName = segment?.displayName ?: text("???", RED)
-//                val subtitle = text().color(GRAY)
-//
-//                subtitle.append(segmentName.colorIfAbsent(PRIMARY_COLOR)).append(text(" | "))
-//                subtitle.append(text("⌚ ${formatDuration(timing.duration, player.locale())}", PRIMARY_COLOR))
-//
-//                title(
-//                    empty(),
-//                    subtitle.build(),
-//                    times(Duration.ZERO.toJavaDuration(), 3.seconds.toJavaDuration(), .5.seconds.toJavaDuration())
-//                ).sendTo(player)
-
                 val nameColor = if (outcome.isGlobalBest) color(0xff88ff) else PRIMARY_COLOR
                 val timeColor = if (outcome.isGlobalBest) PRIMARY_COLOR else MONOCHROME_COLOR
 
@@ -188,7 +274,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                     }
 
                     outcome.isPersonalBest -> {
-                        player.playSound(player.location, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.3f)
+                        player.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.3f)
 
                         translatable(
                             "parkour.record.personal",
@@ -204,7 +290,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                     }
 
                     else -> {
-                        player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
+                        player.playSound(player, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
                     }
                 }
             } catch (e: Exception) {
@@ -213,11 +299,11 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         }
     }
 
-    private fun finishSession(player: Player, session: RunSession) {
+    private fun finishSession(player: Player, session: ParkourSession) {
         sessions.remove(player.uniqueId)
         player.sendActionBar(empty())
         val totalDuration = session.segmentTimings.fold(Duration.ZERO) { acc, timing -> acc + timing.duration }
-        player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.2f)
+        player.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.2f)
 
         translatable(
             "parkour.finished",
@@ -236,9 +322,12 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         return candidates.filter { node -> node.region.contains(x, y, z) }
     }
 
-    fun sendSplitActionBar(player: Player, session: RunSession) {
+    fun sendSplitActionBar(player: Player, session: ParkourSession) {
         val total = formatDuration(session.elapsedTime, player.locale())
-        val currentSegment = formatDuration(Clock.System.now() - session.currentSegmentStartTime, player.locale())
+        val currentSegmentDuration = session.currentSegmentStartTime?.let { Clock.System.now() - it }
+            ?: session.segmentTimings.lastOrNull()?.duration
+            ?: Duration.ZERO
+        val currentSegment = formatDuration(currentSegmentDuration, player.locale())
 
         translatable(
             "parkour.split_actionbar",
@@ -249,9 +338,65 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
     }
 
     fun tickActionBars() {
+        tickPendingStarts()
+
         sessions.forEach { (playerId, session) ->
             val player = NexusPlugin.server.getPlayer(playerId) ?: return@forEach
             sendSplitActionBar(player, session)
+        }
+    }
+
+    private fun tickPendingStarts() {
+        val now = Clock.System.now()
+
+        pendingStarts.entries.toList().forEach { (playerId, pending) ->
+            if (sessions.containsKey(playerId)) {
+                pendingStarts.remove(playerId)
+                return@forEach
+            }
+
+            val player = NexusPlugin.server.getPlayer(playerId)
+            if (player == null) {
+                pendingStarts.remove(playerId)
+                return@forEach
+            }
+
+            val entryNode = feature.definitions.definition.nodeByKey(pending.entryNodeKey)
+            if (entryNode == null) {
+                pendingStarts.remove(playerId)
+                return@forEach
+            }
+
+            val at = player.location
+            val insideEntry = entryNode.region.worldId == at.world.uid && entryNode.region.contains(at.blockX, at.blockY, at.blockZ)
+            if (!insideEntry) {
+                pendingStarts.remove(playerId)
+                translatable("parkour.pending.cancelled", RED).sendActionBarTo(player)
+                return@forEach
+            }
+
+            val elapsed = now - pending.enteredAt
+            val remaining = requiredStartHold - elapsed
+
+            if (remaining > Duration.ZERO) {
+                val remainingSeconds = remaining.inWholeMilliseconds / 1000.0
+                val formattedRemainingSeconds = NumberFormatter.withLocale(player.locale())
+                    .unit(MeasureUnit.SECOND)
+                    .decimal(NumberFormatter.DecimalSeparatorDisplay.ALWAYS)
+                    .precision(Precision.fixedFraction(1))
+                    .format(remainingSeconds)
+                    .toString()
+
+                translatable(
+                    "parkour.pending.countdown",
+                    PRIMARY_COLOR,
+                    Argument.component("seconds", text(formattedRemainingSeconds, MONOCHROME_COLOR))
+                ).sendActionBarTo(player)
+                return@forEach
+            }
+
+            pendingStarts.remove(playerId)
+            activateSession(player, entryNode)
         }
     }
 
@@ -276,6 +421,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
     fun clearPlayerSession(playerId: UUID) {
         sessions.remove(playerId)
+        pendingStarts.remove(playerId)
     }
 }
 
@@ -283,3 +429,9 @@ private data class SplitOutcome(
     val isPersonalBest: Boolean,
     val isGlobalBest: Boolean
 )
+
+private data class PendingSessionStart(
+    val entryNodeKey: String,
+    val enteredAt: Instant
+)
+

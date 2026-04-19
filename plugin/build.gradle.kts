@@ -37,8 +37,8 @@ tasks {
         minecraftVersion("26.1.2")
         downloadPlugins {
 //            github("libraryaddict", "LibsDisguises", "v11.0.13", "LibsDisguises-11.0.13-Github.jar")
-            hangar("ViaVersion", "5.8.1")
-            hangar("ViaBackwards", "5.8.1")
+            hangar("ViaVersion", "5.9.0")
+            hangar("ViaBackwards", "5.9.0")
         }
     }
 

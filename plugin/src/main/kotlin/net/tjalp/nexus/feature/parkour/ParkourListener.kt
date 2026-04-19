@@ -7,8 +7,8 @@ import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerQuitEvent
 
 /**
- * Listens for player movement to detect parkour node region entries.
- * Uses a chunk-indexed lookup to avoid scanning all nodes on every move.
+ * Listens for player movement and forwards node transition context (from/to)
+ * so runtime can reason about entry and exit semantics.
  */
 class ParkourListener(private val runtime: ParkourRuntimeService) : Listener {
 
@@ -26,9 +26,10 @@ class ParkourListener(private val runtime: ParkourRuntimeService) : Listener {
         val y = to.blockY
         val z = to.blockZ
 
-        runtime.getNodesAt(worldId, x, y, z).forEach { node ->
-            runtime.onNodeEntered(player, node)
-        }
+        val fromNodes = runtime.getNodesAt(from.world.uid, from.blockX, from.blockY, from.blockZ)
+        val toNodes = runtime.getNodesAt(worldId, x, y, z)
+
+        runtime.onPlayerMoved(player, fromNodes, toNodes)
     }
 
     @EventHandler
