@@ -5,6 +5,7 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.event.player.PlayerToggleSneakEvent
 
 /**
  * Listens for player movement and forwards node transition context (from/to)
@@ -35,5 +36,10 @@ class ParkourListener(private val runtime: ParkourRuntimeService) : Listener {
     @EventHandler
     fun on(event: PlayerQuitEvent) {
         runtime.clearPlayerSession(event.player.uniqueId)
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun on(event: PlayerToggleSneakEvent) {
+        runtime.onPlayerToggleSneak(event.player, event.isSneaking)
     }
 }

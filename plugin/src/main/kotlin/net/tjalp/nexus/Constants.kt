@@ -7,6 +7,9 @@ object Constants {
     val MONOCHROME_COLOR = color(0xffab34)
     val COMPLEMENTARY_COLOR = color(0x67a6ff)
 
+    val ABORT_COLOR = color(0xff6767)
+    val ABORT_ARG_COLOR = color(0xff3434)
+
     // Punishments
     val PUNISHMENTS_PRIMARY_COLOR = color(0xff6767)
     val PUNISHMENTS_MONOCHROME_COLOR = color(0xff3434)
