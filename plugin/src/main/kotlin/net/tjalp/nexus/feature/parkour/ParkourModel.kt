@@ -135,3 +135,5 @@ data class ParkourDefinition(
         segments.removeIf { it.key.equals(segmentKey, ignoreCase = true) }
     }
 }
+
+
