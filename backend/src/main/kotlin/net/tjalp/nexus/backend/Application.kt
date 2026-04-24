@@ -13,6 +13,8 @@ import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.response.*
+import io.ktor.server.websocket.*
+import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +22,17 @@ import kotlinx.datetime.TimeZone
 import net.tjalp.nexus.auth.AuthService
 import net.tjalp.nexus.auth.service.ExposedAuthService
 import net.tjalp.nexus.backend.auth.JwtConfig
+import net.tjalp.nexus.backend.controlplane.ControlPlaneEventHub
+import net.tjalp.nexus.backend.controlplane.ControlPlaneService
+import net.tjalp.nexus.backend.controlplane.adapter.MsmpControlTransportAdapter
+import net.tjalp.nexus.backend.controlplane.adapter.PluginControlTransportAdapter
+import net.tjalp.nexus.backend.controlplane.adapter.RconQueryControlTransportAdapter
+import net.tjalp.nexus.backend.controlplane.adapter.TransportAdapterChain
+import net.tjalp.nexus.backend.controlplane.provider.BareMetalControlPlaneProvider
+import net.tjalp.nexus.backend.controlplane.provider.ControlPlaneRuntimeConfig
+import net.tjalp.nexus.backend.controlplane.provider.DockerComposeControlPlaneProvider
 import net.tjalp.nexus.backend.schema.profileSchema
+import net.tjalp.nexus.player.RedisPlayerRegistry
 import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.AttachmentRegistry
 import net.tjalp.nexus.profile.attachment.GeneralAttachmentProvider
@@ -32,6 +44,9 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import java.lang.System.getenv
 import java.util.*
 import kotlin.time.ExperimentalTime
+import kotlinx.serialization.json.Json
+
+private val backendScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
 val db = Database.connect(
     url = getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/nexus",
@@ -41,8 +56,24 @@ val db = Database.connect(
 )
 
 val redis = RedisController("redis://localhost")
-val profiles: ProfilesService = ExposedProfilesService(db, redis, CoroutineScope(Dispatchers.Default + SupervisorJob()))
+val profiles: ProfilesService = ExposedProfilesService(db, redis, backendScope)
 val authService: AuthService = ExposedAuthService(db)
+private val controlPlaneConfig = ControlPlaneRuntimeConfig.fromEnv()
+private val controlPlaneEventHub = ControlPlaneEventHub()
+private val transportAdapterChain = TransportAdapterChain(
+    listOf(
+        MsmpControlTransportAdapter(controlPlaneConfig.msmpEnabledServers),
+        PluginControlTransportAdapter(RedisPlayerRegistry(redis, backendScope)),
+        RconQueryControlTransportAdapter(controlPlaneConfig.rconEnabledServers)
+    )
+)
+val controlPlaneService = ControlPlaneService(
+    providers = listOf(
+        DockerComposeControlPlaneProvider(controlPlaneConfig, transportAdapterChain, controlPlaneEventHub),
+        BareMetalControlPlaneProvider(controlPlaneConfig, transportAdapterChain, controlPlaneEventHub, backendScope)
+    ),
+    eventHub = controlPlaneEventHub
+)
 
 fun main(args: Array<String>) {
     for (provider in listOf(GeneralAttachmentProvider, NoticesAttachmentProvider, PunishmentAttachmentProvider)) {
@@ -66,6 +97,10 @@ suspend fun Application.module() {
     }
 
     install(CallLogging)
+
+    install(WebSockets) {
+        contentConverter = KotlinxWebsocketSerializationConverter(Json)
+    }
 
     install(Authentication) {
         jwt("auth-jwt") {
@@ -130,5 +165,5 @@ suspend fun Application.module() {
         }
     }
 
-    configureRouting(authService)
+    configureRouting(authService, controlPlaneService)
 }

@@ -3,6 +3,7 @@ package net.tjalp.nexus.backend
 import io.ktor.http.*
 import io.ktor.openapi.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.openapi.*
 import io.ktor.server.plugins.swagger.*
 import io.ktor.server.response.*
@@ -10,12 +11,14 @@ import io.ktor.server.routing.*
 import io.ktor.server.routing.openapi.*
 import net.tjalp.nexus.auth.AuthService
 import net.tjalp.nexus.backend.auth.authRoutes
+import net.tjalp.nexus.backend.controlplane.ControlPlaneService
+import net.tjalp.nexus.backend.controlplane.controlPlaneRoutes
 import net.tjalp.nexus.profile.attachment.PunishmentAttachment
 import java.util.*
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
-fun Application.configureRouting(authService: AuthService) {
+fun Application.configureRouting(authService: AuthService, controlPlaneService: ControlPlaneService) {
     routing {
         swaggerUI("/swagger") {
             info = OpenApiInfo("Nexus API", "1.0.0")
@@ -36,6 +39,11 @@ fun Application.configureRouting(authService: AuthService) {
 
         // Authentication routes
         authRoutes(authService)
+
+        // Authenticated control-plane routes used by the panel.
+        authenticate("auth-jwt") {
+            controlPlaneRoutes(controlPlaneService)
+        }
 
         /**
          * Get a single profile by its ID.
