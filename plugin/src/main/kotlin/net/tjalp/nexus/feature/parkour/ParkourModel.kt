@@ -1,6 +1,7 @@
 package net.tjalp.nexus.feature.parkour
 
 import net.kyori.adventure.text.Component
+import net.tjalp.nexus.feature.parkour.rule.ParkourSegmentRule
 import net.tjalp.nexus.util.miniMessage
 import org.bukkit.NamespacedKey
 import org.bukkit.inventory.ItemStack
@@ -71,7 +72,8 @@ data class ParkourSegment(
     val fromNodeKey: String,
     val toNodeKey: String,
     val iconModel: String? = null,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val rules: List<ParkourSegmentRule> = emptyList()
 ) {
 
     /**

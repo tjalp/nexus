@@ -4,8 +4,6 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data object AllowFlightRule : ParkourSegmentRule {
-
-    override val id: String = "allow_flight"
-
-    // todo allow serialization of rules.
+    const val ID: String = "allow_flight"
+    override val id: String = ID
 }

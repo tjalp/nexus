@@ -6,6 +6,9 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 data class MaxMoveSpeedRule(
     val speed: Double = 0.2
 ) : ParkourSegmentRule {
+    companion object {
+        const val ID: String = "maximum_movement_speed"
+    }
 
-    override val id: String = "maximum_movement_speed"
+    override val id: String = ID
 }

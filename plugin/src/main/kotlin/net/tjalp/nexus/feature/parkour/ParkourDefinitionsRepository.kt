@@ -1,6 +1,7 @@
 package net.tjalp.nexus.feature.parkour
 
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.feature.parkour.rule.ParkourSegmentRule
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
@@ -21,6 +22,7 @@ class ParkourDefinitionsRepository(dataPath: Path) {
                 builder.registerAnnotatedObjects(annotatedMapperFactory)
                 builder.register(UUID::class.java, UUIDTypeSerializer)
                 builder.register(NodeType::class.java, NodeTypeSerializer)
+                builder.register(ParkourSegmentRule::class.java, ParkourSegmentRuleSerializer)
             }
         }
         .build()

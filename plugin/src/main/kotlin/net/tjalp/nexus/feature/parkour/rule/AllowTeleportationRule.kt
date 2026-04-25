@@ -4,6 +4,6 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data object AllowTeleportationRule : ParkourSegmentRule {
-
-    override val id: String = "allow_teleportation"
+    const val ID: String = "allow_teleportation"
+    override val id: String = ID
 }
