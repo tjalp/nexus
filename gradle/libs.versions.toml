@@ -68,7 +68,7 @@ lettuce = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
 # Libraries can be bundled together for easier import
 [bundles]
 kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines", "kotlinxCoroutinesReactive"]
-database = ["exposed-core", "exposed-dao", "exposed-jdbc", "exposed-migration-core", "exposed-migration-jbdc", "exposed-kotlin-datetime", "h2", "postgres", "flyway-postgres", "flyway"]
+database = ["exposed-core", "exposed-dao", "exposed-jdbc", "exposed-migration-core", "exposed-migration-jbdc", "exposed-kotlin-datetime", "postgres", "flyway-postgres", "flyway"]
 ktor = ["ktor-server-core", "ktor-server-netty", "ktor-server-openapi", "ktor-server-swagger", "ktor-content-negation", "ktor-serialization-kotlinx-json", "ktor-server-routing-openapi", "ktor-server-cors", "ktor-server-call-logging", "ktor-server-auth", "ktor-server-auth-jwt"]
 
 [plugins]
