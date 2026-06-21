@@ -11,9 +11,9 @@ import net.tjalp.nexus.feature.disguises.DisguiseFeature
 import net.tjalp.nexus.feature.gamerules.GameRulesFeature
 import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.notices.NoticesFeature
+import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
-import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.servers.ServersFeature
 import net.tjalp.nexus.feature.teleportrequests.TeleportRequestsFeature
@@ -102,7 +102,7 @@ object NexusPlugin : JavaPlugin() {
                 }
 //                register(AnnounceCommand.create(dispatcher), "Announce messages to the server", AnnounceCommand.aliases)
                 register(BodyCommand.create(), "Body management commands")
-                register(DisguiseCommand.create(this@NexusPlugin), "Disguise management commands")
+                register(DisguiseCommand.create(), "Disguise management commands")
                 register(GameCommand.create(), "Game management commands")
                 register(GlobalListCommand.create(), "Show global player list", GlobalListCommand.aliases)
                 register(LanguageCommand.create(), "Language management commands", LanguageCommand.aliases)

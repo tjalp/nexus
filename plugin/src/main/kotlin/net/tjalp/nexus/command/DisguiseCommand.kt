@@ -13,7 +13,7 @@ import org.bukkit.entity.EntityType
 
 object DisguiseCommand {
 
-    fun create(nexus: NexusPlugin): LiteralCommandNode<CommandSourceStack> {
+    fun create(): LiteralCommandNode<CommandSourceStack> {
         return literal("disguise")
             .requires { NexusPlugin.disguises != null && it.sender.hasPermission("nexus.command.disguise") }
             .then(literal("set")
