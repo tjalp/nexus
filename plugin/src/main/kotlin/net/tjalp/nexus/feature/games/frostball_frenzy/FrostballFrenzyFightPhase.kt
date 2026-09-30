@@ -282,6 +282,9 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
             score += 1
 //            customName(shooter.name().colorIfAbsent(PRIMARY_COLOR))
         }
+        if (game.definition.scoringRule("snowball_hit") != null) {
+            game.addScore(shooter, "snowball_hit")
+        }
 
         val targetHitMessage = miniMessage.deserialize(
             TARGET_HIT_MESSAGES.random(),

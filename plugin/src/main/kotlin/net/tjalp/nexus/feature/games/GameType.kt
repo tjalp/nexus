@@ -12,10 +12,14 @@ import java.util.*
  *
  * @param friendlyName A user-friendly name for the game type.
  */
-enum class GameType(val friendlyName: Component, val formattedName: (Locale) -> Component = { friendlyName }) {
+enum class GameType(
+    val friendlyName: Component,
+    val formattedName: (Locale) -> Component = { friendlyName },
+    val definitionKey: String
+) {
     FROSTBALL_FRENZY(translatable("game.frostball_frenzy.name"), { locale ->
         val plain = plainText().serialize(translatable("game.frostball_frenzy.name").translate(locale))
 
         miniMessage.deserialize("<gradient:#D4F1F8:#71A6D1>$plain")
-    }),
+    }, "frostball_frenzy"),
 }

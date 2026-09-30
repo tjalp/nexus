@@ -13,23 +13,49 @@ import net.kyori.adventure.text.event.ClickCallback
 import net.tjalp.nexus.Constants.PRIMARY_COLOR
 import net.tjalp.nexus.feature.games.*
 
-class FrostballFrenzyGame(feature: GamesFeature) : Game(feature = feature, type = GameType.FROSTBALL_FRENZY) {
+class FrostballFrenzyGame(
+    feature: GamesFeature,
+    definition: GameDefinition
+) : Game(feature = feature, definition = definition) {
+
+    /** Compatibility constructor for callers that used the original game API. */
+    constructor(feature: GamesFeature) : this(
+        feature,
+        GameTemplateSeeds.all.first { it.template.key == GameType.FROSTBALL_FRENZY.definitionKey }.definition
+    )
 
     override val settings: Settings = Settings()
 
     override val nextPhase: GamePhase
         get() = if (currentPhase == null || currentPhase is FrostballFrenzyFightPhase) {
-            FrostballFrenzyWaitingPhase(this)
+            phase("waiting", "frostball_waiting")
         } else {
-            FrostballFrenzyFightPhase(this)
+            phase("fight", "frostball_fight")
         }
+
+    private fun phase(key: String, fallbackImplementationKey: String): GamePhase {
+        val configuredKey = definition.phases
+            .firstOrNull { it.key == key }
+            ?.implementationKey
+            ?: fallbackImplementationKey
+        return GamePhaseRegistry.createOrNull(this, configuredKey) ?: when (configuredKey) {
+            "frostball_waiting" -> FrostballFrenzyWaitingPhase(this)
+            "frostball_fight" -> FrostballFrenzyFightPhase(this)
+            else -> error("No game phase factory is registered for '$configuredKey'")
+        }
+    }
 
     inner class Settings : GameSettings {
         @Suppress("UnstableApiUsage")
         private val dialogAction: DialogAction
             get() = DialogAction.customClick({ view, audience ->
-                minPlayers = view.getFloat("minPlayers")!!.toInt()
-                maxPlayers = view.getFloat("maxPlayers")!!.toInt()
+                val requestedMin = view.getFloat("minPlayers")!!.toInt()
+                val requestedMax = view.getFloat("maxPlayers")!!.toInt()
+                minPlayers = minOf(requestedMin, requestedMax)
+                maxPlayers = maxOf(requestedMin, requestedMax)
+                this@FrostballFrenzyGame.updateDefinition(
+                    definition.copy(minPlayers = minPlayers, maxPlayers = maxPlayers)
+                )
 
                 audience.sendActionBar(
                     text()
@@ -39,8 +65,8 @@ class FrostballFrenzyGame(feature: GamesFeature) : Game(feature = feature, type 
                 )
             }, ClickCallback.Options.builder().build())
 
-        override var maxPlayers: Int = 16
-        override var minPlayers: Int = 2
+        override var maxPlayers: Int = definition.maxPlayers
+        override var minPlayers: Int = definition.minPlayers
 
         @Suppress("UnstableApiUsage")
         override fun dialog() = Dialog.create { builder ->

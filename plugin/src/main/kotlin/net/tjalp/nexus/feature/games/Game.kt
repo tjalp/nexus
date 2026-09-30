@@ -24,15 +24,41 @@ import java.util.*
  * Represents a game instance with unique ID, type, phases, and participants.
  *
  * @param id Unique identifier for the game instance.
- * @param type The type of the game.
+ * @param definition Persisted definition describing the game rules and implementation.
  */
 abstract class Game(
     private val feature: GamesFeature,
     val id: String = List(6) {
         ('a'..'z') + ('A'..'Z') + ('0'..'9')
     }.flatten().shuffled().take(6).joinToString(""),
-    val type: GameType
+    definition: GameDefinition
 ) : Disposable, ForwardingAudience {
+
+    private var currentDefinition = definition
+
+    val definition: GameDefinition
+        get() = currentDefinition
+
+    /** Compatibility constructor for implementations using the original type-only API. */
+    constructor(feature: GamesFeature, type: GameType) : this(
+        feature = feature,
+        definition = GameTemplateSeeds.all.firstOrNull { it.template.key == type.definitionKey }?.definition
+            ?: GameDefinition(
+                key = type.definitionKey,
+                templateKey = type.definitionKey,
+                name = type.name,
+                minPlayers = 0,
+                maxPlayers = Int.MAX_VALUE
+            )
+    )
+
+    /**
+     * Legacy view of the implementation type. New code should use [definition]
+     * and its template key.
+     */
+    val type: GameType
+        get() = GameType.entries.firstOrNull { it.definitionKey == definition.templateKey }
+            ?: GameType.FROSTBALL_FRENZY
 
     /**
      * Scheduler dedicated to this game instance.
@@ -45,11 +71,57 @@ abstract class Game(
     var currentPhase: GamePhase? = null; private set
 
     private val _participants = mutableSetOf<UUID>()
+    private val _teamAssignments = mutableMapOf<UUID, String>()
+    private val _scores = mutableMapOf<Pair<UUID, String>, Int>()
 
     /**
      * The set of entities currently participating in the game.
      */
     val participants: Set<Entity> get() = _participants.mapNotNull { it.asEntity() }.toSet()
+
+    /** Returns the configured team for an entity, if one has been assigned. */
+    fun teamOf(entity: Entity): GameTeam? =
+        _teamAssignments[entity.uniqueId]?.let(definition::team)
+
+    val teamScores: Map<GameTeam, Int>
+        get() = definition.teams.associateWith { team ->
+            _teamAssignments.filterValues { it.equals(team.key, ignoreCase = true) }
+                .keys.sumOf { uuid -> _scores.filterKeys { it.first == uuid }.values.sum() }
+        }
+
+    /** Assigns an entity to a configured team without changing its lifecycle. */
+    fun assignTeam(entity: Entity, teamKey: String) {
+        require(definition.team(teamKey) != null) { "Unknown team '$teamKey' for game ${definition.key}" }
+        require(_participants.contains(entity.uniqueId)) { "Entity is not participating in game $id" }
+        _teamAssignments[entity.uniqueId] = teamKey
+    }
+
+    private fun assignAutomaticTeam(entity: Entity) {
+        if (definition.teamAssignmentMode != TeamAssignmentMode.AUTOMATIC || definition.teams.isEmpty()) return
+        val team = definition.teams.minBy { team ->
+            _teamAssignments.values.count { it.equals(team.key, ignoreCase = true) }
+        }
+        assignTeam(entity, team.key)
+    }
+
+    /** Adds points for a named scoring rule and returns the new score. */
+    fun addScore(entity: Entity, scoringKey: String, multiplier: Int = 1): Int {
+        val rule = definition.scoringRule(scoringKey)
+            ?: error("Unknown scoring rule '$scoringKey' for game ${definition.key}")
+        val scoreKey = entity.uniqueId to rule.key
+        val score = (_scores[scoreKey] ?: 0) + rule.points * multiplier
+        _scores[scoreKey] = score
+        return score
+    }
+
+    fun score(entity: Entity, scoringKey: String): Int =
+        _scores[entity.uniqueId to scoringKey] ?: 0
+
+    /** Updates this game's definition and persists it through the owning feature. */
+    fun updateDefinition(definition: GameDefinition) {
+        feature.updateDefinition(definition)
+        currentDefinition = definition
+    }
 
     /**
      * The next phase to transition to when advancing the game.
@@ -128,6 +200,7 @@ abstract class Game(
         if (result !is JoinResult.Success) return result
 
         _participants.add(entity.uniqueId)
+        assignAutomaticTeam(entity)
 
         if (entity is Player) entity.scoreboard = scoreboard
 
@@ -168,9 +241,34 @@ abstract class Game(
         if (_participants.none { it == entity.uniqueId }) return
 
         _participants.remove(entity.uniqueId)
+        _teamAssignments.remove(entity.uniqueId)
         currentPhase?.onLeave(entity)
 
         if (entity is Player) entity.scoreboard = NexusPlugin.server.scoreboardManager.mainScoreboard
+    }
+
+    /** Adds or removes points directly, intended for host/admin controls. */
+    // Recommended future syntax: /game score <id> <target> <points> [rule]
+    fun applyPoints(entity: Entity, points: Int, scoringKey: String = "manual"): Int {
+        require(definition.scoringRule(scoringKey) != null) {
+            "Unknown scoring rule '$scoringKey' for game ${definition.key}"
+        }
+        val rule = definition.scoringRule(scoringKey)!!
+        val scoreKey = entity.uniqueId to rule.key
+        val score = (_scores[scoreKey] ?: 0) + points
+        _scores[scoreKey] = score
+        return score
+    }
+
+    fun hasWinner(): Boolean = teamScores.values.any { it >= definition.pointsToWin } ||
+        _scores.values.any { it >= definition.pointsToWin }
+
+    /** Enters a configured phase by key, intended for host/admin controls. */
+    // Recommended future syntax: /game phase <id> <phase>
+    suspend fun enterConfiguredPhase(phaseKey: String) {
+        val phase = definition.phases.firstOrNull { it.key.equals(phaseKey, ignoreCase = true) }
+            ?: error("Unknown phase '$phaseKey' for game ${definition.key}")
+        enterPhase(GamePhaseRegistry.create(this, phase.implementationKey))
     }
 
     override fun dispose() {
@@ -194,15 +292,22 @@ val Entity.currentGame: Game?
  */
 val Game.prefix: Component
     get() = textOfChildren(
-        type.friendlyName.decoration(BOLD, true),
+        gameDisplayName().decoration(BOLD, true),
         text(" → ", DARK_GRAY)
     )
 
 fun Game.prefix(locale: Locale): Component {
-    val formattedName = type.formattedName.invoke(locale)
+    val formattedName = if (type.definitionKey == definition.templateKey) {
+        type.formattedName.invoke(locale)
+    } else {
+        text(definition.name)
+    }
 
     return textOfChildren(
         formattedName.decoration(BOLD, true),
         text(" → ", DARK_GRAY)
     )
 }
+
+private fun Game.gameDisplayName(): Component =
+    if (type.definitionKey == definition.templateKey) type.friendlyName else text(definition.name)
