@@ -16,6 +16,10 @@ dependencyResolutionManagement {
             name = "papermc"
             url = uri("https://repo.papermc.io/repository/maven-public/")
         }
+        maven {
+            name = "libsdisguises-public"
+            url = uri("https://mvn.lib.co.nz/public")
+        }
     }
 }
 

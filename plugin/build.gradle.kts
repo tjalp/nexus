@@ -19,6 +19,10 @@ repositories {
         name = "papermc"
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
+    maven {
+        name = "libsdisguises-public"
+        url = uri("https://mvn.lib.co.nz/public")
+    }
 }
 
 dependencies {
@@ -34,7 +38,7 @@ dependencies {
 
 tasks {
     runServer {
-        minecraftVersion("26.2")
+        minecraftVersion("26.3")
 //        downloadPlugins {
 //            github("libraryaddict", "LibsDisguises", "v11.0.13", "LibsDisguises-11.0.13-Github.jar")
 //            hangar("ViaVersion", "5.9.1")
@@ -51,12 +55,12 @@ tasks {
     }
 }
 
-tasks.withType(xyz.jpenilla.runtask.task.AbstractRun::class) {
+tasks.runServer {
     javaLauncher = javaToolchains.launcherFor {
-        @Suppress("UnstableApiUsage")
         vendor = JvmVendorSpec.JETBRAINS
         languageVersion = JavaLanguageVersion.of(25)
     }
+    debug = true
     jvmArgs("-XX:+AllowEnhancedClassRedefinition")
 }
 
@@ -79,8 +83,8 @@ tasks.register<Copy>("copyJarToDevPlugins") {
 }
 
 tasks.shadowJar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles {
         include("META-INF/services/**")
-        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 }
