@@ -9,6 +9,7 @@ import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.Sound.sound
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.games.currentGame
+import net.tjalp.nexus.feature.games.minigame.MinigameGame
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Mob
@@ -41,6 +42,7 @@ class FrostballFrenzyGoal(
             return
         }
         val closestPlayer = game.participants.minus(mob)
+            .filter { candidate -> game !is MinigameGame || !game.isSameTeam(mob, candidate) }
             .minByOrNull { it.location.distanceSquared(mob.location) }
             ?: run {
                 stop()

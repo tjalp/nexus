@@ -1,6 +1,5 @@
 package net.tjalp.nexus.feature.games.frostball_frenzy
 
-import com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent
 import io.papermc.paper.scoreboard.numbers.NumberFormat.styled
 import kotlinx.coroutines.launch
 import net.kyori.adventure.bossbar.BossBar
@@ -23,12 +22,12 @@ import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.games.GamePhase
 import net.tjalp.nexus.feature.games.phase.FinishablePhase
 import net.tjalp.nexus.feature.games.phase.TimerPhase
+import net.tjalp.nexus.feature.games.minigame.MinigameGame
 import net.tjalp.nexus.util.SecondCountdownTimer
 import net.tjalp.nexus.util.miniMessage
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
 import org.bukkit.Material
-import org.bukkit.craftbukkit.entity.CraftMob
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -38,14 +37,13 @@ import org.bukkit.event.entity.ProjectileLaunchEvent
 import org.bukkit.scoreboard.Criteria
 import org.bukkit.scoreboard.DisplaySlot
 import org.bukkit.scoreboard.Objective
-import org.bukkit.util.Vector
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
-class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePhase, FinishablePhase, TimerPhase,
+class FrostballFrenzyFightPhase(private val game: MinigameGame) : GamePhase, FinishablePhase, TimerPhase,
     Listener {
 
     val scheduler = game.scheduler.fork("phase/fight")
@@ -110,9 +108,6 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
         if (!score.isScoreSet) score.score = 0
 
         if (entity is Mob) {
-            val handle = (entity as CraftMob).handle
-            val targetSelector = handle.targetSelector
-
             NexusPlugin.server.mobGoals.addGoal(entity, -1, FrostballFrenzyGoal(entity))
 
 //            targetSelector.addGoal(-1,
@@ -130,9 +125,6 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
         bossBar.removeViewer(entity)
 
         if (entity is Mob) {
-            val handle = (entity as CraftMob).handle
-            val targetSelector = handle.targetSelector
-
             NexusPlugin.server.mobGoals.removeGoal(entity, FrostballFrenzyGoal.KEY)
 
 //            entity.target = null
@@ -254,16 +246,11 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
         if (projectile.type != EntityType.SNOWBALL
             || shooter == hitEntity
             || !game.participants.containsAll(listOf(shooter, hitEntity))
+            || game.isSameTeam(shooter, hitEntity)
         ) return
 
 //        applyHit(hitEntity, projectile)
-        if (hitEntity is Player) {
-            // depends on the projectile direction
-            val directionX = -projectile.velocity.clone().normalize().x
-            val directionZ = -projectile.velocity.clone().normalize().z
-            hitEntity.knockback(2.0, directionX, directionZ)
-            hitEntity.damage(0.0, projectile)
-        }
+        game.applyProjectileModifiers(shooter, hitEntity, projectile)
         hitEntity.freezeTicks = 60
 
         val hitByMessage = miniMessage.deserialize(
@@ -278,9 +265,13 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
 //        hitEntity.sendActionBar(hitByMessage)
         hitEntity.showTitle(hitByTitle)
 
-        snowballHitsObjective.getScoreFor(shooter).apply {
-            score += 1
-//            customName(shooter.name().colorIfAbsent(PRIMARY_COLOR))
+        val points = game.pointsForProjectile(projectile.type)
+
+        if (points > 0) {
+            if (game.definition.teams.enabled) game.applyTeamPoint(shooter, points) else game.applyPoints(shooter, points)
+            snowballHitsObjective.getScoreFor(shooter).apply {
+                score += points
+            }
         }
 
         val targetHitMessage = miniMessage.deserialize(
@@ -308,19 +299,6 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
         event.damage = 0.0
     }
 
-    @EventHandler
-    fun on(event: EntityKnockbackByEntityEvent) {
-        val damaged = event.entity
-        val hitBy = event.hitBy
-        var origin = hitBy
-
-        if (hitBy is Projectile) origin = hitBy.shooter as? Entity ?: return
-        if (damaged == origin || !game.participants.containsAll(listOf(damaged, origin))) return
-
-        if (hitBy is Projectile) {
-            event.knockback = event.knockback.multiply(Vector(2f, 1f, 2f))
-        }
-    }
 
     /**
      * Applies hit effects to the target entity when hit.

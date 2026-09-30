@@ -11,6 +11,7 @@ enum class JoinFailureReason {
     REQUIRES_EMPTY_INVENTORY,
     REQUIRES_EMPTY_SLOT,
     WRONG_ENTITY_TYPE,
+    GAME_NOT_PUBLISHED,
     UNKNOWN
 }
 

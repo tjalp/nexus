@@ -3,10 +3,16 @@ package net.tjalp.nexus.feature.games
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.feature.FeatureKeys.GAMES
 import net.tjalp.nexus.feature.games.frostball_frenzy.FrostballFrenzyGame
+import net.tjalp.nexus.feature.games.minigame.MinigameTemplates
+import java.util.*
 
 class GamesFeature : Feature(GAMES) {
 
     private val _activeGames = mutableListOf<Game>()
+
+    init {
+        FrostballFrenzyGame.registerTemplate()
+    }
 
     /**
      * A list of currently active games, not necessarily running.
@@ -20,12 +26,21 @@ class GamesFeature : Feature(GAMES) {
      * @param type The type of game to create.
      * @return A new instance of the specified game type.
      */
-    fun createGame(type: GameType): Game {
+    fun createGame(type: GameType): Game = createGame(type, host = null)
+
+    fun createGame(type: GameType, host: UUID?): Game {
         val game = when (type) {
-            GameType.FROSTBALL_FRENZY -> FrostballFrenzyGame(this)
+            GameType.FROSTBALL_FRENZY -> FrostballFrenzyGame(this, host)
         }
 
         _activeGames.add(game)
+
+        return game
+    }
+
+    fun createGameFromTemplate(templateId: String, host: UUID? = null): Game? {
+        val template = MinigameTemplates.byId(templateId) ?: return null
+        val game = createGame(template.type, host)
 
         return game
     }
