@@ -53,13 +53,14 @@ class AdvancementMessage(
      */
     private fun send(player: Player) {
         val holder = AdvancementHolder(id, advancement)
+        val positioned = ClientboundUpdateAdvancementsPacket.PositionedAdvancement(holder, 0f, 0f)
         val progress = AdvancementProgress().apply {
             update(requirement)
             grantProgress("1")
         }
         val packet = ClientboundUpdateAdvancementsPacket(
             false,
-            setOf(holder),
+            listOf(positioned),
             emptySet(),
             mapOf(id to progress),
             true
@@ -76,7 +77,7 @@ class AdvancementMessage(
     private fun revoke(player: Player) {
         val packet = ClientboundUpdateAdvancementsPacket(
             false,
-            emptySet(),
+            emptyList(),
             setOf(id),
             emptyMap(),
             true

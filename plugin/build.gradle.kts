@@ -60,7 +60,6 @@ tasks.runServer {
         vendor = JvmVendorSpec.JETBRAINS
         languageVersion = JavaLanguageVersion.of(25)
     }
-    debug = true
     jvmArgs("-XX:+AllowEnhancedClassRedefinition")
 }
 

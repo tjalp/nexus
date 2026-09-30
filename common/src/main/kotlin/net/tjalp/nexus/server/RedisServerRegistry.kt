@@ -1,6 +1,7 @@
 package net.tjalp.nexus.server
 
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
+import io.lettuce.core.SetArgs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -94,7 +95,7 @@ class RedisServerRegistry(
         val json = Json.encodeToString(server)
 
         // Store server info with 60 second TTL - will expire if heartbeat stops
-        redis.query.setex(SERVER_INFO_PREFIX + server.id, 60, json)
+        redis.query.set(SERVER_INFO_PREFIX + server.id, json, SetArgs.Builder.ex(60))
 
         redis.publish(Signals.SERVER_ONLINE, ServerOnlineEvent(server))
     }
@@ -117,7 +118,7 @@ class RedisServerRegistry(
 
         // Refresh server info with TTL
         // If server stops sending heartbeats, this key will expire and server will be automatically removed
-        redis.query.setex(SERVER_INFO_PREFIX + serverId, ttl, json)
+        redis.query.set(SERVER_INFO_PREFIX + serverId, json, SetArgs.Builder.ex(ttl))
 
         redis.publish(Signals.SERVER_HEARTBEAT, ServerHeartbeat(serverId, playerCount))
     }

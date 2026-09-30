@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import net.tjalp.nexus.profile.model.ProfilesTable
 import net.tjalp.nexus.serializer.LocaleAsStringSerializer
+import net.tjalp.nexus.serializer.TimeZoneIdSerializer
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable
@@ -36,6 +37,7 @@ data class GeneralAttachment(
     val lastKnownName: String?,
     @Serializable(with = LocaleAsStringSerializer::class)
     val preferredLocale: Locale,
+    @Serializable(with = TimeZoneIdSerializer::class)
     val timeZone: TimeZone?
 ) : ProfileAttachment {
 

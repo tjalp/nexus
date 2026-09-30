@@ -6,7 +6,7 @@ import net.tjalp.nexus.profile.ProfilesService
 import net.tjalp.nexus.profile.attachment.ProfileAttachment
 import net.tjalp.nexus.serializer.UUIDAsStringSerializer
 import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.dao.id.UUIDTable
+import org.jetbrains.exposed.v1.core.dao.id.java.UUIDTable
 import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.datetime.timestamp
 import java.util.*

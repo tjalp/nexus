@@ -3,6 +3,7 @@ package net.tjalp.nexus.player
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
 import io.lettuce.core.ScanArgs
 import io.lettuce.core.ScanCursor
+import io.lettuce.core.SetArgs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -171,10 +172,10 @@ class RedisPlayerRegistry(
         val json = Json.encodeToString(PlayerInfo.serializer(), newInfo)
 
         // Write the single source of truth with TTL
-        redis.query.setex(PLAYER_INFO_PREFIX + playerIdStr, ttl, json)
+        redis.query.set(PLAYER_INFO_PREFIX, json, SetArgs.Builder.ex(ttl))
 
         // Update derived index
-        if (currentPlayer != null && currentPlayer.serverId != null && currentPlayer.serverId != serverId) {
+        if (currentPlayer?.serverId != null && currentPlayer.serverId != serverId) {
             // Changing servers – remove from old server set
             redis.query.srem(SERVER_PLAYERS_PREFIX + currentPlayer.serverId, playerIdStr)
         }
@@ -217,7 +218,7 @@ class RedisPlayerRegistry(
         val json = Json.encodeToString(PlayerInfo.serializer(), transferringInfo)
 
         // Update the source of truth with a shorter TTL so it auto-expires if the transfer fails
-        redis.query.setex(PLAYER_INFO_PREFIX + playerIdStr, ttl, json)
+        redis.query.set(PLAYER_INFO_PREFIX + playerIdStr, json, SetArgs.Builder.ex(ttl))
 
         // Keep them in the per-server set for now – they'll be moved on registerPlayer()
         // or cleaned up by TTL expiration if the transfer fails
