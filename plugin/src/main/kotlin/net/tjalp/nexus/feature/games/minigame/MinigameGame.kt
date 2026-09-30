@@ -41,7 +41,7 @@ abstract class MinigameGame(
 
     open fun canManage(actor: Entity): Boolean {
         val isHost = host != null && host == actor.uniqueId
-        val isAdmin = (actor as? Player)?.hasPermission("nexus.command.game") == true || actor.isOp
+        val isAdmin = (actor as? Player)?.hasPermission("nexus.command.game") == true || (actor as? Player)?.isOp == true
 
         return isHost || isAdmin
     }
@@ -134,6 +134,14 @@ abstract class MinigameGame(
         .filter { it.trigger == ScoreTrigger.PlayerKill }
         .sumOf { it.points }
 
+    fun applyKillPoints(entity: Entity) {
+        val points = pointsForKill()
+
+        if (points <= 0) return
+
+        if (definition.teams.enabled) applyTeamPoint(entity, points) else applyPoints(entity, points)
+    }
+
     fun pointsForProjectile(projectileType: org.bukkit.entity.EntityType): Int = definition.scoringRules
         .filter { rule ->
             val trigger = rule.trigger
@@ -146,7 +154,7 @@ abstract class MinigameGame(
             val stages = definition.phases.stages
             if (stages.isEmpty()) return GenericFinishedPhase()
 
-            phaseIndex = (phaseIndex + 1).coerceAtMost(stages.lastIndex)
+            phaseIndex = (phaseIndex + 1).mod(stages.size)
             val stage = stages[phaseIndex]
 
             return when (stage) {
