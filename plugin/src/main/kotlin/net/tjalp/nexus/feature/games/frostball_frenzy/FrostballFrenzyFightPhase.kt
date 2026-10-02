@@ -256,14 +256,17 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
             || !game.participants.containsAll(listOf(shooter, hitEntity))
         ) return
 
-//        applyHit(hitEntity, projectile)
-        if (hitEntity is Player) {
-            // depends on the projectile direction
-            val directionX = -projectile.velocity.clone().normalize().x
-            val directionZ = -projectile.velocity.clone().normalize().z
-            hitEntity.knockback(2.0, directionX, directionZ)
-            hitEntity.damage(0.0, projectile)
-        }
+        event.isCancelled = true
+        projectile.remove()
+
+        applyHit(hitEntity, projectile)
+//        if (hitEntity is Player) {
+//            // depends on the projectile direction
+//            val directionX = -projectile.velocity.clone().normalize().x
+//            val directionZ = -projectile.velocity.clone().normalize().z
+//            hitEntity.knockback(2.0, directionX, directionZ)
+//            hitEntity.damage(0.0, projectile)
+//        }
         hitEntity.freezeTicks = 60
 
         val hitByMessage = miniMessage.deserialize(
@@ -330,13 +333,17 @@ class FrostballFrenzyFightPhase(private val game: FrostballFrenzyGame) : GamePha
      */
     fun applyHit(to: Entity, from: Entity, useIceSounds: Boolean = true) {
         val hurtAnimationYaw = ((from.location.yaw - to.location.yaw + 360) % 360)
-        val direction = if (from is Projectile) {
-            from.velocity.clone().normalize()
-        } else to.location.toVector().subtract(from.location.toVector()).normalize()
-
-        to.velocity = to.velocity.add(direction.multiply(1.4)).setY(.45)
+//        val direction = if (from is Projectile) {
+//            from.velocity.clone().normalize()
+//        } else to.location.toVector().subtract(from.location.toVector()).normalize()
+//
+//        to.velocity = to.velocity.add(direction.multiply(1.4)).setY(.45)
 
         if (to is LivingEntity) {
+            val directionX = -from.velocity.clone().normalize().x
+            val directionZ = -from.velocity.clone().normalize().z
+
+            to.knockback(2.0, directionX, directionZ)
             to.playHurtAnimation(hurtAnimationYaw)
 
             if (to is Player && useIceSounds) {

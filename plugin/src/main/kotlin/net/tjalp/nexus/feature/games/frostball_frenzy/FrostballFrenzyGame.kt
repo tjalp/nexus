@@ -25,7 +25,6 @@ class FrostballFrenzyGame(feature: GamesFeature) : Game(feature = feature, type 
         }
 
     inner class Settings : GameSettings {
-        @Suppress("UnstableApiUsage")
         private val dialogAction: DialogAction
             get() = DialogAction.customClick({ view, audience ->
                 minPlayers = view.getFloat("minPlayers")!!.toInt()
@@ -42,11 +41,10 @@ class FrostballFrenzyGame(feature: GamesFeature) : Game(feature = feature, type 
         override var maxPlayers: Int = 16
         override var minPlayers: Int = 2
 
-        @Suppress("UnstableApiUsage")
         override fun dialog() = Dialog.create { builder ->
             builder.empty()
                 .base(
-                    DialogBase.builder(text("Snowball Fight Settings"))
+                    DialogBase.builder(text("Frostball Frenzy Settings"))
                         .inputs(
                             listOf(
                                 DialogInput.numberRange("minPlayers", text("Minimum Player Count"), 1f, 10f)

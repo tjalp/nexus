@@ -18,10 +18,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
-import kotlin.time.ExperimentalTime
 
-@Suppress("UnstableApiUsage")
-@OptIn(ExperimentalTime::class)
 class PunishmentListener : Listener {
 
     @EventHandler

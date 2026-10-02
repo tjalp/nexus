@@ -10,7 +10,6 @@ import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.entity.Player
 import java.util.*
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
@@ -18,7 +17,6 @@ import kotlin.uuid.toKotlinUuid
 /**
  * Represents a waypoint in the world.
  */
-@OptIn(ExperimentalUuidApi::class)
 @Serializable
 class Waypoint(
     val id: String,
@@ -163,9 +161,7 @@ class Waypoint(
             is WaypointTarget.Azimuth -> true
         }
 
-        if (!inRange) return false
-
-        return when (val current = visibility) {
+        return inRange && when (val current = visibility) {
             WaypointVisibility.Global -> true
             is WaypointVisibility.Players -> current.playerIds.contains(player.uniqueId.toKotlinUuid())
         }
@@ -232,7 +228,6 @@ sealed interface WaypointVisibility {
 
     @Serializable
     @SerialName("players")
-    @OptIn(ExperimentalUuidApi::class)
     data class Players(
         val playerIds: Set<Uuid>
     ) : WaypointVisibility
