@@ -294,7 +294,11 @@ class NexusDisguiseProvider(
             val disguiseEntity = disguises[event.player] as? LivingEntity ?: return
 
             disguiseEntity.swingHand(event.hand)
-            disguiseEntity.playEffect(EntityEffect.ENTITY_ATTACK)
+            try {
+                disguiseEntity.playEffect(EntityEffect.ENTITY_ATTACK)
+            } catch (e: IllegalArgumentException) {
+                // ignore, some entities don't support this effect
+            }
         }
     }
 }
