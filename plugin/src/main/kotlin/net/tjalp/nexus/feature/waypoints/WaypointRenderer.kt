@@ -138,7 +138,6 @@ class WaypointRenderer {
         return UUID.nameUUIDFromBytes(source.toByteArray(StandardCharsets.UTF_8))
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun buildTrackPacket(waypointId: UUID, waypoint: Waypoint): Packet<*> {
         val icon = createIcon(waypoint)
 
@@ -149,7 +148,6 @@ class WaypointRenderer {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun buildUpdatePacket(waypointId: UUID, waypoint: Waypoint): Packet<*> {
         val icon = createIcon(waypoint)
 
@@ -160,7 +158,6 @@ class WaypointRenderer {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun buildUntrackPacket(waypointId: UUID): Packet<*> {
         return ClientboundTrackedWaypointPacket.removeWaypoint(waypointId)
     }
