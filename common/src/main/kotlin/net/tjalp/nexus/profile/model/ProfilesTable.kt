@@ -13,7 +13,6 @@ import java.util.*
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-@OptIn(ExperimentalTime::class)
 object ProfilesTable : UUIDTable("profiles") {
     val createdAt = timestamp("created_at").defaultExpression(CurrentTimestamp)
     val modifiedAt = timestamp("modified_at").defaultExpression(CurrentTimestamp)
@@ -26,7 +25,6 @@ object ProfilesTable : UUIDTable("profiles") {
  * @param createdAt The timestamp when the profile was created.
  * @param modifiedAt The timestamp when the profile was last modified.
  */
-@OptIn(ExperimentalTime::class)
 @Serializable
 @SerialName("ProfileSnapshot")
 data class ProfileSnapshot(
@@ -58,7 +56,6 @@ data class ProfileSnapshot(
         service.upsert(this, statements = statements)
 }
 
-@OptIn(ExperimentalTime::class)
 fun ResultRow.toProfileSnapshot(attachments: Collection<ProfileAttachment>): ProfileSnapshot = ProfileSnapshot(
     id = this[ProfilesTable.id].value,
     createdAt = this[ProfilesTable.createdAt],

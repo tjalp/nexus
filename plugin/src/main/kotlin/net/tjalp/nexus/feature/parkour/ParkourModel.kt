@@ -1,13 +1,16 @@
 package net.tjalp.nexus.feature.parkour
 
 import net.kyori.adventure.text.Component
+import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.feature.parkour.rule.ParkourSegmentRule
 import net.tjalp.nexus.util.miniMessage
+import org.bukkit.Location
 import org.bukkit.NamespacedKey
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.ItemType
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 import java.util.*
+import kotlin.math.floor
 
 /**
  * Types of parkour nodes.
@@ -88,12 +91,39 @@ data class ParkourSegment(
 }
 
 /**
+ * A leaderboard location for a specific parkour segment.
+ * The leaderboard is displayed at the given coordinates in the world identified by the world id.
+ */
+@ConfigSerializable
+data class ParkourLeaderboard(
+    val key: String,
+    val worldId: UUID,
+    val segmentKey: String,
+    val x: Double,
+    val y: Double,
+    val z: Double
+) {
+
+    val location: Location?
+        get() = Location(
+            NexusPlugin.server.getWorld(worldId) ?: return null,
+            x,
+            y,
+            z
+        )
+
+    val chunkX: Int get() = floor(x / 16.0).toInt()
+    val chunkZ: Int get() = floor(z / 16.0).toInt()
+}
+
+/**
  * Full parkour graph: nodes + directed segments.
  */
 @ConfigSerializable
 data class ParkourDefinition(
     val nodes: MutableList<ParkourNode> = mutableListOf(),
-    val segments: MutableList<ParkourSegment> = mutableListOf()
+    val segments: MutableList<ParkourSegment> = mutableListOf(),
+    val leaderboards: MutableList<ParkourLeaderboard> = mutableListOf()
 ) {
 
     fun nodeByKey(key: String): ParkourNode? = nodes.firstOrNull { it.key.equals(key, ignoreCase = true) }
@@ -125,16 +155,17 @@ data class ParkourDefinition(
 
     fun removeNode(nodeKey: String) {
         nodes.removeIf { it.key.equals(nodeKey, ignoreCase = true) }
-        segments.removeIf {
+        segments.filter {
             it.fromNodeKey.equals(nodeKey, ignoreCase = true) || it.toNodeKey.equals(
                 nodeKey,
                 ignoreCase = true
             )
-        }
+        }.forEach { removeSegment(it.key) }
     }
 
     fun removeSegment(segmentKey: String) {
         segments.removeIf { it.key.equals(segmentKey, ignoreCase = true) }
+        leaderboards.removeIf { it.segmentKey.equals(segmentKey, ignoreCase = true) }
     }
 }
 

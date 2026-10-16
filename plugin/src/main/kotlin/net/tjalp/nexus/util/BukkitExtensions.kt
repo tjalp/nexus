@@ -39,6 +39,15 @@ fun Listener.unregister() {
 }
 
 /**
+ * Checks if this listener is registered to the server.
+ *
+ * @return True if this listener is registered, false otherwise
+ */
+fun Listener.isRegistered(): Boolean {
+    return HandlerList.getRegisteredListeners(NexusPlugin).any { it.listener == this }
+}
+
+/**
  * Gets the profile snapshot for this player from the cached profiles.
  *
  * @throws IllegalStateException if the profile is not cached

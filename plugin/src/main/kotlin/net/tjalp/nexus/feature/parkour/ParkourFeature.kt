@@ -14,11 +14,14 @@ class ParkourFeature : Feature(PARKOUR) {
 
     lateinit var definitions: ParkourDefinitionsRepository; private set
     lateinit var runtime: ParkourRuntimeService; private set
+    lateinit var leaderboards: ParkourLeaderboardService; private set
     private lateinit var listener: ParkourListener
 
     override fun onEnable() {
         definitions = ParkourDefinitionsRepository(NexusPlugin.dataPath)
         runtime = ParkourRuntimeService(this)
+        leaderboards = ParkourLeaderboardService(this)
+
         runtime.rebuildIndex()
 
         listener = ParkourListener(runtime)
@@ -31,6 +34,7 @@ class ParkourFeature : Feature(PARKOUR) {
     }
 
     override fun onDisposed() {
+        leaderboards.dispose()
         listener.unregister()
     }
 }
