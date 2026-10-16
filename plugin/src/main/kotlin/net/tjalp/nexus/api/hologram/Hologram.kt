@@ -1,12 +1,10 @@
 package net.tjalp.nexus.api.hologram
 
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent
-import net.kyori.adventure.text.Component.text
 import net.tjalp.nexus.api.hologram.line.HologramLine
 import net.tjalp.nexus.util.isRegistered
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
-import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.TextDisplay
 import org.bukkit.event.EventHandler
@@ -55,10 +53,12 @@ class Hologram(
 
     /**
      * Spawns the hologram, setting up necessary listeners and rendering it in the game world.
+     * Fails silently if the chunk containing the hologram's location is not loaded.
      */
     fun spawn() {
         if (!listener.isRegistered()) listener.register()
-        render(isMove = false)
+
+        if (location.isChunkLoaded) render(isMove = false)
     }
 
     /**
@@ -121,7 +121,7 @@ class Hologram(
             if (chunk.world.uid != location.world.uid) return
 
             if (chunk.x == location.x.toInt() shr 4 && chunk.z == location.z.toInt() shr 4) {
-                Bukkit.broadcastMessage("Chunk loaded, spawning hologram... ${this@Hologram}")
+//                Bukkit.broadcastMessage("Chunk loaded, spawning hologram... ${this@Hologram}")
                 spawn()
             }
         }
@@ -132,7 +132,7 @@ class Hologram(
             if (chunk.world.uid != location.world.uid) return
 
             if (chunk.x == location.x.toInt() shr 4 && chunk.z == location.z.toInt() shr 4) {
-                Bukkit.broadcastMessage("Chunk unloaded, despawning hologram... ${this@Hologram}")
+//                Bukkit.broadcastMessage("Chunk unloaded, despawning hologram... ${this@Hologram}")
                 despawn(isChunkUnload = true) // todo fix holograms not despawning on chunk unload...?
             }
         }
@@ -143,7 +143,7 @@ class Hologram(
 
             if (entity !is TextDisplay) return
 
-            Bukkit.broadcast(text("Display ${entity.uniqueId} removed from world ${entity.world.name}: ").append(entity.text()))
+//            Bukkit.broadcast(text("Display ${entity.uniqueId} removed from world ${entity.world.name}: ").append(entity.text()))
         }
     }
 }

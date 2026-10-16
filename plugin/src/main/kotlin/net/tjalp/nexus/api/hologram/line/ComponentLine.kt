@@ -1,11 +1,9 @@
 package net.tjalp.nexus.api.hologram.line
 
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.ComponentLike
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.api.hologram.HologramVisibility
-import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Display
 import org.bukkit.entity.TextDisplay
@@ -47,7 +45,7 @@ class ComponentLine(component: ComponentLike) : HologramLine {
             display.lineWidth = Int.MAX_VALUE
 
             setVisibility(display, visibility)
-            Bukkit.broadcast(text("Spawned ${display.uniqueId}: ").append(component))
+//            Bukkit.broadcast(text("Spawned ${display.uniqueId}: ").append(component))
         }.uniqueId
     }
 

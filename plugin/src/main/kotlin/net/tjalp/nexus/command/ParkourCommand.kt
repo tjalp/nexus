@@ -12,19 +12,19 @@ import io.papermc.paper.command.brigadier.Commands.literal
 import io.papermc.paper.command.brigadier.MessageComponentSerializer
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes
 import io.papermc.paper.command.brigadier.argument.resolvers.BlockPositionResolver
+import io.papermc.paper.command.brigadier.argument.resolvers.FinePositionResolver
 import io.papermc.paper.math.BlockPosition
+import io.papermc.paper.math.FinePosition
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.Component.translatable
 import net.kyori.adventure.text.format.NamedTextColor
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.command.argument.ParkourLeaderboardArgument
 import net.tjalp.nexus.command.argument.ParkourNodeArgument
 import net.tjalp.nexus.command.argument.ParkourNodeTypeArgument
 import net.tjalp.nexus.command.argument.ParkourSegmentArgument
-import net.tjalp.nexus.feature.parkour.NodeType
-import net.tjalp.nexus.feature.parkour.ParkourNode
-import net.tjalp.nexus.feature.parkour.ParkourRegion
-import net.tjalp.nexus.feature.parkour.ParkourSegment
+import net.tjalp.nexus.feature.parkour.*
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Particle
@@ -175,6 +175,27 @@ object ParkourCommand {
                 })
             .then(literal("list")
                 .executes { ctx -> listGraph(ctx.source) })
+            .then(literal("leaderboard")
+                .then(literal("add")
+                    .then(argument("name", StringArgumentType.word())
+                        .then(argument("segment", ParkourSegmentArgument)
+                            .then(argument("position", ArgumentTypes.finePosition())
+                                .executes { ctx ->
+                                    addLeaderboard(
+                                        ctx.source,
+                                        StringArgumentType.getString(ctx, "name"),
+                                        ctx.getArgument("segment", ParkourSegment::class.java),
+                                        ctx.getArgument("position", FinePositionResolver::class.java).resolve(ctx.source)
+                                    )
+                                }))))
+                .then(literal("remove")
+                    .then(argument("leaderboard", ParkourLeaderboardArgument)
+                        .executes { ctx ->
+                            removeLeaderboard(
+                                ctx.source,
+                                ctx.getArgument("leaderboard", ParkourLeaderboard::class.java)
+                            )
+                        })))
             .build()
     }
 
@@ -445,6 +466,47 @@ object ParkourCommand {
                     .append(text(status))
             )
         }
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun addLeaderboard(source: CommandSourceStack, leaderboardKey: String, segment: ParkourSegment, position: FinePosition): Int {
+        val definition = parkour.definitions.definition
+        val leaderboard = definition.leaderboards.find { it.segmentKey == segment.key }
+        if (leaderboard != null) {
+            source.sender.sendMessage(text("A leaderboard for this segment already exists.", NamedTextColor.RED))
+            return Command.SINGLE_SUCCESS
+        }
+
+        val newLeaderboard = definition.leaderboards.add(
+            ParkourLeaderboard(
+                key = leaderboardKey,
+                worldId = source.executor!!.location.world.uid,
+                segmentKey = segment.key,
+                x = position.x(),
+                y = position.y(),
+                z = position.z()
+            )
+        )
+        parkour.definitions.update(definition)
+
+        source.sender.sendMessage(text("Added leaderboard for segment ", NamedTextColor.GREEN)
+            .append(segment.displayName))
+
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun removeLeaderboard(source: CommandSourceStack, leaderboard: ParkourLeaderboard): Int {
+        val definition = parkour.definitions.definition
+        definition.leaderboards.removeIf { it.key == leaderboard.key }
+        parkour.definitions.update(definition)
+
+        val lb = parkour.leaderboardsSet.find { it.source is ParkourLeaderboardSource && it.source.segmentKey == leaderboard.segmentKey }
+        lb?.dispose()
+        parkour.leaderboardsSet.remove(lb)
+
+        source.sender.sendMessage(text("Removed leaderboard for segment ", NamedTextColor.YELLOW)
+            .append(definition.segmentByKey(leaderboard.segmentKey)?.displayName ?: text(leaderboard.segmentKey)))
+
         return Command.SINGLE_SUCCESS
     }
 }

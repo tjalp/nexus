@@ -2,11 +2,6 @@ package net.tjalp.nexus
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import kotlinx.coroutines.runBlocking
-import net.kyori.adventure.text.Component.text
-import net.kyori.adventure.text.format.NamedTextColor.RED
-import net.kyori.adventure.text.format.NamedTextColor.YELLOW
-import net.tjalp.nexus.api.hologram.Hologram
-import net.tjalp.nexus.api.hologram.line.ComponentLine
 import net.tjalp.nexus.command.*
 import net.tjalp.nexus.config.NexusConfig
 import net.tjalp.nexus.feature.FeatureManager
@@ -33,10 +28,7 @@ import net.tjalp.nexus.scheduler.Scheduler
 import net.tjalp.nexus.util.PacketManager
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
-import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -93,23 +85,6 @@ object NexusPlugin : JavaPlugin() {
         profiles = ExposedProfilesService(db = database, redis = redis, scope = scheduler)
         PacketManager.init()
         listeners += ProfileListener(profiles).also { it.register() }
-        listeners += object : Listener {
-            private var holo: Hologram? = null
-
-            @EventHandler
-            fun on(event: PlayerJoinEvent) {
-                holo = Hologram(event.player.eyeLocation).apply {
-                    addLine(ComponentLine(text("Test line 1", RED)))
-                    addLine(ComponentLine(text("Test line 2", YELLOW)))
-                }.also { it.spawn() }
-            }
-
-            @EventHandler
-            fun on(event: PlayerQuitEvent) {
-                holo?.dispose()
-                holo = null
-            }
-        }.also { it.register() } // TODO: remove this after debugging holograms
 
         // Register global attachment providers
         AttachmentRegistry.register(GeneralAttachmentProvider.also { runBlocking { it.init() } })

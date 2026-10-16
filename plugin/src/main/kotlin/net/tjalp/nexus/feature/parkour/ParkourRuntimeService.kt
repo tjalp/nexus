@@ -30,6 +30,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.*
 import kotlin.time.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /** Manages active parkour sessions, node entry handling, and segment result persistence. */
@@ -250,7 +251,8 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 
             val now = Clock.System.now()
             val duration = now - segmentStartTime
-            val timing = SegmentTiming(segmentKey = segment.key, duration = duration)
+            val roundedDuration = ((duration.inWholeMilliseconds + 25) / 50 * 50).milliseconds
+            val timing = SegmentTiming(segmentKey = segment.key, duration = roundedDuration)
 
             session.path += node.key
             session.segmentTimings += timing
@@ -353,6 +355,9 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                         player.playSound(player, Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.5f)
                     }
                 }
+
+                feature.leaderboardsSet.filter { (it.source as? ParkourLeaderboardSource)?.segmentKey == segment?.key }
+                    .forEach { it.refresh() }
             } catch (e: Exception) {
                 NexusPlugin.logger.warning("[Parkour] Failed to save segment result: ${e.message}")
             }

@@ -1,7 +1,11 @@
 package net.tjalp.nexus.feature.parkour
 
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.Component.translatable
+import net.kyori.adventure.text.minimessage.translation.Argument
 import net.tjalp.nexus.Feature
 import net.tjalp.nexus.NexusPlugin
+import net.tjalp.nexus.api.leaderboard.Leaderboard
 import net.tjalp.nexus.feature.FeatureKeys.PARKOUR
 import net.tjalp.nexus.util.register
 import net.tjalp.nexus.util.unregister
@@ -14,13 +18,31 @@ class ParkourFeature : Feature(PARKOUR) {
 
     lateinit var definitions: ParkourDefinitionsRepository; private set
     lateinit var runtime: ParkourRuntimeService; private set
-    lateinit var leaderboards: ParkourLeaderboardService; private set
     private lateinit var listener: ParkourListener
+
+    val leaderboardsSet = mutableSetOf<Leaderboard>()
 
     override fun onEnable() {
         definitions = ParkourDefinitionsRepository(NexusPlugin.dataPath)
         runtime = ParkourRuntimeService(this)
-        leaderboards = ParkourLeaderboardService(this)
+//        leaderboards = ParkourLeaderboardService(this)
+        for (leaderboard in definitions.definition.leaderboards) {
+            val title = translatable(
+                "parkour.leaderboard.title",
+                Argument.component(
+                    "segment_title",
+                    definitions.definition.segmentByKey(leaderboard.segmentKey)?.displayName
+                        ?: text(leaderboard.segmentKey)
+                    )
+            )
+            leaderboardsSet += Leaderboard(
+                location = leaderboard.location ?: continue,
+                description = translatable("parkour.leaderboard.description"),
+                title = title,
+                source = ParkourLeaderboardSource(leaderboard.segmentKey),
+                scheduler = scheduler
+            )
+        }
 
         runtime.rebuildIndex()
 
@@ -34,7 +56,8 @@ class ParkourFeature : Feature(PARKOUR) {
     }
 
     override fun onDisposed() {
-        leaderboards.dispose()
+//        leaderboards.dispose()
+        leaderboardsSet.forEach(Leaderboard::dispose)
         listener.unregister()
     }
 }
