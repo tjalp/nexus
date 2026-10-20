@@ -1,7 +1,7 @@
 package net.tjalp.nexus.backend.schema
 
-import com.apurebase.kgraphql.Context
-import com.apurebase.kgraphql.schema.dsl.SchemaBuilder
+import de.stuebingerb.kgraphql.Context
+import de.stuebingerb.kgraphql.schema.dsl.SchemaBuilder
 import kotlinx.datetime.TimeZone
 import net.tjalp.nexus.auth.AuthService
 import net.tjalp.nexus.profile.ProfilesService

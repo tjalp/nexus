@@ -39,6 +39,8 @@ dependencies {
 }
 
 tasks {
+    val pluginVersion = version.toString()
+
     runServer {
         minecraftVersion("26.3")
         downloadPlugins {
@@ -53,6 +55,12 @@ tasks {
 
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
+        }
+    }
+
+    processResources {
+        filesMatching("paper-plugin.yml") {
+            expand("version" to pluginVersion)
         }
     }
 }
@@ -87,11 +95,5 @@ tasks.shadowJar {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles {
         include("META-INF/services/**")
-    }
-}
-
-tasks.processResources {
-    filesMatching("*plugin.yml") {
-//        expand("version" to version)
     }
 }

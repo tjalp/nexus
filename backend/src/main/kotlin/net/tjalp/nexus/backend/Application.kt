@@ -1,7 +1,7 @@
 package net.tjalp.nexus.backend
 
-import com.apurebase.kgraphql.GraphQL
 import com.auth0.jwt.JWT
+import de.stuebingerb.kgraphql.GraphQL
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -31,7 +31,6 @@ import net.tjalp.nexus.redis.RedisController
 import org.jetbrains.exposed.v1.jdbc.Database
 import java.lang.System.getenv
 import java.util.*
-import kotlin.time.ExperimentalTime
 
 val db = Database.connect(
     url = getenv("DATABASE_URL") ?: "jdbc:postgresql://localhost:5432/nexus",
@@ -53,7 +52,6 @@ fun main(args: Array<String>) {
         .start(wait = true)
 }
 
-@OptIn(ExperimentalTime::class)
 suspend fun Application.module() {
     install(ContentNegotiation) {
         json()

@@ -1,6 +1,6 @@
 package net.tjalp.nexus.backend.schema
 
-import com.apurebase.kgraphql.Context
+import de.stuebingerb.kgraphql.Context
 import io.ktor.server.auth.jwt.*
 import net.tjalp.nexus.auth.AuthService
 import net.tjalp.nexus.auth.Role
