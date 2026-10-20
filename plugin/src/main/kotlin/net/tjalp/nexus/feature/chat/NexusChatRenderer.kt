@@ -4,10 +4,13 @@ import io.papermc.paper.chat.ChatRenderer
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.chat.SignedMessage
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import net.minecraft.util.ARGB
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.server.ServerInfo
 import net.tjalp.nexus.util.miniMessage
+import kotlin.math.roundToInt
 
 object NexusChatRenderer {
 
@@ -22,10 +25,23 @@ object NexusChatRenderer {
         format: String,
         signedMessage: SignedMessage
     ): ChatRenderer = ChatRenderer { source, _, message, viewer ->
+        val waypointRgb = source.waypointColor?.asRGB() ?:
+            ARGB.setBrightness(ARGB.color(255, source.uniqueId.hashCode()), 0.9F)
+        var nameColor: TextColor? = null
+        var chatColor: TextColor? = null
+
+        if (NexusPlugin.configuration.features.chat.defaultChatColorIsWaypointColor) {
+            chatColor = chatTint(TextColor.color(waypointRgb))
+        }
+
+        if (NexusPlugin.configuration.features.chat.defaultNameColorIsWaypointColor) {
+            nameColor = TextColor.color(waypointRgb)
+        }
+
         val base = render(
             format,
-            source.teamDisplayName(),
-            message,
+            source.teamDisplayName().colorIfAbsent(nameColor),
+            message.colorIfAbsent(chatColor),
             viewer,
             serverInfo = NexusPlugin.servers?.serverInfo,
         )
@@ -45,6 +61,28 @@ object NexusChatRenderer {
 //            .clickEvent(ClickEvent.callback { _ -> Bukkit.getServer().deleteMessage(signedMessage) })
 //
 //        return@ChatRenderer textOfChildren(delete, space(), base)
+    }
+
+    /**
+     * Tints a color by blending it with white.
+     *
+     * @param color The color to tint.
+     * @param amount The amount to tint the color. Must be between 0.0 and 1.0.
+     * @return The tinted color.
+     */
+    private fun chatTint(color: TextColor, amount: Double = 0.25): TextColor {
+        require(amount in 0.0..1.0)
+
+        fun blend(waypointComponent: Int): Int =
+            (255.0 * (1.0 - amount) + waypointComponent * amount)
+                .roundToInt()
+                .coerceIn(0, 255)
+
+        return TextColor.color(
+            blend(color.red()),
+            blend(color.green()),
+            blend(color.blue())
+        )
     }
 
     /**

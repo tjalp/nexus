@@ -83,6 +83,8 @@ data class FeaturesConfig(
 data class ChatConfig(
     val enable: Boolean = true,
     val modifySystemChatMessageStyle: Boolean = true,
+    val defaultNameColorIsWaypointColor: Boolean = true,
+    val defaultChatColorIsWaypointColor: Boolean = true,
     val format: String = "<<name>> <message>",
     val joinMessage: String = "<message>",
     val quitMessage: String = "<message>",
