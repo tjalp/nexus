@@ -1,5 +1,6 @@
 package net.tjalp.nexus.feature.disguises.provider
 
+import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent
 import io.papermc.paper.event.player.PlayerArmSwingEvent
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component.translatable
@@ -22,10 +23,10 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.*
-import org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK
-import org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause.*
 import org.bukkit.event.player.PlayerInteractAtEntityEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.vehicle.VehicleDamageEvent
 import org.bukkit.event.vehicle.VehicleDestroyEvent
 
@@ -52,14 +53,17 @@ class NexusDisguiseProvider(
             entity.world.spawnEntity(entity.location, entityType, CreatureSpawnEvent.SpawnReason.CUSTOM) {
                 disguises[entity] = it
                 it.isPersistent = false
-                it.setGravity(false)
+//                it.setGravity(false)
 
                 if (entity is Player) entity.hideEntity(NexusPlugin, it)
                 if (it is LivingEntity) {
                     it.setAI(false)
                     it.isCollidable = false
                 }
-                if (it is Mob) it.server.mobGoals.removeAllGoals(it)
+                if (it is Mob) {
+//                    it.server.mobGoals.removeAllGoals(it)
+                    it.isAware = false
+                }
             }
 
         disguiseEntity.scheduler.runAtFixedRate(NexusPlugin, {
@@ -78,7 +82,7 @@ class NexusDisguiseProvider(
                     val relativeHealth = entity.health / entity.getAttribute(Attribute.MAX_HEALTH)!!.value
                     health = (relativeHealth * this.getAttribute(Attribute.MAX_HEALTH)!!.value)
                     val entityEquipment = entity.equipment ?: return@apply
-                    this.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
+//                    this.equipment?.armorContents = entity.equipment?.armorContents ?: arrayOf()
                     this.equipment?.apply {
                         setItemInMainHand(entityEquipment.itemInMainHand, true)
                         setItemInOffHand(entityEquipment.itemInOffHand, true)
@@ -182,7 +186,7 @@ class NexusDisguiseProvider(
             }
 
             val disguisedEntity = disguises.entries.firstOrNull { it.value == event.entity }?.key ?: return
-            val allowedDamageCauses = listOf(ENTITY_ATTACK, ENTITY_SWEEP_ATTACK)
+            val allowedDamageCauses = listOf(ENTITY_ATTACK, ENTITY_SWEEP_ATTACK, PROJECTILE)
 
             if (event.cause !in allowedDamageCauses) {
                 event.isCancelled = true
@@ -281,6 +285,24 @@ class NexusDisguiseProvider(
         @EventHandler
         fun on(event: PlayerInteractAtEntityEvent) {
             processInteraction(event)
+        }
+
+        @EventHandler
+        fun on(event: EntityRemoveFromWorldEvent) {
+            val entity = event.entity
+
+            if (getDisguise(entity) != null) {
+                undisguise(entity, sendMessage = false)
+            }
+        }
+
+        @EventHandler
+        fun on(event: PlayerQuitEvent) {
+            val player = event.player
+
+            if (getDisguise(player) != null) {
+                undisguise(player, sendMessage = false)
+            }
         }
 
         private fun processInteraction(event: PlayerInteractEntityEvent) {
