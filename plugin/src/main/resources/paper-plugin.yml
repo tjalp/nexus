@@ -1,5 +1,5 @@
 name: Nexus
-version: '26.10.06'
+version: ${version}
 authors: ['tjalp']
 main: net.tjalp.nexus.NexusPlugin
 description: A Minecraft server plugin providing various utilities and features.

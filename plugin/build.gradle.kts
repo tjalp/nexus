@@ -9,6 +9,8 @@ plugins {
 //    alias(libs.plugins.foojayResolverConventionPlugin)
 }
 
+version = "26.10.20"
+
 repositories {
     mavenCentral()
     maven {
@@ -39,11 +41,11 @@ dependencies {
 tasks {
     runServer {
         minecraftVersion("26.3")
-//        downloadPlugins {
-//            github("libraryaddict", "LibsDisguises", "v11.0.13", "LibsDisguises-11.0.13-Github.jar")
+        downloadPlugins {
+//            github("libraryaddict", "LibsDisguises", "v26.9.26", "LibsDisguises-26.9.26-Github.jar")
 //            hangar("ViaVersion", "5.9.1")
 //            hangar("ViaBackwards", "5.9.1")
-//        }
+        }
     }
 
     shadowJar {
@@ -85,5 +87,11 @@ tasks.shadowJar {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles {
         include("META-INF/services/**")
+    }
+}
+
+tasks.processResources {
+    filesMatching("*plugin.yml") {
+        expand("version" to version)
     }
 }
