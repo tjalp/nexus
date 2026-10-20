@@ -6,6 +6,7 @@ import com.ibm.icu.number.Precision
 import com.ibm.icu.util.MeasureUnit
 import io.papermc.paper.advancement.AdvancementDisplay
 import kotlinx.coroutines.launch
+import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.format.NamedTextColor.GRAY
 import net.kyori.adventure.text.format.NamedTextColor.RED
@@ -313,7 +314,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                 AdvancementMessage(
                     title = textOfChildren(
                         segmentName.colorIfAbsent(nameColor),
-                        newline(), text("⌚ ${formatDuration(timing.duration, player.locale())}", timeColor)),
+                        newline(), text("⌚ ${formatDurationFull(timing.duration)}", timeColor)),
                     frame = if (outcome.isGlobalBest) AdvancementDisplay.Frame.CHALLENGE else AdvancementDisplay.Frame.GOAL,
                     icon = segment?.icon ?: @Suppress("UnstableApiUsage") ItemType.CLOCK.createItemStack()
                 ).toast(player)
@@ -323,16 +324,34 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
 //                        player.playSound(player.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.9f, 1.0f)
 
                         translatable(
-                            "parkour.record.global",
+                            "parkour.record.global.self",
                             Argument.component(
                                 "time",
-                                text("⌚ ${formatDuration(timing.duration, player.locale())}", MONOCHROME_COLOR)
+                                text("⌚ ${formatDurationFull(timing.duration)}", MONOCHROME_COLOR)
                             ),
                             Argument.component(
                                 "segment",
                                 segment?.displayName?.colorIfAbsent(MONOCHROME_COLOR) ?: empty()
                             )
                         ).asEventMessage().sendTo(player)
+
+                        translatable(
+                            "parkour.record.global.others",
+                            Argument.component(
+                                "player",
+                                player.name().colorIfAbsent(MONOCHROME_COLOR)
+                            ),
+                            Argument.component(
+                                "time",
+                                text("⌚ ${formatDurationFull(timing.duration)}", MONOCHROME_COLOR)
+                            ),
+                            Argument.component(
+                                "segment",
+                                segment?.displayName?.colorIfAbsent(MONOCHROME_COLOR) ?: empty()
+                            )
+                        ).asEventMessage().sendTo(Audience.audience(
+                            NexusPlugin.server.onlinePlayers.filter { it.uniqueId != player.uniqueId }
+                        ))
                     }
 
                     outcome.isPersonalBest -> {
@@ -342,7 +361,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
                             "parkour.record.personal",
                             Argument.component(
                                 "time",
-                                text("⌚ ${formatDuration(timing.duration, player.locale())}", MONOCHROME_COLOR)
+                                text("⌚ ${formatDurationFull(timing.duration)}", MONOCHROME_COLOR)
                             ),
                             Argument.component(
                                 "segment",
@@ -375,7 +394,7 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
             "parkour.finished",
             Argument.component(
                 "time",
-                text("⌚ ${formatDuration(totalDuration, player.locale())}", MONOCHROME_COLOR)
+                text("⌚ ${formatDurationFull(totalDuration)}", MONOCHROME_COLOR)
             )
         ).asEventMessage().sendTo(player)
     }
@@ -528,6 +547,15 @@ class ParkourRuntimeService(private val feature: ParkourFeature) {
         val ssT = secondsFormatter.format(secondsWithTenths).toString()
 
         return "$mm:$ssT"
+    }
+
+    private fun formatDurationFull(duration: Duration): String {
+        val totalMillis = duration.inWholeMilliseconds
+        val minutes = totalMillis / 60_000
+        val seconds = (totalMillis / 1_000) % 60
+        val millis = totalMillis % 1_000
+
+        return "%02d:%02d.%03d".format(minutes, seconds, millis)
     }
 
     fun clearPlayerSession(playerId: UUID) {
