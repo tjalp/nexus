@@ -71,6 +71,7 @@ data class FeaturesConfig(
     val games: GamesConfig,
     val notices: NoticesConfig,
     @Setting("physical_spectator") val physicalSpectator: PhysicalSpectatorConfig,
+    @Setting("player_list") val playerList: PlayerListConfig,
     val punishments: PunishmentsConfig,
     val seasons: SeasonsConfig,
     val servers: ServersConfig,
@@ -176,6 +177,12 @@ data class Rule(
 @ConfigSerializable
 data class PhysicalSpectatorConfig(
     val enable: Boolean = true
+)
+
+@ConfigSerializable
+data class PlayerListConfig(
+    val enable: Boolean = true,
+    val defaultColorIsWaypointColor: Boolean = true
 )
 
 @ConfigSerializable

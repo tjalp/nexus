@@ -6,10 +6,11 @@ import net.kyori.adventure.chat.SignedMessage
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
-import net.minecraft.util.ARGB
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.server.ServerInfo
+import net.tjalp.nexus.util.defaultWaypointColor
 import net.tjalp.nexus.util.miniMessage
+import net.tjalp.nexus.util.toTextColor
 import kotlin.math.roundToInt
 
 object NexusChatRenderer {
@@ -25,17 +26,16 @@ object NexusChatRenderer {
         format: String,
         signedMessage: SignedMessage
     ): ChatRenderer = ChatRenderer { source, _, message, viewer ->
-        val waypointRgb = source.waypointColor?.asRGB() ?:
-            ARGB.setBrightness(ARGB.color(255, source.uniqueId.hashCode()), 0.9F)
+        val waypointColor = source.waypointColor?.toTextColor() ?: source.defaultWaypointColor
         var nameColor: TextColor? = null
         var chatColor: TextColor? = null
 
         if (NexusPlugin.configuration.features.chat.defaultChatColorIsWaypointColor) {
-            chatColor = chatTint(TextColor.color(waypointRgb))
+            chatColor = chatTint(waypointColor)
         }
 
         if (NexusPlugin.configuration.features.chat.defaultNameColorIsWaypointColor) {
-            nameColor = TextColor.color(waypointRgb)
+            nameColor = TextColor.color(waypointColor)
         }
 
         val base = render(

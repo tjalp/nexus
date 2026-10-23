@@ -10,6 +10,7 @@ object FeatureKeys {
     const val GAMES = "games"
     const val NOTICES = "notices"
     const val PHYSICAL_SPECTATOR = "physical_spectator"
+    const val PLAYER_LIST = "player_list"
     const val PUNISHMENTS = "punishments"
     const val SEASONS = "seasons"
     const val SERVERS = "servers"

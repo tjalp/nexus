@@ -1,13 +1,16 @@
 package net.tjalp.nexus.util
 
 import io.papermc.paper.advancement.AdvancementDisplay
+import net.kyori.adventure.text.format.TextColor
 import net.minecraft.advancements.AdvancementType
 import net.minecraft.core.BlockPos
 import net.minecraft.network.protocol.Packet
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.util.ARGB
 import net.tjalp.nexus.NexusPlugin
 import net.tjalp.nexus.profile.model.ProfileSnapshot
+import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.block.Biome
@@ -16,6 +19,7 @@ import org.bukkit.craftbukkit.block.CraftBiome
 import org.bukkit.craftbukkit.entity.CraftPlayer
 import org.bukkit.craftbukkit.inventory.CraftItemStack
 import org.bukkit.entity.Entity
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
@@ -125,4 +129,23 @@ fun Player.asServerPlayer(): ServerPlayer = (this as CraftPlayer).handle
  */
 fun Player.sendPacket(packet: Packet<*>) {
     this.asServerPlayer().connection.send(packet)
+}
+
+/**
+ * Gets the default waypoint color for this living entity.
+ * The color is generated based on the entity's UUID, and is consistent across sessions.
+ */
+val LivingEntity.defaultWaypointColor: TextColor
+    get() {
+        val color = ARGB.setBrightness(ARGB.color(255, uniqueId.hashCode()), 0.9F)
+        return TextColor.color(color)
+    }
+
+/**
+ * Converts this Bukkit Color to a TextColor.
+ *
+ * @return The TextColor corresponding to this Color
+ */
+fun Color.toTextColor(): TextColor {
+    return TextColor.color(asRGB())
 }

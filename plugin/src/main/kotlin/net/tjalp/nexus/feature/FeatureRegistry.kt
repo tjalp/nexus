@@ -10,6 +10,7 @@ import net.tjalp.nexus.feature.FeatureKeys.GAMES
 import net.tjalp.nexus.feature.FeatureKeys.NOTICES
 import net.tjalp.nexus.feature.FeatureKeys.PARKOUR
 import net.tjalp.nexus.feature.FeatureKeys.PHYSICAL_SPECTATOR
+import net.tjalp.nexus.feature.FeatureKeys.PLAYER_LIST
 import net.tjalp.nexus.feature.FeatureKeys.PUNISHMENTS
 import net.tjalp.nexus.feature.FeatureKeys.SEASONS
 import net.tjalp.nexus.feature.FeatureKeys.SERVERS
@@ -22,6 +23,7 @@ import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
+import net.tjalp.nexus.feature.playerlist.PlayerListFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.servers.ServersFeature
@@ -73,6 +75,12 @@ object FeatureRegistry {
             PhysicalSpectatorFeature::class,
             { PhysicalSpectatorFeature() },
             { it.physicalSpectator.enable }
+        ),
+        FeatureDefinition(
+            PLAYER_LIST,
+            PlayerListFeature::class,
+            { PlayerListFeature() },
+            { it.playerList.enable }
         ),
         FeatureDefinition(
             PUNISHMENTS,

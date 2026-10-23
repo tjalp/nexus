@@ -12,6 +12,7 @@ import net.tjalp.nexus.feature.games.GamesFeature
 import net.tjalp.nexus.feature.notices.NoticesFeature
 import net.tjalp.nexus.feature.parkour.ParkourFeature
 import net.tjalp.nexus.feature.physicalspectator.PhysicalSpectatorFeature
+import net.tjalp.nexus.feature.playerlist.PlayerListFeature
 import net.tjalp.nexus.feature.punishments.PunishmentsFeature
 import net.tjalp.nexus.feature.seasons.SeasonsFeature
 import net.tjalp.nexus.feature.servers.ServersFeature
@@ -52,6 +53,7 @@ object NexusPlugin : JavaPlugin() {
     val games: GamesFeature? get() = features.getFeature()
     val notices: NoticesFeature? get() = features.getFeature()
     val physicalSpectator: PhysicalSpectatorFeature? get() = features.getFeature()
+    val playerList: PlayerListFeature? get() = features.getFeature()
     val punishments: PunishmentsFeature? get() = features.getFeature()
     val seasons: SeasonsFeature? get() = features.getFeature()
     val servers: ServersFeature? get() = features.getFeature()
