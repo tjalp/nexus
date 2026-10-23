@@ -9,7 +9,7 @@ plugins {
 //    alias(libs.plugins.foojayResolverConventionPlugin)
 }
 
-version = "26.10.20"
+version = "26.10.23"
 
 repositories {
     mavenCentral()
