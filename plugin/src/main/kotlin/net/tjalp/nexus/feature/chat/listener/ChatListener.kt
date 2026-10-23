@@ -54,13 +54,25 @@ class ChatListener(private val feature: ChatFeature) : Listener {
     fun processDecorateEvent(event: AsyncChatDecorateEvent) {
         val canDecorate = event.player()?.hasPermission("nexus.chat.decorate") ?: false
         val serialized = PlainTextComponentSerializer.plainText().serialize(event.originalMessage())
+        val item = event.player()?.inventory?.itemInMainHand
+        val displayName = item?.displayName() ?: text("???")
+        val finalItemComponent = text()
+
+        item?.amount?.let {
+            if (it > 1) {
+                finalItemComponent.append(text("$it × ").mergeStyle(displayName))
+            }
+        }
+
+        finalItemComponent.append(displayName)
+
         val mm = MiniMessage.builder()
             .tags(
                 TagResolver.builder()
                     .tag(
                         "item",
                         Tag.selfClosingInserting(
-                            event.player()?.inventory?.itemInMainHand?.displayName() ?: text("???")
+                            finalItemComponent
                         )
                     )
                     .build()
