@@ -31,8 +31,8 @@ dependencies {
     implementation(project(":common"))
     implementation(libs.configurateKotlinExtras)
     implementation(libs.commonsCollections)
-    implementation(libs.icu4j)
 
+    compileOnly(libs.icu4j) // downloaded in plugin loader
     compileOnly(libs.libsDisguises)
 
     paperweight.paperDevBundle(libs.versions.paperApi)
@@ -40,6 +40,7 @@ dependencies {
 
 tasks {
     val pluginVersion = version.toString()
+    val icu4jVersion = libs.versions.icu4j.get()
 
     runServer {
         minecraftVersion("26.3")
@@ -61,6 +62,10 @@ tasks {
     processResources {
         filesMatching("paper-plugin.yml") {
             expand("version" to pluginVersion)
+        }
+
+        filesMatching("nexus-loader.properties") {
+            expand("icu4jVersion" to icu4jVersion)
         }
     }
 }
@@ -93,6 +98,7 @@ tasks.register<Copy>("copyJarToDevPlugins") {
 
 tasks.shadowJar {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
+//    exclude("META-INF/services/**")
     mergeServiceFiles {
         include("META-INF/services/**")
     }

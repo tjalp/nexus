@@ -5,6 +5,7 @@ main: net.tjalp.nexus.NexusPlugin
 description: A Minecraft server plugin providing various utilities and features.
 api-version: '26.3'
 bootstrapper: net.tjalp.nexus.NexusBootstrap
+loader: net.tjalp.nexus.NexusLoader
 dependencies:
   server:
     LibsDisguises:
